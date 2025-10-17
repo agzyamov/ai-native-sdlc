@@ -40,8 +40,22 @@ jobs:
       
       - name: Create Copilot Coding Agent Task
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ ERROR: COPILOT_TOKEN secret is required!"
+            echo ""
+            echo "GitHub Copilot Coding Agent requires an OAuth token (Personal Access Token)."
+            echo "The default GITHUB_TOKEN cannot be used for this command."
+            echo ""
+            echo "To fix this:"
+            echo "1. Create a Personal Access Token: https://github.com/settings/tokens/new"
+            echo "2. Required scopes: repo, workflow"
+            echo "3. Add it as a secret named COPILOT_TOKEN in repository settings"
+            echo ""
+            exit 1
+          fi
+          
           echo "🤖 Starting GitHub Copilot Coding Agent..."
           echo ""
           echo "Prompt: ${{ github.event.inputs.feature_prompt }}"
