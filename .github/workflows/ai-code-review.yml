@@ -23,16 +23,10 @@ jobs:
         with:
           node-version: '22'
       
-      - name: Install Copilot CLI and MCP Server
+      - name: Install Copilot CLI
         run: |
           echo "Installing GitHub Copilot CLI..."
           npm install -g @github/copilot
-          
-          echo "Cloning Microsoft Docs MCP Server from GitHub..."
-          git clone https://github.com/MicrosoftDocs/mcp.git /tmp/mcp-microsoft-docs
-          cd /tmp/mcp-microsoft-docs
-          npm install
-          npm run build || echo "Build step not required"
       
       - name: Setup MCP Configuration
         run: |
@@ -43,9 +37,8 @@ jobs:
           {
             "mcpServers": {
               "microsoft-docs": {
-                "command": "node",
-                "args": ["/tmp/mcp-microsoft-docs/build/index.js"],
-                "env": {}
+                "type": "http",
+                "url": "https://learn.microsoft.com/api/mcp"
               }
             }
           }
