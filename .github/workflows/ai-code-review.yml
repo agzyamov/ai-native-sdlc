@@ -14,6 +14,10 @@ on:
 jobs:
   copilot-review:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,14 +28,35 @@ jobs:
           node-version: '22'
       
       - name: Install Copilot CLI
-        run: npm install -g @github/copilot
+        run: |
+          echo "Installing GitHub Copilot CLI..."
+          npm install -g @github/copilot
+      
+      - name: Setup MCP Configuration
+        run: |
+          echo "Setting up MCP configuration for Copilot CLI..."
+          mkdir -p ~/.copilot
+          
+          cat > ~/.copilot/mcp-config.json << 'EOF'
+          {
+            "mcpServers": {
+              "microsoft-docs": {
+                "type": "http",
+                "url": "https://learn.microsoft.com/api/mcp"
+              }
+            }
+          }
+          EOF
+          
+          echo "MCP Config created:"
+          cat ~/.copilot/mcp-config.json
       
       - name: Authenticate GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo $GITHUB_TOKEN | gh auth login --with-token
-          gh auth status
+          echo "GitHub CLI authentication check..."
+          gh auth status || echo "Auth status check failed but continuing..."
       
       - name: Get code changes
         run: |
@@ -43,31 +68,65 @@ jobs:
           echo "Code to analyze:"
           cat code_diff.txt
       
-      - name: Test Copilot CLI
+      - name: Test Copilot CLI with Microsoft Docs MCP
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          echo "# GitHub Copilot CLI Test Results" > copilot_output.md
-          echo "" >> copilot_output.md
-          echo "## Prompt Used:" >> copilot_output.md
-          echo "${{ github.event.inputs.prompt || 'Review this code for bugs, security issues, and suggest improvements' }}" >> copilot_output.md
-          echo "" >> copilot_output.md
-          echo "## Analysis:" >> copilot_output.md
+          # Export token for copilot
+          export GITHUB_TOKEN="${GITHUB_TOKEN}"
+          export GH_TOKEN="${GH_TOKEN}"
           
-          # Test different Copilot CLI commands
-          echo "Testing npx @github/copilot explain..." >> copilot_output.md
-          npx @github/copilot explain "$(cat code_diff.txt)" >> copilot_output.md 2>&1 || {
-            echo "explain command failed, trying suggest..." >> copilot_output.md
-            npx @github/copilot suggest "$(cat code_diff.txt)" >> copilot_output.md 2>&1 || {
-              echo "suggest command failed, trying basic help..." >> copilot_output.md
-              npx @github/copilot --help >> copilot_output.md 2>&1 || {
-                echo "All Copilot CLI commands failed. Package info:" >> copilot_output.md
-                npm list -g @github/copilot >> copilot_output.md 2>&1
-                echo "Available commands:" >> copilot_output.md
-                ls /usr/local/lib/node_modules/@github/copilot/bin/ >> copilot_output.md 2>&1 || echo "Cannot list copilot bin directory" >> copilot_output.md
-              }
-            }
-          }
+          echo "=== Testing GitHub Copilot CLI with Microsoft Docs MCP ===" | tee copilot_output.md
+          echo "" | tee -a copilot_output.md
+          
+          # Check if we have proper authentication
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "❌ ERROR: No COPILOT_TOKEN secret found!" | tee -a copilot_output.md
+            echo "Please add a Personal Access Token with Copilot permissions as COPILOT_TOKEN secret" | tee -a copilot_output.md
+            exit 1
+          fi
+          
+          echo "## Test 1: Simple Microsoft Stack Query" | tee -a copilot_output.md
+          echo "Query: What are the best practices for Azure Functions in Node.js?" | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
+          
+          GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
+            --allow-all-tools \
+            --allow-all-paths \
+            -p "Search Microsoft documentation and tell me the best practices for Azure Functions in Node.js. Include code examples if available." \
+            2>&1 | tee -a copilot_output.md || echo "Query 1 failed" | tee -a copilot_output.md
+          
+          echo "" | tee -a copilot_output.md
+          echo "---" | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
+          
+          echo "## Test 2: Code Analysis with Microsoft Stack Context" | tee -a copilot_output.md
+          echo "Analyzing code changes in context of Microsoft technologies..." | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
+          
+          if [ -s code_diff.txt ]; then
+            GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
+              --allow-all-tools \
+              --allow-all-paths \
+              -p "Review this code and check Microsoft documentation for any relevant best practices or issues. Code to review: $(cat code_diff.txt | head -100)" \
+              2>&1 | tee -a copilot_output.md || echo "Query 2 failed" | tee -a copilot_output.md
+          else
+            echo "No code changes to analyze" | tee -a copilot_output.md
+          fi
+          
+          echo "" | tee -a copilot_output.md
+          echo "---" | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
+          
+          echo "## Test 3: MCP Server Verification" | tee -a copilot_output.md
+          echo "Checking if MCP server is accessible..." | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
+          
+          GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
+            --allow-all-tools \
+            -p "List available MCP tools and confirm microsoft-docs server is working" \
+            2>&1 | tee -a copilot_output.md || echo "MCP check failed" | tee -a copilot_output.md
       
       - name: Show results
         run: |
