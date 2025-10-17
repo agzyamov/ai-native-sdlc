@@ -1,0 +1,38 @@
+name: AI-Assisted Code Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  copilot-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Copilot CLI
+        run: npm install -g @github/copilot
+      
+      - name: Authenticate
+        env:
+          GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+        run: echo $GITHUB_TOKEN | gh copilot auth login --with-token
+      
+      - name: Get PR diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
+      
+      - name: Review with Copilot
+        run: |
+          cat pr_diff.txt | gh copilot chat "Review this code for bugs and suggest improvements" > review.md
+      
+      - name: Post review as comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body-file review.md
