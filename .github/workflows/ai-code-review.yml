@@ -28,8 +28,11 @@ jobs:
           echo "Installing GitHub Copilot CLI..."
           npm install -g @github/copilot
           
-          echo "Installing Microsoft Docs MCP Server..."
-          npm install -g @modelcontextprotocol/server-microsoft-docs
+          echo "Cloning Microsoft Docs MCP Server from GitHub..."
+          git clone https://github.com/MicrosoftDocs/mcp.git /tmp/mcp-microsoft-docs
+          cd /tmp/mcp-microsoft-docs
+          npm install
+          npm run build || echo "Build step not required"
       
       - name: Setup MCP Configuration
         run: |
@@ -40,8 +43,8 @@ jobs:
           {
             "mcpServers": {
               "microsoft-docs": {
-                "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-microsoft-docs"],
+                "command": "node",
+                "args": ["/tmp/mcp-microsoft-docs/build/index.js"],
                 "env": {}
               }
             }
