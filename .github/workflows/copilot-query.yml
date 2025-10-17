@@ -74,7 +74,7 @@ jobs:
           
           # Prepare the prompt with instruction to search docs if enabled
           if [ "${{ github.event.inputs.search_docs }}" == "true" ]; then
-            FULL_PROMPT="Search Microsoft documentation if relevant, then answer: ${{ github.event.inputs.prompt }}"
+            FULL_PROMPT="Use the microsoft_docs_search MCP tool to search Microsoft documentation for relevant information, and use microsoft_code_sample_search if code examples are needed. Then answer: ${{ github.event.inputs.prompt }}"
           else
             FULL_PROMPT="${{ github.event.inputs.prompt }}"
           fi

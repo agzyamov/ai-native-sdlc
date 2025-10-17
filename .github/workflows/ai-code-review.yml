@@ -94,7 +94,7 @@ jobs:
           GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
             --allow-all-tools \
             --allow-all-paths \
-            -p "Search Microsoft documentation and tell me the best practices for Azure Functions in Node.js. Include code examples if available." \
+            -p "Use the microsoft_docs_search MCP tool to search for Azure Functions Node.js best practices. Then use microsoft_code_sample_search to find code examples. Provide a comprehensive answer with official documentation references." \
             2>&1 | tee -a copilot_output.md || echo "Query 1 failed" | tee -a copilot_output.md
           
           echo "" | tee -a copilot_output.md
@@ -109,7 +109,7 @@ jobs:
             GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
               --allow-all-tools \
               --allow-all-paths \
-              -p "Review this code and check Microsoft documentation for any relevant best practices or issues. Code to review: $(cat code_diff.txt | head -100)" \
+              -p "Use microsoft_docs_search MCP tool to check Microsoft documentation for best practices related to this code. Then provide a code review with official documentation references. Code to review: $(cat code_diff.txt | head -100)" \
               2>&1 | tee -a copilot_output.md || echo "Query 2 failed" | tee -a copilot_output.md
           else
             echo "No code changes to analyze" | tee -a copilot_output.md
