@@ -70,8 +70,8 @@ jobs:
       
       - name: Test Copilot CLI with Microsoft Docs MCP
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Export token for copilot
           export GITHUB_TOKEN="${GITHUB_TOKEN}"
@@ -79,6 +79,13 @@ jobs:
           
           echo "=== Testing GitHub Copilot CLI with Microsoft Docs MCP ===" | tee copilot_output.md
           echo "" | tee -a copilot_output.md
+          
+          # Check if we have proper authentication
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "❌ ERROR: No COPILOT_TOKEN secret found!" | tee -a copilot_output.md
+            echo "Please add a Personal Access Token with Copilot permissions as COPILOT_TOKEN secret" | tee -a copilot_output.md
+            exit 1
+          fi
           
           echo "## Test 1: Simple Microsoft Stack Query" | tee -a copilot_output.md
           echo "Query: What are the best practices for Azure Functions in Node.js?" | tee -a copilot_output.md
