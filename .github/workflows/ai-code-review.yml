@@ -2,6 +2,8 @@ name: AI-Assisted Code Review
 on:
   pull_request:
     types: [opened, synchronize]
+  push:
+    branches: [main]
 
 jobs:
   copilot-review:
