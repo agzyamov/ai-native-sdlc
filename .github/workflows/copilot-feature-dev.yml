@@ -40,41 +40,16 @@ jobs:
       
       - name: Determine File Path and Language
         run: |
-          # Ask Copilot to suggest filename and language
+          # Generate Python filename from prompt
           TIMESTAMP=$(date +%s)
-          
-          # Extract keywords from prompt for filename
           PROMPT="${{ github.event.inputs.feature_prompt }}"
-          
-          # Default to Python unless prompt suggests otherwise
-          if echo "$PROMPT" | grep -qi "javascript\|js\|node\|react\|vue"; then
-            EXT="js"
-            LANG="javascript"
-          elif echo "$PROMPT" | grep -qi "typescript\|ts"; then
-            EXT="ts"
-            LANG="typescript"
-          elif echo "$PROMPT" | grep -qi "java"; then
-            EXT="java"
-            LANG="java"
-          elif echo "$PROMPT" | grep -qi "go\|golang"; then
-            EXT="go"
-            LANG="go"
-          elif echo "$PROMPT" | grep -qi "rust"; then
-            EXT="rs"
-            LANG="rust"
-          else
-            EXT="py"
-            LANG="python"
-          fi
           
           # Generate filename from prompt (lowercase, replace spaces with underscores)
           FILENAME=$(echo "$PROMPT" | head -c 50 | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' | sed 's/__*/_/g' | sed 's/^_//;s/_$//')
-          FILE_PATH="generated/${FILENAME}_${TIMESTAMP}.${EXT}"
+          FILE_PATH="generated/${FILENAME}_${TIMESTAMP}.py"
           
           echo "FILE_PATH=$FILE_PATH" >> $GITHUB_ENV
-          echo "LANGUAGE=$LANG" >> $GITHUB_ENV
-          
-          echo "✅ Will create: $FILE_PATH (Language: $LANG)"
+          echo "✅ Will create: $FILE_PATH"
       
       - name: Generate Code with Copilot
         env:
@@ -97,7 +72,7 @@ jobs:
           # Ask Copilot to generate code
           GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
             --allow-all-tools \
-            -p "${{ github.event.inputs.feature_prompt }}. Write complete, production-ready code with comments, error handling, and tests if applicable. Output ONLY the code in a markdown code block for $LANGUAGE." \
+            -p "${{ github.event.inputs.feature_prompt }}. Write complete, production-ready Python code with comments, error handling, and tests if applicable. Output ONLY the code in a markdown code block for python." \
             > copilot_response.txt 2>&1
           
           echo ""
@@ -110,22 +85,8 @@ jobs:
           mkdir -p "$(dirname "$FILE_PATH")"
           
           # Extract code from markdown code blocks
-          # Try with language-specific marker first
-          EXTENSION="${FILE_PATH##*.}"
-          sed -n "/\`\`\`${EXTENSION}/,/\`\`\`/p" copilot_response.txt | sed '1d;$d' > "$FILE_PATH" 2>/dev/null || true
-          
-          # Try with common language markers
-          if [ ! -s "$FILE_PATH" ]; then
-            sed -n '/```python/,/```/p' copilot_response.txt | sed '1d;$d' > "$FILE_PATH" 2>/dev/null || true
-          fi
-          
-          if [ ! -s "$FILE_PATH" ]; then
-            sed -n '/```javascript/,/```/p' copilot_response.txt | sed '1d;$d' > "$FILE_PATH" 2>/dev/null || true
-          fi
-          
-          if [ ! -s "$FILE_PATH" ]; then
-            sed -n '/```typescript/,/```/p' copilot_response.txt | sed '1d;$d' > "$FILE_PATH" 2>/dev/null || true
-          fi
+          # Try with python language marker
+          sed -n '/```python/,/```/p' copilot_response.txt | sed '1d;$d' > "$FILE_PATH" 2>/dev/null || true
           
           # Try without language specifier
           if [ ! -s "$FILE_PATH" ]; then
