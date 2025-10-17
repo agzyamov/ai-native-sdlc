@@ -1,7 +1,15 @@
 name: AI-Assisted Code Review
 on:
-  pull_request:
-    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to analyze (default: main)'
+        required: false
+        default: 'main'
+      prompt:
+        description: 'Custom prompt for Copilot (optional)'
+        required: false
+        default: 'Review this code for bugs, security issues, and suggest improvements'
 
 jobs:
   copilot-review:
@@ -25,27 +33,49 @@ jobs:
           echo $GITHUB_TOKEN | gh auth login --with-token
           gh auth status
       
-      - name: Get PR diff
+      - name: Get code changes
         run: |
-          git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
+          echo "Analyzing changes from ${{ github.event.inputs.target_branch || 'main' }} to current branch..."
+          git diff origin/${{ github.event.inputs.target_branch || 'main' }}...HEAD > code_diff.txt || {
+            echo "No diff available, analyzing recent files instead..."
+            find . -name "*.js" -o -name "*.ts" -o -name "*.py" | head -5 | xargs cat > code_diff.txt
+          }
+          echo "Code to analyze:"
+          cat code_diff.txt
       
-      - name: Review with Copilot CLI
+      - name: Test Copilot CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use the actual Copilot CLI npm package
-          echo "Analyzing code changes with GitHub Copilot CLI..." > review.md
-          echo "" >> review.md
-          npx @github/copilot explain "$(cat pr_diff.txt)" >> review.md 2>&1 || {
-            echo "## Code Review Analysis" >> review.md
-            echo "Analyzed the following files:" >> review.md
-            git diff --name-only origin/${{ github.base_ref }}...HEAD >> review.md
-            echo "" >> review.md
-            echo "Please review the changes manually as Copilot CLI encountered an issue." >> review.md
+          echo "# GitHub Copilot CLI Test Results" > copilot_output.md
+          echo "" >> copilot_output.md
+          echo "## Prompt Used:" >> copilot_output.md
+          echo "${{ github.event.inputs.prompt || 'Review this code for bugs, security issues, and suggest improvements' }}" >> copilot_output.md
+          echo "" >> copilot_output.md
+          echo "## Analysis:" >> copilot_output.md
+          
+          # Test different Copilot CLI commands
+          echo "Testing npx @github/copilot explain..." >> copilot_output.md
+          npx @github/copilot explain "$(cat code_diff.txt)" >> copilot_output.md 2>&1 || {
+            echo "explain command failed, trying suggest..." >> copilot_output.md
+            npx @github/copilot suggest "$(cat code_diff.txt)" >> copilot_output.md 2>&1 || {
+              echo "suggest command failed, trying basic help..." >> copilot_output.md
+              npx @github/copilot --help >> copilot_output.md 2>&1 || {
+                echo "All Copilot CLI commands failed. Package info:" >> copilot_output.md
+                npm list -g @github/copilot >> copilot_output.md 2>&1
+                echo "Available commands:" >> copilot_output.md
+                ls /usr/local/lib/node_modules/@github/copilot/bin/ >> copilot_output.md 2>&1 || echo "Cannot list copilot bin directory" >> copilot_output.md
+              }
+            }
           }
       
-      - name: Post review as comment
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Show results
         run: |
-          gh pr comment ${{ github.event.pull_request.number }} --body-file review.md
+          echo "=== COPILOT CLI TEST RESULTS ==="
+          cat copilot_output.md
+      
+      - name: Upload results as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-analysis-results
+          path: copilot_output.md
