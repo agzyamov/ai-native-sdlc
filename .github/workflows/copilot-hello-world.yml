@@ -43,20 +43,17 @@ jobs:
       
       - name: Extract and Save Code
         run: |
-          # Try to find Python code in the output
-          if grep -q "print" copilot_output.txt; then
-            # Extract lines that look like Python code
-            grep -E "^(print|#|def |import |if |for |while )" copilot_output.txt > hello.py || true
-            
-            # If empty, try to extract from code blocks
-            if [ ! -s hello.py ]; then
-              sed -n '/```python/,/```/p' copilot_output.txt | sed '1d;$d' > hello.py || true
-            fi
-            
-            # If still empty, try without language specifier
-            if [ ! -s hello.py ]; then
-              sed -n '/```/,/```/p' copilot_output.txt | sed '1d;$d' > hello.py || true
-            fi
+          # Try to extract from code blocks with python marker
+          sed -n '/```python/,/```/p' copilot_output.txt | sed '1d;$d' > hello.py || true
+          
+          # If empty, try without language specifier
+          if [ ! -s hello.py ]; then
+            sed -n '/```/,/```/p' copilot_output.txt | sed '1d;$d' > hello.py || true
+          fi
+          
+          # Remove leading whitespace from all lines
+          if [ -s hello.py ]; then
+            sed -i 's/^[[:space:]]*//' hello.py
           fi
           
           # If we still don't have code, create a simple one
