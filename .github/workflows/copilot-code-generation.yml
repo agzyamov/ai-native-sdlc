@@ -1,0 +1,145 @@
+name: Copilot Code Generation Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Coding task for Copilot (e.g., "create a simple calculator function")'
+        required: true
+        type: string
+        default: 'Create a simple Node.js function that calculates factorial of a number'
+      output_file:
+        description: 'Output file path (relative to repo root)'
+        required: false
+        type: string
+        default: 'generated-code.js'
+
+jobs:
+  copilot-code-gen:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Install Copilot CLI
+        run: |
+          echo "Installing GitHub Copilot CLI..."
+          npm install -g @github/copilot
+          npx @github/copilot --version
+      
+      - name: Generate Code with Copilot
+        env:
+          GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          export GITHUB_TOKEN="${GITHUB_TOKEN}"
+          export GH_TOKEN="${GH_TOKEN}"
+          
+          # Check authentication
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "❌ ERROR: No COPILOT_TOKEN secret found!"
+            exit 1
+          fi
+          
+          echo "=== Generating Code with GitHub Copilot CLI ==="
+          echo ""
+          echo "Task: ${{ github.event.inputs.task }}"
+          echo "Output file: ${{ github.event.inputs.output_file }}"
+          echo ""
+          
+          # Ask Copilot to generate code and save to file
+          GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
+            --allow-all-tools \
+            --allow-all-paths \
+            -p "${{ github.event.inputs.task }}. Write complete, working code with comments. Include proper error handling and input validation." \
+            2>&1 | tee copilot_generation.log
+          
+          echo ""
+          echo "=== Code generation complete ==="
+      
+      - name: Extract and Save Generated Code
+        run: |
+          echo "Extracting code from Copilot output..."
+          
+          # Try to extract code between code fences from the log
+          if grep -q '```' copilot_generation.log; then
+            # Extract code between first pair of triple backticks
+            sed -n '/```[a-z]*/,/```/p' copilot_generation.log | sed '1d;$d' > "${{ github.event.inputs.output_file }}"
+            
+            # If file is empty, try without language specifier
+            if [ ! -s "${{ github.event.inputs.output_file }}" ]; then
+              sed -n '/```/,/```/p' copilot_generation.log | sed '1d;$d' > "${{ github.event.inputs.output_file }}"
+            fi
+            
+            echo "Code extracted successfully!"
+          else
+            echo "⚠️ No code blocks found in Copilot output"
+            echo "// Copilot response (no code block detected):" > "${{ github.event.inputs.output_file }}"
+            cat copilot_generation.log >> "${{ github.event.inputs.output_file }}"
+          fi
+          
+          echo ""
+          echo "=== Generated File Content ==="
+          cat "${{ github.event.inputs.output_file }}"
+      
+      - name: Test Generated Code (if JavaScript/TypeScript)
+        run: |
+          FILE="${{ github.event.inputs.output_file }}"
+          
+          if [[ "$FILE" == *.js ]] || [[ "$FILE" == *.ts ]]; then
+            echo "Running syntax check on generated JavaScript code..."
+            
+            # Check if file has valid syntax
+            if node -c "$FILE" 2>&1; then
+              echo "✅ Code has valid syntax!"
+            else
+              echo "❌ Syntax errors found"
+              exit 1
+            fi
+          elif [[ "$FILE" == *.py ]]; then
+            echo "Running syntax check on generated Python code..."
+            python3 -m py_compile "$FILE" && echo "✅ Python syntax valid!" || echo "❌ Python syntax errors"
+          else
+            echo "ℹ️ Skipping syntax check for $FILE (unsupported file type)"
+          fi
+      
+      - name: Create Pull Request with Generated Code
+        run: |
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create a new branch
+          BRANCH_NAME="copilot-generated-code-$(date +%s)"
+          git checkout -b "$BRANCH_NAME"
+          
+          # Add and commit generated file
+          git add "${{ github.event.inputs.output_file }}" copilot_generation.log
+          git commit -m "Add Copilot-generated code: ${{ github.event.inputs.task }}"
+          
+          # Push branch
+          git push origin "$BRANCH_NAME"
+          
+          # Create PR with proper body
+          gh pr create \
+            --title "Copilot Generated Code" \
+            --body "Generated by GitHub Copilot CLI. Task: ${{ github.event.inputs.task }}" \
+            --base main \
+            --head "$BRANCH_NAME"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-generated-code
+          path: |
+            ${{ github.event.inputs.output_file }}
+            copilot_generation.log
