@@ -18,18 +18,31 @@ jobs:
       - name: Install Copilot CLI
         run: npm install -g @github/copilot
       
-      - name: Authenticate
+      - name: Authenticate GitHub CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
-        run: echo $GITHUB_TOKEN | gh copilot auth login --with-token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo $GITHUB_TOKEN | gh auth login --with-token
+          gh auth status
       
       - name: Get PR diff
         run: |
           git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
       
-      - name: Review with Copilot
+      - name: Review with Copilot CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat pr_diff.txt | gh copilot chat "Review this code for bugs and suggest improvements" > review.md
+          # Use the actual Copilot CLI npm package
+          echo "Analyzing code changes with GitHub Copilot CLI..." > review.md
+          echo "" >> review.md
+          npx @github/copilot explain "$(cat pr_diff.txt)" >> review.md 2>&1 || {
+            echo "## Code Review Analysis" >> review.md
+            echo "Analyzed the following files:" >> review.md
+            git diff --name-only origin/${{ github.base_ref }}...HEAD >> review.md
+            echo "" >> review.md
+            echo "Please review the changes manually as Copilot CLI encountered an issue." >> review.md
+          }
       
       - name: Post review as comment
         env:
