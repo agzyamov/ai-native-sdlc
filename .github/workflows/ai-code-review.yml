@@ -23,8 +23,33 @@ jobs:
         with:
           node-version: '22'
       
-      - name: Install Copilot CLI
-        run: npm install -g @github/copilot
+      - name: Install Copilot CLI and MCP Server
+        run: |
+          echo "Installing GitHub Copilot CLI..."
+          npm install -g @github/copilot
+          
+          echo "Installing Microsoft Docs MCP Server..."
+          npm install -g @modelcontextprotocol/server-microsoft-docs
+      
+      - name: Setup MCP Configuration
+        run: |
+          echo "Setting up MCP configuration for Copilot CLI..."
+          mkdir -p ~/.copilot
+          
+          cat > ~/.copilot/mcp-config.json << 'EOF'
+          {
+            "mcpServers": {
+              "microsoft-docs": {
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-microsoft-docs"],
+                "env": {}
+              }
+            }
+          }
+          EOF
+          
+          echo "MCP Config created:"
+          cat ~/.copilot/mcp-config.json
       
       - name: Authenticate GitHub CLI
         env:
@@ -43,40 +68,53 @@ jobs:
           echo "Code to analyze:"
           cat code_diff.txt
       
-      - name: Test Copilot CLI
+      - name: Test Copilot CLI with Microsoft Docs MCP
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== Testing GitHub Copilot CLI ==="
-          echo ""
+          echo "=== Testing GitHub Copilot CLI with Microsoft Docs MCP ===" | tee copilot_output.md
+          echo "" | tee -a copilot_output.md
           
-          echo "1. Checking npm package installation..."
-          npm list -g @github/copilot || echo "Package not found in global list"
-          echo ""
+          echo "## Test 1: Simple Microsoft Stack Query" | tee -a copilot_output.md
+          echo "Query: What are the best practices for Azure Functions in Node.js?" | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
           
-          echo "2. Checking package location..."
-          npm root -g
-          ls -la $(npm root -g)/@github/ || echo "No @github directory"
-          echo ""
+          npx @github/copilot \
+            --allow-all-tools \
+            --allow-all-paths \
+            -p "Search Microsoft documentation and tell me the best practices for Azure Functions in Node.js. Include code examples if available." \
+            2>&1 | tee -a copilot_output.md || echo "Query 1 failed" | tee -a copilot_output.md
           
-          echo "3. Trying to run copilot with npx..."
-          npx @github/copilot --version 2>&1 || echo "Version command failed"
-          echo ""
+          echo "" | tee -a copilot_output.md
+          echo "---" | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
           
-          echo "4. Checking available scripts in package.json..."
-          cat $(npm root -g)/@github/copilot/package.json 2>&1 | grep -A 10 '"bin"' || echo "Cannot find bin section"
-          echo ""
+          echo "## Test 2: Code Analysis with Microsoft Stack Context" | tee -a copilot_output.md
+          echo "Analyzing code changes in context of Microsoft technologies..." | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
           
-          echo "5. Trying help command..."
-          npx @github/copilot --help 2>&1 || echo "Help command failed"
-          echo ""
+          if [ -s code_diff.txt ]; then
+            npx @github/copilot \
+              --allow-all-tools \
+              --allow-all-paths \
+              -p "Review this code and check Microsoft documentation for any relevant best practices or issues. Code to review: $(cat code_diff.txt | head -100)" \
+              2>&1 | tee -a copilot_output.md || echo "Query 2 failed" | tee -a copilot_output.md
+          else
+            echo "No code changes to analyze" | tee -a copilot_output.md
+          fi
           
-          echo "6. Listing executables..."
-          find $(npm root -g)/@github/copilot -type f -name "*.js" -o -name "copilot*" 2>&1 | head -20
-          echo ""
+          echo "" | tee -a copilot_output.md
+          echo "---" | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
           
-          echo "=== Test Complete ===" > copilot_output.md
-          echo "Check logs above for details" >> copilot_output.md
+          echo "## Test 3: MCP Server Verification" | tee -a copilot_output.md
+          echo "Checking if MCP server is accessible..." | tee -a copilot_output.md
+          echo "" | tee -a copilot_output.md
+          
+          npx @github/copilot \
+            --allow-all-tools \
+            -p "List available MCP tools and confirm microsoft-docs server is working" \
+            2>&1 | tee -a copilot_output.md || echo "MCP check failed" | tee -a copilot_output.md
       
       - name: Show results
         run: |
