@@ -1,0 +1,104 @@
+name: Copilot Query with MS Docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Your question or prompt for GitHub Copilot'
+        required: true
+        type: string
+      search_docs:
+        description: 'Include Microsoft documentation search'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  copilot-query:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Install Copilot CLI
+        run: |
+          echo "Installing GitHub Copilot CLI..."
+          npm install -g @github/copilot
+          echo "Installed version:"
+          npx @github/copilot --version
+      
+      - name: Setup MCP Configuration
+        run: |
+          echo "Setting up MCP configuration for Microsoft Docs..."
+          mkdir -p ~/.copilot
+          
+          cat > ~/.copilot/mcp-config.json << 'EOF'
+          {
+            "mcpServers": {
+              "microsoft-docs": {
+                "type": "http",
+                "url": "https://learn.microsoft.com/api/mcp"
+              }
+            }
+          }
+          EOF
+          
+          echo "MCP Config created:"
+          cat ~/.copilot/mcp-config.json
+      
+      - name: Run Copilot Query
+        env:
+          GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          export GITHUB_TOKEN="${GITHUB_TOKEN}"
+          export GH_TOKEN="${GH_TOKEN}"
+          
+          # Check if we have proper authentication
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "❌ ERROR: No COPILOT_TOKEN secret found!"
+            echo "Please add a Personal Access Token with Copilot permissions as COPILOT_TOKEN secret"
+            exit 1
+          fi
+          
+          echo "=== GitHub Copilot Query ===" | tee copilot_response.md
+          echo "" | tee -a copilot_response.md
+          echo "**Prompt:** ${{ github.event.inputs.prompt }}" | tee -a copilot_response.md
+          echo "" | tee -a copilot_response.md
+          echo "---" | tee -a copilot_response.md
+          echo "" | tee -a copilot_response.md
+          
+          # Prepare the prompt with instruction to search docs if enabled
+          if [ "${{ github.event.inputs.search_docs }}" == "true" ]; then
+            FULL_PROMPT="Search Microsoft documentation if relevant, then answer: ${{ github.event.inputs.prompt }}"
+          else
+            FULL_PROMPT="${{ github.event.inputs.prompt }}"
+          fi
+          
+          echo "**Response:**" | tee -a copilot_response.md
+          echo "" | tee -a copilot_response.md
+          
+          GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
+            --allow-all-tools \
+            --allow-all-paths \
+            -p "$FULL_PROMPT" \
+            2>&1 | tee -a copilot_response.md || {
+              echo "❌ Query failed" | tee -a copilot_response.md
+              exit 1
+            }
+      
+      - name: Show Response
+        run: |
+          echo ""
+          echo "=== COPILOT RESPONSE ==="
+          cat copilot_response.md
+      
+      - name: Upload Response
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-response
+          path: copilot_response.md
