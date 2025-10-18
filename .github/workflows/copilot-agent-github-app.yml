@@ -1,0 +1,149 @@
+name: Copilot Agent Task (GitHub App)
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_description:
+        description: 'Task description for Copilot Agent (e.g., "Create a function to sort arrays")'
+        required: true
+        type: string
+      base_branch:
+        description: 'Base branch for the PR (default: main)'
+        required: false
+        type: string
+        default: 'main'
+
+jobs:
+  copilot-agent:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          
+      - name: Verify GitHub CLI and agent-task
+        run: |
+          echo "🔍 Checking GitHub CLI version..."
+          gh --version
+          
+          if ! gh agent-task --help &>/dev/null; then
+            echo "❌ ERROR: gh agent-task command not available!"
+            echo "GitHub CLI version must be 2.80.0 or later"
+            exit 1
+          fi
+          
+          echo "✅ GitHub CLI supports agent-task command"
+      
+      - name: Verify GitHub App Token
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "🔐 Verifying GitHub App authentication..."
+          gh auth status
+          
+          # Check token format (should start with ghs_)
+          if [[ "$GH_TOKEN" == ghs_* ]]; then
+            echo "✅ GitHub App installation token detected"
+          else
+            echo "⚠️ Token format: ${GH_TOKEN:0:4}***"
+          fi
+      
+      - name: Run Copilot Agent Task
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          echo "🤖 Starting GitHub Copilot Agent Task..."
+          echo ""
+          echo "📋 Task Details:"
+          echo "  Task: ${{ inputs.task_description }}"
+          echo "  Base: ${{ inputs.base_branch }}"
+          echo "  Repo: ${{ github.repository }}"
+          echo ""
+          
+          # Run agent-task and capture output
+          gh agent-task create \
+            "${{ inputs.task_description }}" \
+            --base "${{ inputs.base_branch }}" \
+            --repo "${{ github.repository }}" \
+            --follow 2>&1 | tee agent_output.log
+          
+          echo ""
+          echo "=== Agent Task Output ==="
+          cat agent_output.log
+          
+          # Extract PR URL from output
+          PR_URL=$(grep -oP 'https://github\.com/[^/]+/[^/]+/pull/\d+' agent_output.log | head -1 || echo "")
+          
+          if [ -n "$PR_URL" ]; then
+            echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+            echo ""
+            echo "✅ Pull Request created: $PR_URL"
+          else
+            echo ""
+            echo "⚠️ Could not extract PR URL from agent output"
+            echo "Check the logs artifact for details"
+          fi
+      
+      - name: Upload Agent Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-agent-logs
+          path: agent_output.log
+          retention-days: 30
+      
+      - name: Create Summary
+        if: always()
+        run: |
+          echo "## 🤖 GitHub Copilot Agent Task" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Task Description:** ${{ inputs.task_description }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Base Branch:** \`${{ inputs.base_branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -n "$PR_URL" ]; then
+            echo "**Pull Request:** $PR_URL" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "---" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ✅ Success!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The Copilot agent has created a pull request and is working on your task." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**What happens next:**" >> $GITHUB_STEP_SUMMARY
+            echo "- 🔄 The agent works autonomously on the task" >> $GITHUB_STEP_SUMMARY
+            echo "- 💾 Commits are made as progress is made" >> $GITHUB_STEP_SUMMARY
+            echo "- 👤 You'll be added as a reviewer when complete" >> $GITHUB_STEP_SUMMARY
+            echo "- 🔔 You'll receive a notification when ready for review" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "---" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ⚠️ No PR Created" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The agent task completed but no PR URL was detected." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Possible reasons:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Task description may need to be more specific" >> $GITHUB_STEP_SUMMARY
+            echo "- Base branch might not exist" >> $GITHUB_STEP_SUMMARY
+            echo "- Agent encountered an error (check logs)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📥 Download the **copilot-agent-logs** artifact for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📚 **Documentation:** [GitHub App Setup Guide](../docs/github-app-setup.md)" >> $GITHUB_STEP_SUMMARY
