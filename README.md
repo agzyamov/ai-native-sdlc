@@ -14,6 +14,7 @@ AI-Native SDLC demonstrates how to integrate GitHub Copilot CLI directly into yo
 
 - 🤖 **Automated Code Generation**: Generate production-ready Python code using natural language prompts
 - 🔄 **Pull Request Automation**: Automatically creates feature branches and PRs with generated code
+- 🔐 **GitHub App Integration**: Secure authentication using GitHub Apps for `gh agent-task` automation
 - 📝 **Interactive Q&A**: Query documentation and get answers saved to markdown files
 - 🎯 **Zero Configuration**: Works out of the box with GitHub Actions
 - 🏷️ **Smart Labeling**: Automatically tags PRs with `ai-generated` and `needs-review` labels
@@ -45,9 +46,13 @@ The `gh agent-task create` command requires an **OAuth token** (prefix `gho_`), 
 1. Authenticate with `gh auth login` (creates OAuth token)
 2. Run `gh agent-task create "your task description"`
 
-**For CI/CD automation** (alternative approaches):
+**For CI/CD automation with `gh agent-task`:**
+- 🎯 **Recommended:** Use GitHub App authentication
+- 📖 **Complete Guide:** [GitHub App Setup](docs/github-app-setup.md)
+- ⚡ **Workflow:** [copilot-agent-github-app.yml](.github/workflows/copilot-agent-github-app.yml)
+
+**Alternative approaches:**
 - Use other Copilot workflows in this repo that work with PAT tokens
-- Consider GitHub Apps authentication (advanced setup required)
 
 If you still want to try with PAT:
 1. Create a [Personal Access Token](https://github.com/settings/tokens/new) with these scopes:
@@ -136,6 +141,42 @@ gh workflow run copilot-qa.yml \
 gh workflow run copilot-qa.yml \
   -f question="Show me how to implement a simple caching system in Python"
 ```
+
+### Copilot Agent with GitHub App (Recommended for CI/CD)
+
+🎯 **Use GitHub App for production-grade automation:**
+
+**Prerequisites:** Complete [GitHub App Setup Guide](docs/github-app-setup.md)
+
+```bash
+# Create a feature with Copilot Agent
+gh workflow run copilot-agent-github-app.yml \
+  -f task_description="Create a Python function to parse and validate JSON schemas"
+
+# Generate tests
+gh workflow run copilot-agent-github-app.yml \
+  -f task_description="Add unit tests for the authentication module"
+
+# Refactor code
+gh workflow run copilot-agent-github-app.yml \
+  -f task_description="Refactor the database connection code to use connection pooling"
+```
+
+**Why use GitHub App:**
+- ✅ Works with `gh agent-task` (requires OAuth token)
+- ✅ Secure, scoped permissions
+- ✅ Short-lived tokens (1 hour)
+- ✅ Better for CI/CD automation
+- ✅ Audit trail for all actions
+
+**What it does:**
+1. Generates GitHub App installation token
+2. Runs `gh agent-task create` with your description
+3. Copilot creates a PR and works autonomously
+4. Commits code as it progresses
+5. Adds you as reviewer when complete
+
+📖 **Full documentation:** [docs/github-app-setup.md](docs/github-app-setup.md)
 
 ### Legacy Copilot Query Workflow
 
