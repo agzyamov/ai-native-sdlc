@@ -51,8 +51,25 @@ jobs:
           # Authenticate gh CLI (unset GH_TOKEN first)
           echo "$TOKEN" | GH_TOKEN= gh auth login --with-token
           
-          # Verify authentication
+          # Verify authentication with detailed info
           echo "🔑 Authenticated as: $(gh api user -q '.login')"
+          echo "📧 User email: $(gh api user -q '.email // "N/A"')"
+          echo "🏢 User type: $(gh api user -q '.type')"
+          echo ""
+          
+          # Show OAuth App information (if available)
+          echo "🔍 Checking token details..."
+          
+          # Get token info from GitHub API
+          echo "📊 Token scopes: $(gh api user -H "Accept: application/vnd.github.v3+json" -i 2>/dev/null | grep -i "x-oauth-scopes" | cut -d: -f2 | tr -d ' \r\n' || echo "Unknown")"
+          
+          # Check rate limit to see if it's higher (OAuth App vs personal)
+          RATE_LIMIT=$(gh api rate_limit -q '.rate.limit')
+          echo "⚡ Rate limit: $RATE_LIMIT requests/hour"
+          
+          # Show auth status
+          echo ""
+          echo "📋 Full auth status:"
           gh auth status
       
       - name: Run Copilot Agent Task
