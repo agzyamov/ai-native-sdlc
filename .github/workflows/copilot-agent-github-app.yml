@@ -59,8 +59,6 @@ jobs:
           fi
       
       - name: Run Copilot Agent Task
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           echo "🤖 Starting GitHub Copilot Agent Task..."
           echo ""
@@ -71,10 +69,12 @@ jobs:
           echo ""
           
           # Authenticate gh CLI with the GitHub App token
-          echo "$GH_TOKEN" | gh auth login --with-token
+          # We must unset GH_TOKEN first, then use gh auth login
+          echo "${{ steps.app-token.outputs.token }}" | GH_TOKEN= gh auth login --with-token
           
           # Verify authentication
           echo "🔑 Authenticated as: $(gh api user -q '.login')"
+          echo "🔑 Token type: $(gh auth token | cut -c1-4)"
           echo ""
           
           # Run agent-task and capture output
