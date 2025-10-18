@@ -38,7 +38,7 @@ jobs:
           
           echo "✅ GitHub CLI supports agent-task command"
       
-      - name: Authenticate GitHub CLI
+      - name: Create Copilot Coding Agent Task
         env:
           GH_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
@@ -56,12 +56,9 @@ jobs:
             exit 1
           fi
           
-          echo "🔐 Authenticating GitHub CLI with COPILOT_TOKEN..."
-          echo "$GH_TOKEN" | gh auth login --with-token
-          gh auth status
-      
-      - name: Create Copilot Coding Agent Task
-        run: |
+          echo "🔐 Using COPILOT_TOKEN for authentication..."
+          gh auth status || echo "Note: gh auth status may show warning but GH_TOKEN will be used"
+          echo ""
           echo "🤖 Starting GitHub Copilot Coding Agent..."
           echo ""
           echo "Prompt: ${{ github.event.inputs.feature_prompt }}"
