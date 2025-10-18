@@ -35,30 +35,27 @@ jobs:
           echo "✅ GitHub CLI supports agent-task command"
       
       - name: Verify OAuth Token
-        env:
-          GH_TOKEN: ${{ secrets.COPILOT_OAUTH_TOKEN }}
         run: |
           echo "🔐 Verifying OAuth token..."
+          TOKEN="${{ secrets.COPILOT_OAUTH_TOKEN }}"
           
           # Check token format (should start with gho_)
-          if [[ "$GH_TOKEN" == gho_* ]]; then
+          if [[ "$TOKEN" == gho_* ]]; then
             echo "✅ OAuth token detected (gho_****)"
           else
             echo "❌ ERROR: Token does not appear to be an OAuth token"
-            echo "Token prefix: ${GH_TOKEN:0:4}***"
+            echo "Token prefix: ${TOKEN:0:4}***"
             exit 1
           fi
           
-          # Authenticate gh CLI
-          echo "$GH_TOKEN" | gh auth login --with-token
+          # Authenticate gh CLI (unset GH_TOKEN first)
+          echo "$TOKEN" | GH_TOKEN= gh auth login --with-token
           
           # Verify authentication
           echo "🔑 Authenticated as: $(gh api user -q '.login')"
           gh auth status
       
       - name: Run Copilot Agent Task
-        env:
-          GH_TOKEN: ${{ secrets.COPILOT_OAUTH_TOKEN }}
         run: |
           echo "🤖 Starting GitHub Copilot Agent Task..."
           echo ""
@@ -66,6 +63,10 @@ jobs:
           echo "  Task: ${{ inputs.task_description }}"
           echo "  Base: ${{ inputs.base_branch }}"
           echo "  Repo: ${{ github.repository }}"
+          echo ""
+          
+          # Verify gh CLI is using the authenticated token
+          echo "🔑 Using token: $(gh auth token | cut -c1-4)****"
           echo ""
           
           # Run agent-task and capture output
