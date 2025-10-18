@@ -38,9 +38,9 @@ jobs:
           
           echo "✅ GitHub CLI supports agent-task command"
       
-      - name: Create Copilot Coding Agent Task
+      - name: Authenticate GitHub CLI
         env:
-          GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
             echo "❌ ERROR: COPILOT_TOKEN secret is required!"
@@ -50,12 +50,18 @@ jobs:
             echo ""
             echo "To fix this:"
             echo "1. Create a Personal Access Token: https://github.com/settings/tokens/new"
-            echo "2. Required scopes: repo, workflow"
+            echo "2. Required scopes: repo, workflow, copilot"
             echo "3. Add it as a secret named COPILOT_TOKEN in repository settings"
             echo ""
             exit 1
           fi
           
+          echo "🔐 Authenticating GitHub CLI with COPILOT_TOKEN..."
+          echo "$GH_TOKEN" | gh auth login --with-token
+          gh auth status
+      
+      - name: Create Copilot Coding Agent Task
+        run: |
           echo "🤖 Starting GitHub Copilot Coding Agent..."
           echo ""
           echo "Prompt: ${{ github.event.inputs.feature_prompt }}"
