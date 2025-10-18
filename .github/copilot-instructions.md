@@ -47,3 +47,16 @@ All Python code must pass these linters without errors:
 - Log important operations
 
 Always run linters before committing code!
+
+## Documentation Rules
+
+**Do NOT create documentation** for:
+- Simple utility functions
+- Self-explanatory code
+- Small helper scripts
+- Experimental or temporary code
+
+Documentation is only needed for:
+- Public APIs
+- Complex algorithms that require explanation
+- When explicitly requested by the user
