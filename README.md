@@ -35,9 +35,24 @@ AI-Native SDLC demonstrates how to integrate GitHub Copilot CLI directly into yo
 
 ### 2. Add Secrets
 
+⚠️ **Important Note about `gh agent-task` in GitHub Actions:**
+
+The `gh agent-task create` command requires an **OAuth token** (prefix `gho_`), not a standard Personal Access Token (prefix `github_pat_` or `ghp_`). 
+
+**Current Limitation:** `gh agent-task` cannot be fully automated in GitHub Actions with PAT tokens. The command works best when run locally or requires a GitHub App for automation.
+
+**For local usage:**
+1. Authenticate with `gh auth login` (creates OAuth token)
+2. Run `gh agent-task create "your task description"`
+
+**For CI/CD automation** (alternative approaches):
+- Use other Copilot workflows in this repo that work with PAT tokens
+- Consider GitHub Apps authentication (advanced setup required)
+
+If you still want to try with PAT:
 1. Create a [Personal Access Token](https://github.com/settings/tokens/new) with these scopes:
    - `repo` (Full control of private repositories)
-   - `copilot` (Access to Copilot features)
+   - `workflow` (Update GitHub Actions workflows)
 
 2. Add to repository secrets as `COPILOT_TOKEN`:
    ```
