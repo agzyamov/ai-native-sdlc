@@ -70,6 +70,13 @@ jobs:
           echo "  Repo: ${{ github.repository }}"
           echo ""
           
+          # Authenticate gh CLI with the GitHub App token
+          echo "$GH_TOKEN" | gh auth login --with-token
+          
+          # Verify authentication
+          echo "🔑 Authenticated as: $(gh api user -q '.login')"
+          echo ""
+          
           # Run agent-task and capture output
           gh agent-task create \
             "${{ inputs.task_description }}" \
