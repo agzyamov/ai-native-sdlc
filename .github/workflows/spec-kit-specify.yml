@@ -89,10 +89,10 @@ jobs:
           echo ""
           
           # Ask Copilot directly with compact prompt
-          npx @github/copilot -p "Generate a 2-4 word kebab-case branch name for: ${{ github.event.inputs.feature_description }}. Respond with ONLY the branch name." 2>&1 | tee short_name_output.txt
+          npx @github/copilot --allow-all-tools -p "Generate a 2-4 word kebab-case branch name for: ${{ github.event.inputs.feature_description }}. Respond with ONLY the branch name." 2>&1 | tee short_name_output.txt
           
-          # Extract the short name (last non-empty line)
-          SHORT_NAME=$(grep -v "^$" short_name_output.txt | grep -v "Total usage" | grep -v "Total duration" | grep -v "Usage by model" | grep -v "Premium request" | tail -1 | tr -d '`' | xargs)
+          # Extract the short name (first non-empty line before statistics)
+          SHORT_NAME=$(head -1 short_name_output.txt | tr -d '`' | xargs)
           
           echo "Generated short name: $SHORT_NAME"
           echo "short_name=$SHORT_NAME" >> $GITHUB_OUTPUT
@@ -155,10 +155,16 @@ jobs:
           echo "Write a complete feature specification for: $FEATURE_DESC" >> spec_context.txt
           echo "Follow the template above. Focus on WHAT and WHY, not HOW. Be specific and testable." >> spec_context.txt
           
-          npx @github/copilot -p "$(cat spec_context.txt)" 2>&1 | tee spec_output.txt
+          npx @github/copilot --allow-all-tools --allow-all-paths -p "$(cat spec_context.txt)" 2>&1 | tee spec_output.txt
           
-          # Extract markdown from output (skip usage statistics)
-          sed -n '/^#/,${/Total usage/q;p}' spec_output.txt > "$SPEC_FILE"
+          # Extract markdown from output - find content between 'EOF' heredoc markers and 'Total usage'
+          # If Copilot tried to create file with heredoc, extract that content
+          if grep -q "<< 'EOF'" spec_output.txt; then
+            sed -n "/cat > .* << 'EOF'/,/^EOF$/p" spec_output.txt | sed '1d;$d' > "$SPEC_FILE"
+          else
+            # Otherwise just extract everything from first # heading to statistics
+            sed -n '/^# /,${/Total usage/q;p}' spec_output.txt > "$SPEC_FILE"
+          fi
           
           echo ""
           echo "✅ Specification generated and saved to: $SPEC_FILE"

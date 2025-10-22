@@ -1,17 +1,9 @@
-error: Invalid command format.
+oauth2-user-authentication
 
-Did you mean: copilot -p "Analyze this feature description and generate a concise 2-4 word branch name in kebab-case format.
 
-Feature description: Add user authentication with OAuth2 support
-
-Rules:
-- Use action-noun format when possible
-- Preserve technical terms and acronyms
-- Keep it 2-4 words maximum
-- Use kebab-case (lowercase with hyphens)
-- No special characters except hyphens
-
-Respond with ONLY the branch name, nothing else."
-
-For non-interactive mode, use the -p or --prompt option.
-Try 'copilot --help' for more information.
+Total usage est:       1 Premium request
+Total duration (API):  3.3s
+Total duration (wall): 12.6s
+Total code changes:    0 lines added, 0 lines removed
+Usage by model:
+    claude-sonnet-4.5    0 input, 14.4k output, 0 cache read, 0 cache write (Est. 1 Premium request)
