@@ -235,9 +235,9 @@ jobs:
           cat > "$CHECKLIST_FILE" <<'CHECKLIST_EOF'
 # Specification Quality Checklist: FEATURE_NAME_PLACEHOLDER
 
-**Purpose:** Validate specification completeness and quality before proceeding to planning  
-**Created:** DATE_PLACEHOLDER  
-**Feature:** [../spec.md](../spec.md)
+**Purpose** - Validate specification completeness and quality before proceeding to planning  
+**Created** - DATE_PLACEHOLDER  
+**Feature** - [../spec.md](../spec.md)
 
 ## Content Quality
 
