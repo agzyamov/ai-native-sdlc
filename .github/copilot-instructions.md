@@ -87,3 +87,43 @@ When creating or modifying Mermaid diagrams:
 - ✅ No parse errors in console
 
 **Never commit broken Mermaid diagrams!**
+
+## GitHub Actions Workflow Validation
+
+**Always validate GitHub Actions workflows** before committing:
+
+When creating or modifying `.github/workflows/*.yml` files:
+
+1. **Run actionlint** after creation or modification:
+   ```bash
+   actionlint .github/workflows/<workflow-file>.yml
+   ```
+
+2. **Check for common issues:**
+   - Valid YAML syntax (proper indentation, no tabs)
+   - Correct trigger syntax (`on:` section)
+   - Valid action versions (e.g., `actions/checkout@v4`)
+   - Required permissions specified
+   - Proper environment variable syntax (`${{ }}` for expressions, `$VAR` for shell)
+   - No deprecated actions or syntax
+
+3. **Test workflow locally** (if possible):
+   - Use `act` tool for local testing: https://github.com/nektos/act
+   - Or trigger workflow manually via GitHub UI
+
+**Before committing:**
+- ✅ actionlint passes without errors
+- ✅ YAML syntax is valid
+- ✅ All actions use pinned versions
+- ✅ Workflow triggers are correctly configured
+
+**Install actionlint:**
+```bash
+# macOS
+brew install actionlint
+
+# Linux
+go install github.com/rhysd/actionlint/cmd/actionlint@latest
+```
+
+**Never commit broken GitHub Actions workflows!**
