@@ -124,9 +124,14 @@ jobs:
           SPEC_FILE=$(jq -r '.SPEC_FILE' feature_output.json)
           FEATURE_DIR=$(jq -r '.FEATURE_DIR' feature_output.json)
           
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "spec_file=$SPEC_FILE" >> $GITHUB_OUTPUT
-          echo "feature_dir=$FEATURE_DIR" >> $GITHUB_OUTPUT
+          # Use multiline output format for long paths
+          {
+            echo "branch_name=$BRANCH_NAME"
+            echo "spec_file<<EOF"
+            echo "$SPEC_FILE"
+            echo "EOF"
+            echo "feature_dir=$FEATURE_DIR"
+          } >> $GITHUB_OUTPUT
           
           echo ""
           echo "✅ Feature scaffolding created:"
