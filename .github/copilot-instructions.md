@@ -60,3 +60,30 @@ Documentation is only needed for:
 - Public APIs
 - Complex algorithms that require explanation
 - When explicitly requested by the user
+
+## Mermaid Diagram Validation
+
+**Always validate Mermaid diagrams** before committing:
+
+When creating or modifying Mermaid diagrams:
+
+1. **Run validation script** after creation:
+   ```bash
+   node check_mermaid.js <filename>
+   ```
+
+2. **Check for common issues:**
+   - Single diagram type per code block (graph TD, flowchart, mindmap, etc.)
+   - No mixed diagram types in one block
+   - Balanced quotes, brackets, parentheses
+   - Valid node IDs (no special characters)
+   - Proper arrow syntax (-->, -.->)
+
+3. **Test rendering** in Mermaid Live Editor: https://mermaid.live/
+
+**Before committing:**
+- ✅ Script validation passes
+- ✅ Diagram renders correctly in VS Code preview
+- ✅ No parse errors in console
+
+**Never commit broken Mermaid diagrams!**

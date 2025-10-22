@@ -1,0 +1,170 @@
+name: Initialize GitHub Spec Kit
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'Project name for Spec Kit initialization (use "." for current directory)'
+        required: false
+        type: string
+        default: '.'
+      ai_assistant:
+        description: 'AI assistant to use'
+        required: false
+        type: choice
+        options:
+          - copilot
+          - claude
+          - gemini
+          - cursor-agent
+          - windsurf
+          - qwen
+          - opencode
+          - codex
+          - kilocode
+          - auggie
+          - roo
+          - codebuddy
+          - amp
+        default: 'copilot'
+      force:
+        description: 'Force merge/overwrite in current directory'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  spec-kit-setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install uv (Python package manager)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      
+      - name: Verify uv installation
+        run: |
+          uv --version
+          echo "✅ uv installed successfully"
+      
+      - name: Install Specify CLI
+        run: |
+          echo "📦 Installing Specify CLI from spec-kit repository..."
+          uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+          
+          # Add uv tools to PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          
+          echo "✅ Specify CLI installed"
+      
+      - name: Verify Specify CLI
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          specify --help || true
+          
+          echo ""
+          echo "🔍 Checking system requirements..."
+          specify check || true
+      
+      - name: Initialize Spec Kit
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          
+          echo "🌱 Initializing GitHub Spec Kit..."
+          echo ""
+          echo "Project: ${{ github.event.inputs.project_name }}"
+          echo "AI Assistant: ${{ github.event.inputs.ai_assistant }}"
+          echo "Force: ${{ github.event.inputs.force }}"
+          echo ""
+          
+          # Build command with options
+          SPECIFY_CMD="specify init ${{ github.event.inputs.project_name }}"
+          SPECIFY_CMD="$SPECIFY_CMD --ai ${{ github.event.inputs.ai_assistant }}"
+          
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            SPECIFY_CMD="$SPECIFY_CMD --force"
+          fi
+          
+          # Initialize project
+          echo "Running: $SPECIFY_CMD"
+          $SPECIFY_CMD
+          
+          echo ""
+          echo "✅ Spec Kit initialized successfully"
+      
+      - name: Show Generated Files
+        run: |
+          echo "📁 Generated files and directories:"
+          echo ""
+          
+          if [ "${{ github.event.inputs.project_name }}" = "." ]; then
+            ls -la
+          else
+            ls -la "${{ github.event.inputs.project_name }}"
+          fi
+          
+          echo ""
+          echo "📄 Checking for Spec Kit files..."
+          find . -name ".speckit*" -o -name "speckit.*" 2>/dev/null || echo "No .speckit files found in root"
+      
+      - name: Upload Spec Kit Configuration
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-kit-config
+          path: |
+            .speckit*
+            speckit.*
+            **/.speckit*
+            **/speckit.*
+          retention-days: 90
+          if-no-files-found: warn
+      
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🌱 GitHub Spec Kit Initialization" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Project:** \`${{ github.event.inputs.project_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**AI Assistant:** \`${{ github.event.inputs.ai_assistant }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Setup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Spec Kit has been initialized with the following capabilities:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Core Commands" >> $GITHUB_STEP_SUMMARY
+          echo "- \`/speckit.constitution\` - Create project principles" >> $GITHUB_STEP_SUMMARY
+          echo "- \`/speckit.specify\` - Define what to build" >> $GITHUB_STEP_SUMMARY
+          echo "- \`/speckit.plan\` - Create technical implementation plan" >> $GITHUB_STEP_SUMMARY
+          echo "- \`/speckit.tasks\` - Generate actionable task lists" >> $GITHUB_STEP_SUMMARY
+          echo "- \`/speckit.implement\` - Execute all tasks" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Optional Commands" >> $GITHUB_STEP_SUMMARY
+          echo "- \`/speckit.clarify\` - Clarify underspecified areas" >> $GITHUB_STEP_SUMMARY
+          echo "- \`/speckit.analyze\` - Cross-artifact consistency analysis" >> $GITHUB_STEP_SUMMARY
+          echo "- \`/speckit.checklist\` - Generate quality checklists" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📖 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Use \`/speckit.constitution\` to establish project principles" >> $GITHUB_STEP_SUMMARY
+          echo "2. Use \`/speckit.specify\` to describe your feature" >> $GITHUB_STEP_SUMMARY
+          echo "3. Use \`/speckit.plan\` to define technical approach" >> $GITHUB_STEP_SUMMARY
+          echo "4. Use \`/speckit.tasks\` to break down into tasks" >> $GITHUB_STEP_SUMMARY
+          echo "5. Use \`/speckit.implement\` to build your feature" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Resources" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [Spec Kit Documentation](https://github.github.io/spec-kit/)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Spec-Driven Development Guide](https://github.com/github/spec-kit/blob/main/spec-driven.md)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Video Overview](https://www.youtube.com/watch?v=a9eR1xsfvHg)" >> $GITHUB_STEP_SUMMARY
