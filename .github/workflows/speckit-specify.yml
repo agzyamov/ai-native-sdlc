@@ -1,0 +1,222 @@
+name: Spec Kit - Specify Feature
+
+on:
+  workflow_dispatch:
+    inputs:
+      feature_description:
+        description: 'Feature description (what to build)'
+        required: true
+        type: string
+      create_branch:
+        description: 'Create feature branch automatically'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  specify-feature:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      
+      - name: Setup Python for Spec Kit
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install uv and Specify CLI
+        run: |
+          echo "📦 Installing uv package manager..."
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          
+          echo "📦 Installing Specify CLI..."
+          export PATH="$HOME/.cargo/bin:$PATH"
+          uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          
+          echo "✅ Specify CLI installed"
+      
+      - name: Install GitHub Copilot CLI
+        run: |
+          echo "📦 Installing GitHub Copilot CLI..."
+          npm install -g @github/copilot
+          npx @github/copilot --version
+          echo "✅ Copilot CLI installed"
+      
+      - name: Verify Spec Kit prompts
+        run: |
+          echo "🔍 Checking for Spec Kit prompts..."
+          if [ ! -d ".github/prompts" ]; then
+            echo "❌ ERROR: Spec Kit not initialized!"
+            echo "Please run 'spec-kit-init.yml' workflow first"
+            exit 1
+          fi
+          
+          if [ ! -f ".github/prompts/speckit.specify.prompt.md" ]; then
+            echo "❌ ERROR: speckit.specify.prompt.md not found!"
+            exit 1
+          fi
+          
+          echo "✅ Spec Kit prompts found"
+          ls -la .github/prompts/speckit.*.prompt.md
+      
+      - name: Run /speckit.specify with Copilot
+        env:
+          GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          export GITHUB_TOKEN="${GITHUB_TOKEN}"
+          export GH_TOKEN="${GH_TOKEN}"
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          
+          if [ -z "$GITHUB_TOKEN" ]; then
+            echo "❌ ERROR: No authentication token found!"
+            exit 1
+          fi
+          
+          echo "🤖 Running /speckit.specify with Copilot..."
+          echo ""
+          echo "Feature Description: ${{ github.event.inputs.feature_description }}"
+          echo ""
+          
+          # Load the speckit.specify prompt
+          SPECIFY_PROMPT=$(cat .github/prompts/speckit.specify.prompt.md)
+          
+          # Create the full prompt for Copilot
+          FULL_PROMPT="You are a GitHub Copilot agent with access to Spec Kit.
+
+${SPECIFY_PROMPT}
+
+FEATURE DESCRIPTION:
+${{ github.event.inputs.feature_description }}
+
+Execute the /speckit.specify workflow:
+1. Generate a concise short name (2-4 words) for the branch
+2. Create the feature specification file
+3. Output the branch name and file path
+4. Save the spec to the appropriate location
+
+Return ONLY:
+- Branch name (short-name format)
+- Spec file path
+- Brief summary of what was created"
+          
+          # Run Copilot with the prompt
+          echo "$FULL_PROMPT" | GITHUB_TOKEN="${GITHUB_TOKEN}" GH_TOKEN="${GH_TOKEN}" npx @github/copilot \
+            --allow-all-tools \
+            --allow-all-paths \
+            -p - \
+            2>&1 | tee copilot_output.txt
+          
+          echo ""
+          echo "✅ /speckit.specify completed"
+      
+      - name: Parse Copilot Output
+        id: parse
+        run: |
+          echo "📝 Parsing Copilot output..."
+          
+          # Extract branch name and spec file from output
+          # This is a simple parser - Copilot should output in a structured format
+          BRANCH_NAME=$(grep -oP "Branch.*?:\s*\K[\w-]+" copilot_output.txt || echo "feature/new-feature")
+          SPEC_FILE=$(grep -oP "Spec.*?:\s*\K[^\s]+" copilot_output.txt || echo "")
+          
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "spec_file=$SPEC_FILE" >> $GITHUB_OUTPUT
+          
+          echo "Detected branch: $BRANCH_NAME"
+          echo "Detected spec file: $SPEC_FILE"
+      
+      - name: Create Feature Branch
+        if: github.event.inputs.create_branch == 'true'
+        run: |
+          BRANCH_NAME="${{ steps.parse.outputs.branch_name }}"
+          
+          echo "🌱 Creating feature branch: $BRANCH_NAME"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if branch already exists
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "⚠️ Branch $BRANCH_NAME already exists, checking it out"
+            git fetch origin "$BRANCH_NAME"
+            git checkout "$BRANCH_NAME"
+          else
+            echo "✨ Creating new branch $BRANCH_NAME"
+            git checkout -b "$BRANCH_NAME"
+          fi
+      
+      - name: Commit and Push Spec
+        if: github.event.inputs.create_branch == 'true'
+        run: |
+          BRANCH_NAME="${{ steps.parse.outputs.branch_name }}"
+          SPEC_FILE="${{ steps.parse.outputs.spec_file }}"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add all generated files (specs, plans, etc.)
+          git add -A
+          
+          if git diff --staged --quiet; then
+            echo "⚠️ No changes to commit"
+          else
+            echo "💾 Committing specification..."
+            git commit -m "feat: add feature specification
+
+Feature: ${{ github.event.inputs.feature_description }}
+
+Generated by /speckit.specify workflow"
+            
+            echo "📤 Pushing to branch: $BRANCH_NAME"
+            git push origin "$BRANCH_NAME"
+            
+            echo "✅ Spec committed and pushed to $BRANCH_NAME"
+          fi
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-kit-output
+          path: |
+            copilot_output.txt
+            specs/
+            .specify/
+          retention-days: 30
+      
+      - name: Summary
+        if: always()
+        run: |
+          BRANCH_NAME="${{ steps.parse.outputs.branch_name }}"
+          SPEC_FILE="${{ steps.parse.outputs.spec_file }}"
+          
+          echo "## 📋 Spec Kit - Specify Feature" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Feature:** ${{ github.event.inputs.feature_description }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`$BRANCH_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Spec File:** \`$SPEC_FILE\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📖 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review the generated specification" >> $GITHUB_STEP_SUMMARY
+          echo "2. Run \`/speckit.plan\` to create technical implementation plan" >> $GITHUB_STEP_SUMMARY
+          echo "3. Run \`/speckit.tasks\` to generate actionable task lists" >> $GITHUB_STEP_SUMMARY
+          echo "4. Run \`/speckit.implement\` to execute all tasks" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Resources" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Branch](https://github.com/${{ github.repository }}/tree/$BRANCH_NAME)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Spec Kit Documentation](https://github.github.io/spec-kit/)" >> $GITHUB_STEP_SUMMARY
