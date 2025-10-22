@@ -20,39 +20,39 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      
+
       - name: Setup Python for Spec Kit
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install uv and Specify CLI
         run: |
           echo "📦 Installing uv package manager..."
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          
+
           echo "📦 Installing Specify CLI..."
           export PATH="$HOME/.cargo/bin:$PATH"
           uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-          
+
           echo "✅ Specify CLI installed"
-      
+
       - name: Install GitHub Copilot CLI
         run: |
           echo "📦 Installing GitHub Copilot CLI..."
           npm install -g @github/copilot
           npx @github/copilot --version
           echo "✅ Copilot CLI installed"
-      
+
       - name: Verify Spec Kit prompts
         run: |
           echo "🔍 Checking for Spec Kit prompts..."
@@ -61,15 +61,15 @@ jobs:
             echo "Please run 'spec-kit-init.yml' workflow first"
             exit 1
           fi
-          
+
           if [ ! -f ".github/prompts/speckit.specify.prompt.md" ]; then
             echo "❌ ERROR: speckit.specify.prompt.md not found!"
             exit 1
           fi
-          
+
           echo "✅ Spec Kit prompts found"
           ls -la .github/prompts/speckit.*.prompt.md
-      
+
       - name: Step 1 - Generate Short Name with Copilot
         id: generate_name
         env:
@@ -78,53 +78,53 @@ jobs:
         run: |
           export GITHUB_TOKEN="${GITHUB_TOKEN}"
           export GH_TOKEN="${GH_TOKEN}"
-          
+
           if [ -z "$GITHUB_TOKEN" ]; then
             echo "❌ ERROR: No authentication token found!"
             exit 1
           fi
-          
+
           echo "🤖 Step 1: Generating short branch name..."
           echo ""
           echo "Feature: ${{ github.event.inputs.feature_description }}"
           echo ""
-          
+
           # Ask Copilot directly with compact prompt
           npx @github/copilot --allow-all-tools -p "Generate a 2-4 word kebab-case branch name for: ${{ github.event.inputs.feature_description }}. Respond with ONLY the branch name." 2>&1 | tee short_name_output.txt
-          
+
           # Extract the short name (first non-empty line before statistics)
           SHORT_NAME=$(head -1 short_name_output.txt | tr -d '`' | xargs)
-          
+
           echo "Generated short name: $SHORT_NAME"
           echo "short_name=$SHORT_NAME" >> $GITHUB_OUTPUT
-      
+
       - name: Step 2 - Run create-new-feature script
         id: create_feature
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          
+
           SHORT_NAME="${{ steps.generate_name.outputs.short_name }}"
           FEATURE_DESC="${{ github.event.inputs.feature_description }}"
-          
+
           echo "🌱 Step 2: Running create-new-feature.sh script..."
           echo "Short name: $SHORT_NAME"
           echo "Description: $FEATURE_DESC"
           echo ""
-          
+
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Run the script with --json flag
           cd "$GITHUB_WORKSPACE"
           .specify/scripts/bash/create-new-feature.sh --json --short-name "$SHORT_NAME" "$FEATURE_DESC" > feature_output.json
-          
+
           # Parse JSON output
           cat feature_output.json
           BRANCH_NAME=$(jq -r '.BRANCH_NAME' feature_output.json)
           SPEC_FILE=$(jq -r '.SPEC_FILE' feature_output.json)
           FEATURE_DIR=$(jq -r '.FEATURE_DIR' feature_output.json)
-          
+
           # Use multiline output format for long paths
           {
             echo "branch_name=$BRANCH_NAME"
@@ -133,13 +133,13 @@ jobs:
             echo "EOF"
             echo "feature_dir=$FEATURE_DIR"
           } >> $GITHUB_OUTPUT
-          
+
           echo ""
           echo "✅ Feature scaffolding created:"
           echo "  Branch: $BRANCH_NAME"
           echo "  Spec file: $SPEC_FILE"
           echo "  Feature dir: $FEATURE_DIR"
-      
+
       - name: Step 3-6 - Generate Specification with Copilot
         env:
           GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
@@ -148,13 +148,13 @@ jobs:
           export GITHUB_TOKEN="${GITHUB_TOKEN}"
           export GH_TOKEN="${GH_TOKEN}"
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-          
+
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
           FEATURE_DESC="${{ github.event.inputs.feature_description }}"
-          
+
           echo "📝 Step 3-6: Generating specification with Copilot..."
           echo ""
-          
+
           # Generate spec with Copilot - using template and detailed instructions
           cat .specify/templates/spec-template.md > spec_context.txt
           echo -e "\n---\n" >> spec_context.txt
@@ -178,13 +178,13 @@ jobs:
           echo "  * Common UI/UX patterns" >> spec_context.txt
           echo "" >> spec_context.txt
           echo "Output the specification in markdown format, ready to save to a file." >> spec_context.txt
-          
+
           npx @github/copilot --allow-all-tools --allow-all-paths -p "$(cat spec_context.txt)" 2>&1 | tee spec_output.txt
-          
+
           # Copilot with --allow-all-tools may create files directly
           # Check if it created a spec file in specs/ directory
           CREATED_SPEC=$(find specs/ -name "*.md" -type f ! -path "*/[0-9][0-9][0-9]-*/*" 2>/dev/null | head -1)
-          
+
           if [ -n "$CREATED_SPEC" ] && [ -f "$CREATED_SPEC" ]; then
             echo "✅ Copilot created file: $CREATED_SPEC"
             echo "📋 Copying to: $SPEC_FILE"
@@ -200,43 +200,43 @@ jobs:
               sed -n '/^# /,${/Total usage/q;p}' spec_output.txt > "$SPEC_FILE"
             fi
           fi
-          
+
           echo ""
           echo "✅ Specification saved to: $SPEC_FILE"
           echo ""
           echo "Preview (first 30 lines):"
           head -30 "$SPEC_FILE"
-      
+
       - name: Step 6 - Create Quality Checklist
         run: |
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
           BRANCH_NAME="${{ steps.create_feature.outputs.branch_name }}"
           FEATURE_DESC="${{ github.event.inputs.feature_description }}"
-          
+
           # Extract feature directory from spec file path
           SPEC_DIR=$(dirname "$SPEC_FILE")
           CHECKLIST_DIR="$SPEC_DIR/checklists"
           CHECKLIST_FILE="$CHECKLIST_DIR/requirements.md"
-          
+
           echo "📋 Step 6: Creating quality checklist..."
           echo "Checklist will be created at: $CHECKLIST_FILE"
-          
+
           # Create checklists directory
           mkdir -p "$CHECKLIST_DIR"
-          
+
           # Extract feature name from spec
           FEATURE_NAME=$(grep "^# Feature Specification:" "$SPEC_FILE" | sed 's/# Feature Specification: //' || echo "Feature")
-          
+
           # Count [NEEDS CLARIFICATION] markers in spec
           CLARIFICATION_COUNT=$(grep -c "\[NEEDS CLARIFICATION" "$SPEC_FILE" || echo "0")
-          
+
           # Create checklist with template
           CURRENT_DATE=$(date +%Y-%m-%d)
           cat > "$CHECKLIST_FILE" <<'CHECKLIST_EOF'
 # Specification Quality Checklist: FEATURE_NAME_PLACEHOLDER
 
-**Purpose** - Validate specification completeness and quality before proceeding to planning  
-**Created** - DATE_PLACEHOLDER  
+**Purpose** - Validate specification completeness and quality before proceeding to planning
+**Created** - DATE_PLACEHOLDER
 **Feature** - [../spec.md](../spec.md)
 
 ## Content Quality
@@ -267,11 +267,11 @@ jobs:
 ## Clarifications Needed
 
 CHECKLIST_EOF
-          
+
           # Replace placeholders
           sed -i "s/FEATURE_NAME_PLACEHOLDER/$FEATURE_NAME/g" "$CHECKLIST_FILE"
           sed -i "s/DATE_PLACEHOLDER/$CURRENT_DATE/g" "$CHECKLIST_FILE"
-          
+
           # Add clarifications section
           if [ "$CLARIFICATION_COUNT" -gt 0 ]; then
             echo "" >> "$CHECKLIST_FILE"
@@ -279,21 +279,21 @@ CHECKLIST_EOF
             echo "" >> "$CHECKLIST_FILE"
             echo "The following items need clarification:" >> "$CHECKLIST_FILE"
             echo "" >> "$CHECKLIST_FILE"
-            
+
             # Extract all NEEDS CLARIFICATION markers with context
             grep -n "\[NEEDS CLARIFICATION" "$SPEC_FILE" | while IFS=: read -r line_num content; do
               # Extract the clarification text
               clarification=$(echo "$content" | sed 's/.*\[NEEDS CLARIFICATION: \(.*\)\].*/\1/')
               echo "- **Line $line_num**: $clarification" >> "$CHECKLIST_FILE"
             done
-            
+
             echo "" >> "$CHECKLIST_FILE"
             echo "**Action Required**: Address these clarifications before proceeding to \`/speckit.plan\`" >> "$CHECKLIST_FILE"
           else
             echo "" >> "$CHECKLIST_FILE"
             echo "✅ **No clarifications needed** - specification is complete and ready for planning" >> "$CHECKLIST_FILE"
           fi
-          
+
           # Add notes section
           cat >> "$CHECKLIST_FILE" << 'NOTES_EOF'
 
@@ -308,30 +308,30 @@ CHECKLIST_EOF
 3. Check off all validation items
 4. Proceed to `/speckit.plan` when ready
 NOTES_EOF
-          
+
           echo ""
           echo "✅ Checklist created at: $CHECKLIST_FILE"
           echo ""
           echo "Preview:"
           head -50 "$CHECKLIST_FILE"
-      
+
       - name: Step 7 - Commit and Push Specification
         if: github.event.inputs.create_branch == 'true'
         run: |
           BRANCH_NAME="${{ steps.create_feature.outputs.branch_name }}"
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
-          
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           echo "📤 Step 7: Committing and pushing specification..."
           echo "Branch: $BRANCH_NAME"
           echo "Spec file: $SPEC_FILE"
           echo ""
-          
+
           # Add all generated files
           git add -A
-          
+
           if git diff --staged --quiet; then
             echo "⚠️ No changes to commit"
           else
@@ -340,13 +340,13 @@ NOTES_EOF
               -m "Feature: ${{ github.event.inputs.feature_description }}" \
               -m "Generated by /speckit.specify workflow" \
               -m "Spec file: $SPEC_FILE"
-            
+
             echo "📤 Pushing to branch: $BRANCH_NAME"
             git push -f origin "$BRANCH_NAME"
-            
+
             echo "✅ Specification committed and pushed to $BRANCH_NAME"
           fi
-      
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -358,7 +358,7 @@ NOTES_EOF
             spec_output.txt
             ${{ steps.create_feature.outputs.feature_dir }}
           retention-days: 30
-      
+
       - name: Summary
         if: always()
         run: |
@@ -366,7 +366,7 @@ NOTES_EOF
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
           FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
           SHORT_NAME="${{ steps.generate_name.outputs.short_name }}"
-          
+
           echo "## 📋 Spec Kit - Specify Feature" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Feature:** ${{ github.event.inputs.feature_description }}" >> $GITHUB_STEP_SUMMARY
