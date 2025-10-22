@@ -154,11 +154,29 @@ jobs:
           echo "📝 Step 3-6: Generating specification with Copilot..."
           echo ""
           
-          # Generate spec with Copilot - using template and concise instructions
+          # Generate spec with Copilot - using template and detailed instructions
           cat .specify/templates/spec-template.md > spec_context.txt
           echo -e "\n---\n" >> spec_context.txt
-          echo "Write a complete feature specification for: $FEATURE_DESC" >> spec_context.txt
-          echo "Follow the template above. Focus on WHAT and WHY, not HOW. Be specific and testable." >> spec_context.txt
+          echo "FEATURE DESCRIPTION: $FEATURE_DESC" >> spec_context.txt
+          echo "" >> spec_context.txt
+          echo "INSTRUCTIONS:" >> spec_context.txt
+          echo "1. Write a complete feature specification following the template above" >> spec_context.txt
+          echo "2. Focus on WHAT users need and WHY (not HOW to implement)" >> spec_context.txt
+          echo "3. Make requirements testable and unambiguous" >> spec_context.txt
+          echo "4. Define measurable, technology-agnostic success criteria" >> spec_context.txt
+          echo "" >> spec_context.txt
+          echo "CRITICAL: For unclear aspects, use [NEEDS CLARIFICATION: specific question]" >> spec_context.txt
+          echo "- DO NOT make assumptions about:" >> spec_context.txt
+          echo "  * Feature scope and boundaries (what's included/excluded)" >> spec_context.txt
+          echo "  * User types and permissions (if multiple interpretations possible)" >> spec_context.txt
+          echo "  * Security/privacy requirements (when legally/financially significant)" >> spec_context.txt
+          echo "  * Data retention, integration points, or critical business rules" >> spec_context.txt
+          echo "- ONLY make reasonable assumptions for:" >> spec_context.txt
+          echo "  * Standard error handling patterns" >> spec_context.txt
+          echo "  * Industry-standard performance expectations" >> spec_context.txt
+          echo "  * Common UI/UX patterns" >> spec_context.txt
+          echo "" >> spec_context.txt
+          echo "Output the specification in markdown format, ready to save to a file." >> spec_context.txt
           
           npx @github/copilot --allow-all-tools --allow-all-paths -p "$(cat spec_context.txt)" 2>&1 | tee spec_output.txt
           
@@ -187,6 +205,112 @@ jobs:
           echo ""
           echo "Preview (first 30 lines):"
           head -30 "$SPEC_FILE"
+      
+      - name: Step 6 - Create Quality Checklist
+        run: |
+          SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
+          BRANCH_NAME="${{ steps.create_feature.outputs.branch_name }}"
+          FEATURE_DESC="${{ github.event.inputs.feature_description }}"
+          
+          # Extract feature directory from spec file path
+          SPEC_DIR=$(dirname "$SPEC_FILE")
+          CHECKLIST_DIR="$SPEC_DIR/checklists"
+          CHECKLIST_FILE="$CHECKLIST_DIR/requirements.md"
+          
+          echo "📋 Step 6: Creating quality checklist..."
+          echo "Checklist will be created at: $CHECKLIST_FILE"
+          
+          # Create checklists directory
+          mkdir -p "$CHECKLIST_DIR"
+          
+          # Extract feature name from spec
+          FEATURE_NAME=$(grep "^# Feature Specification:" "$SPEC_FILE" | sed 's/# Feature Specification: //' || echo "Feature")
+          
+          # Count [NEEDS CLARIFICATION] markers in spec
+          CLARIFICATION_COUNT=$(grep -c "\[NEEDS CLARIFICATION" "$SPEC_FILE" || echo "0")
+          
+          # Create checklist with template
+          cat > "$CHECKLIST_FILE" << 'CHECKLIST_EOF'
+# Specification Quality Checklist: ${FEATURE_NAME}
+
+**Purpose**: Validate specification completeness and quality before proceeding to planning  
+**Created**: $(date +%Y-%m-%d)  
+**Feature**: [../spec.md](../spec.md)
+
+## Content Quality
+
+- [ ] No implementation details (languages, frameworks, APIs)
+- [ ] Focused on user value and business needs
+- [ ] Written for non-technical stakeholders
+- [ ] All mandatory sections completed
+
+## Requirement Completeness
+
+- [ ] No [NEEDS CLARIFICATION] markers remain
+- [ ] Requirements are testable and unambiguous
+- [ ] Success criteria are measurable
+- [ ] Success criteria are technology-agnostic (no implementation details)
+- [ ] All acceptance scenarios are defined
+- [ ] Edge cases are identified
+- [ ] Scope is clearly bounded
+- [ ] Dependencies and assumptions identified
+
+## Feature Readiness
+
+- [ ] All functional requirements have clear acceptance criteria
+- [ ] User scenarios cover primary flows
+- [ ] Feature meets measurable outcomes defined in Success Criteria
+- [ ] No implementation details leak into specification
+
+## Clarifications Needed
+
+CHECKLIST_EOF
+          
+          # Substitute variables in checklist
+          sed -i '' "s/\${FEATURE_NAME}/$FEATURE_NAME/g" "$CHECKLIST_FILE"
+          
+          # Add clarifications section
+          if [ "$CLARIFICATION_COUNT" -gt 0 ]; then
+            echo "" >> "$CHECKLIST_FILE"
+            echo "⚠️ **$CLARIFICATION_COUNT clarification(s) found in specification**" >> "$CHECKLIST_FILE"
+            echo "" >> "$CHECKLIST_FILE"
+            echo "The following items need clarification:" >> "$CHECKLIST_FILE"
+            echo "" >> "$CHECKLIST_FILE"
+            
+            # Extract all NEEDS CLARIFICATION markers with context
+            grep -n "\[NEEDS CLARIFICATION" "$SPEC_FILE" | while IFS=: read -r line_num content; do
+              # Extract the clarification text
+              clarification=$(echo "$content" | sed 's/.*\[NEEDS CLARIFICATION: \(.*\)\].*/\1/')
+              echo "- **Line $line_num**: $clarification" >> "$CHECKLIST_FILE"
+            done
+            
+            echo "" >> "$CHECKLIST_FILE"
+            echo "**Action Required**: Address these clarifications before proceeding to \`/speckit.plan\`" >> "$CHECKLIST_FILE"
+          else
+            echo "" >> "$CHECKLIST_FILE"
+            echo "✅ **No clarifications needed** - specification is complete and ready for planning" >> "$CHECKLIST_FILE"
+          fi
+          
+          # Add notes section
+          cat >> "$CHECKLIST_FILE" << 'NOTES_EOF'
+
+## Validation Notes
+
+*This checklist was auto-generated. Review each item and check off as validated.*
+
+### Next Steps
+
+1. Review specification for completeness
+2. Address any clarifications marked above
+3. Check off all validation items
+4. Proceed to `/speckit.plan` when ready
+NOTES_EOF
+          
+          echo ""
+          echo "✅ Checklist created at: $CHECKLIST_FILE"
+          echo ""
+          echo "Preview:"
+          head -50 "$CHECKLIST_FILE"
       
       - name: Step 7 - Commit and Push Specification
         if: github.event.inputs.create_branch == 'true'
