@@ -81,24 +81,13 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           
-          echo "🌱 Initializing GitHub Spec Kit..."
+          echo "🌱 Initializing GitHub Spec Kit in current repository..."
           echo ""
-          echo "Project: ${{ github.event.inputs.project_name }}"
           echo "AI Assistant: ${{ github.event.inputs.ai_assistant }}"
-          echo "Force: ${{ github.event.inputs.force }}"
           echo ""
           
-          # Build command with options
-          SPECIFY_CMD="specify init ${{ github.event.inputs.project_name }}"
-          SPECIFY_CMD="$SPECIFY_CMD --ai ${{ github.event.inputs.ai_assistant }}"
-          
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            SPECIFY_CMD="$SPECIFY_CMD --force"
-          fi
-          
-          # Initialize project
-          echo "Running: $SPECIFY_CMD"
-          $SPECIFY_CMD
+          # Initialize in current directory with --force to skip confirmation
+          specify init . --ai ${{ github.event.inputs.ai_assistant }} --force
           
           echo ""
           echo "✅ Spec Kit initialized successfully"
