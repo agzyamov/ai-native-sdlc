@@ -108,17 +108,13 @@ jobs:
           find . -name ".speckit*" -o -name "speckit.*" 2>/dev/null || echo "No .speckit files found in root"
       
       - name: Upload Spec Kit Configuration
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: spec-kit-config
           path: |
-            .speckit*
-            speckit.*
-            **/.speckit*
-            **/speckit.*
+            .specify/
+            .github/prompts/speckit.*.prompt.md
           retention-days: 90
-          if-no-files-found: warn
       
       - name: Summary
         if: always()
