@@ -19,6 +19,9 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    outputs:
+      spec_file: ${{ steps.create_feature.outputs.spec_file }}
+      branch_name: ${{ steps.create_feature.outputs.branch_name }}
 
     steps:
       - uses: actions/checkout@v4
@@ -272,3 +275,11 @@ jobs:
           echo "- [View Spec](https://github.com/${{ github.repository }}/blob/$BRANCH_NAME/$SPEC_FILE)" >> $GITHUB_STEP_SUMMARY
           echo "- [Spec Kit Documentation](https://github.github.io/spec-kit/)" >> $GITHUB_STEP_SUMMARY
 
+  generate-checklist:
+    needs: specify-feature
+    uses: ./.github/workflows/spec-kit-checklist.yml
+    with:
+      spec_path: ${{ needs.specify-feature.outputs.spec_file }}
+      branch_name: ${{ needs.specify-feature.outputs.branch_name }}
+    permissions:
+      contents: write
