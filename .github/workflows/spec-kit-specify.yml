@@ -1,10 +1,11 @@
 name: Spec Kit - Specify Feature
 
+# Manual workflow trigger with feature description input
 on:
   workflow_dispatch:
     inputs:
       feature_description:
-        description: 'Feature description (what to build)'
+        description: 'Describe the feature to create (e.g., "Add user authentication with OAuth2")'
         required: true
         type: string
       create_branch:
