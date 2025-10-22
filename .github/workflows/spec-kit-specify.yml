@@ -231,12 +231,13 @@ jobs:
           CLARIFICATION_COUNT=$(grep -c "\[NEEDS CLARIFICATION" "$SPEC_FILE" || echo "0")
           
           # Create checklist with template
-          cat > "$CHECKLIST_FILE" << 'CHECKLIST_EOF'
-# Specification Quality Checklist: ${FEATURE_NAME}
+          CURRENT_DATE=$(date +%Y-%m-%d)
+          cat > "$CHECKLIST_FILE" <<'CHECKLIST_EOF'
+# Specification Quality Checklist: FEATURE_NAME_PLACEHOLDER
 
-**Purpose**: Validate specification completeness and quality before proceeding to planning  
-**Created**: $(date +%Y-%m-%d)  
-**Feature**: [../spec.md](../spec.md)
+**Purpose:** Validate specification completeness and quality before proceeding to planning  
+**Created:** DATE_PLACEHOLDER  
+**Feature:** [../spec.md](../spec.md)
 
 ## Content Quality
 
@@ -267,8 +268,9 @@ jobs:
 
 CHECKLIST_EOF
           
-          # Substitute variables in checklist
-          sed -i '' "s/\${FEATURE_NAME}/$FEATURE_NAME/g" "$CHECKLIST_FILE"
+          # Replace placeholders
+          sed -i "s/FEATURE_NAME_PLACEHOLDER/$FEATURE_NAME/g" "$CHECKLIST_FILE"
+          sed -i "s/DATE_PLACEHOLDER/$CURRENT_DATE/g" "$CHECKLIST_FILE"
           
           # Add clarifications section
           if [ "$CLARIFICATION_COUNT" -gt 0 ]; then
