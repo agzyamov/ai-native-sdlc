@@ -232,45 +232,41 @@ jobs:
 
           # Create checklist with template
           CURRENT_DATE=$(date +%Y-%m-%d)
-          cat > "$CHECKLIST_FILE" <<'CHECKLIST_EOF'
-# Specification Quality Checklist: FEATURE_NAME_PLACEHOLDER
-
-**Purpose** - Validate specification completeness and quality before proceeding to planning
-**Created** - DATE_PLACEHOLDER
-**Feature** - [../spec.md](../spec.md)
-
-## Content Quality
-
-- [ ] No implementation details (languages, frameworks, APIs)
-- [ ] Focused on user value and business needs
-- [ ] Written for non-technical stakeholders
-- [ ] All mandatory sections completed
-
-## Requirement Completeness
-
-- [ ] No [NEEDS CLARIFICATION] markers remain
-- [ ] Requirements are testable and unambiguous
-- [ ] Success criteria are measurable
-- [ ] Success criteria are technology-agnostic (no implementation details)
-- [ ] All acceptance scenarios are defined
-- [ ] Edge cases are identified
-- [ ] Scope is clearly bounded
-- [ ] Dependencies and assumptions identified
-
-## Feature Readiness
-
-- [ ] All functional requirements have clear acceptance criteria
-- [ ] User scenarios cover primary flows
-- [ ] Feature meets measurable outcomes defined in Success Criteria
-- [ ] No implementation details leak into specification
-
-## Clarifications Needed
-
-CHECKLIST_EOF
-
-          # Replace placeholders
-          sed -i "s/FEATURE_NAME_PLACEHOLDER/$FEATURE_NAME/g" "$CHECKLIST_FILE"
-          sed -i "s/DATE_PLACEHOLDER/$CURRENT_DATE/g" "$CHECKLIST_FILE"
+          {
+            echo "# Specification Quality Checklist: $FEATURE_NAME"
+            echo ""
+            echo "Purpose - Validate specification completeness and quality before proceeding to planning"
+            echo "Created - $CURRENT_DATE"
+            echo "Feature - [../spec.md](../spec.md)"
+            echo ""
+            echo "## Content Quality"
+            echo ""
+            echo "- [ ] No implementation details (languages, frameworks, APIs)"
+            echo "- [ ] Focused on user value and business needs"
+            echo "- [ ] Written for non-technical stakeholders"
+            echo "- [ ] All mandatory sections completed"
+            echo ""
+            echo "## Requirement Completeness"
+            echo ""
+            echo "- [ ] No [NEEDS CLARIFICATION] markers remain"
+            echo "- [ ] Requirements are testable and unambiguous"
+            echo "- [ ] Success criteria are measurable"
+            echo "- [ ] Success criteria are technology-agnostic (no implementation details)"
+            echo "- [ ] All acceptance scenarios are defined"
+            echo "- [ ] Edge cases are identified"
+            echo "- [ ] Scope is clearly bounded"
+            echo "- [ ] Dependencies and assumptions identified"
+            echo ""
+            echo "## Feature Readiness"
+            echo ""
+            echo "- [ ] All functional requirements have clear acceptance criteria"
+            echo "- [ ] User scenarios cover primary flows"
+            echo "- [ ] Feature meets measurable outcomes defined in Success Criteria"
+            echo "- [ ] No implementation details leak into specification"
+            echo ""
+            echo "## Clarifications Needed"
+            echo ""
+          } > "$CHECKLIST_FILE"
 
           # Add clarifications section
           if [ "$CLARIFICATION_COUNT" -gt 0 ]; then
@@ -295,19 +291,20 @@ CHECKLIST_EOF
           fi
 
           # Add notes section
-          cat >> "$CHECKLIST_FILE" << 'NOTES_EOF'
-
-## Validation Notes
-
-*This checklist was auto-generated. Review each item and check off as validated.*
-
-### Next Steps
-
-1. Review specification for completeness
-2. Address any clarifications marked above
-3. Check off all validation items
-4. Proceed to `/speckit.plan` when ready
-NOTES_EOF
+          {
+            echo ""
+            echo "## Validation Notes"
+            echo ""
+            echo "This checklist was auto-generated. Review each item and check off as validated."
+            echo ""
+            echo "### Next Steps"
+            echo ""
+            echo "1. Review specification for completeness"
+            echo "2. Address any clarifications marked above"
+            echo "3. Check off all validation items"
+            echo "4. Proceed to \`/speckit.plan\` when ready"
+            echo ""
+          } >> "$CHECKLIST_FILE"
 
           echo ""
           echo "✅ Checklist created at: $CHECKLIST_FILE"
