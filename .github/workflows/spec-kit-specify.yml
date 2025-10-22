@@ -88,22 +88,8 @@ jobs:
           echo "Feature: ${{ github.event.inputs.feature_description }}"
           echo ""
           
-          # Create prompt file
-          echo "Analyze this feature description and generate a concise 2-4 word branch name in kebab-case format." > name_prompt.txt
-          echo "" >> name_prompt.txt
-          echo "Feature description: ${{ github.event.inputs.feature_description }}" >> name_prompt.txt
-          echo "" >> name_prompt.txt
-          echo "Rules:" >> name_prompt.txt
-          echo "- Use action-noun format when possible" >> name_prompt.txt
-          echo "- Preserve technical terms and acronyms" >> name_prompt.txt
-          echo "- Keep it 2-4 words maximum" >> name_prompt.txt
-          echo "- Use kebab-case (lowercase with hyphens)" >> name_prompt.txt
-          echo "- No special characters except hyphens" >> name_prompt.txt
-          echo "" >> name_prompt.txt
-          echo "Respond with ONLY the branch name, nothing else." >> name_prompt.txt
-          
-          # Ask Copilot
-          npx @github/copilot -p "$(cat name_prompt.txt)" 2>&1 | tee short_name_output.txt
+          # Ask Copilot directly with compact prompt
+          npx @github/copilot -p "Generate a 2-4 word kebab-case branch name for: ${{ github.event.inputs.feature_description }}. Respond with ONLY the branch name." 2>&1 | tee short_name_output.txt
           
           # Extract the short name (last non-empty line)
           SHORT_NAME=$(grep -v "^$" short_name_output.txt | grep -v "Total usage" | grep -v "Total duration" | grep -v "Usage by model" | grep -v "Premium request" | tail -1 | tr -d '`' | xargs)
@@ -163,42 +149,13 @@ jobs:
           echo "📝 Step 3-6: Generating specification with Copilot..."
           echo ""
           
-          # Load spec template
-          SPEC_TEMPLATE=$(cat .specify/templates/spec-template.md)
+          # Generate spec with Copilot - using template and concise instructions
+          cat .specify/templates/spec-template.md > spec_context.txt
+          echo -e "\n---\n" >> spec_context.txt
+          echo "Write a complete feature specification for: $FEATURE_DESC" >> spec_context.txt
+          echo "Follow the template above. Focus on WHAT and WHY, not HOW. Be specific and testable." >> spec_context.txt
           
-          # Create detailed prompt for spec generation
-          echo "You are a specification writer following the Spec-Driven Development methodology." > spec_prompt.txt
-          echo "" >> spec_prompt.txt
-          echo "Your task: Write a complete feature specification based on the user's description." >> spec_prompt.txt
-          echo "" >> spec_prompt.txt
-          echo "FEATURE DESCRIPTION:" >> spec_prompt.txt
-          echo "$FEATURE_DESC" >> spec_prompt.txt
-          echo "" >> spec_prompt.txt
-          echo "TEMPLATE TO FOLLOW:" >> spec_prompt.txt
-          echo "$SPEC_TEMPLATE" >> spec_prompt.txt
-          echo "" >> spec_prompt.txt
-          echo "INSTRUCTIONS:" >> spec_prompt.txt
-          echo "1. Extract key concepts from the description" >> spec_prompt.txt
-          echo "2. Fill ALL mandatory sections from the template" >> spec_prompt.txt
-          echo "3. Focus on WHAT users need and WHY, not HOW to implement" >> spec_prompt.txt
-          echo "4. Make informed guesses for unclear aspects" >> spec_prompt.txt
-          echo "5. Only use [NEEDS CLARIFICATION] for critical decisions (max 3)" >> spec_prompt.txt
-          echo "6. Write testable, unambiguous requirements" >> spec_prompt.txt
-          echo "7. Define measurable, technology-agnostic success criteria" >> spec_prompt.txt
-          echo "8. Identify key entities if data is involved" >> spec_prompt.txt
-          echo "" >> spec_prompt.txt
-          echo "CRITICAL RULES:" >> spec_prompt.txt
-          echo "- NO implementation details" >> spec_prompt.txt
-          echo "- Written for business stakeholders, not developers" >> spec_prompt.txt
-          echo "- Success criteria must be measurable and technology-agnostic" >> spec_prompt.txt
-          echo "- Remove sections that don't apply" >> spec_prompt.txt
-          echo "" >> spec_prompt.txt
-          echo "OUTPUT FORMAT:" >> spec_prompt.txt
-          echo "Write the complete specification in markdown format, ready to save to a file." >> spec_prompt.txt
-          echo "Use the exact template structure with all required sections filled in." >> spec_prompt.txt
-          
-          # Generate spec with Copilot
-          npx @github/copilot -p "$(cat spec_prompt.txt)" 2>&1 | tee spec_output.txt
+          npx @github/copilot -p "$(cat spec_context.txt)" 2>&1 | tee spec_output.txt
           
           # Extract markdown from output (skip usage statistics)
           sed -n '/^#/,${/Total usage/q;p}' spec_output.txt > "$SPEC_FILE"
@@ -236,7 +193,7 @@ jobs:
               -m "Spec file: $SPEC_FILE"
             
             echo "📤 Pushing to branch: $BRANCH_NAME"
-            git push origin "$BRANCH_NAME"
+            git push -f origin "$BRANCH_NAME"
             
             echo "✅ Specification committed and pushed to $BRANCH_NAME"
           fi
