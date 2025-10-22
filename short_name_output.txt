@@ -1,0 +1,17 @@
+error: Invalid command format.
+
+Did you mean: copilot -p "Analyze this feature description and generate a concise 2-4 word branch name in kebab-case format.
+
+Feature description: Add user authentication with OAuth2 support
+
+Rules:
+- Use action-noun format when possible
+- Preserve technical terms and acronyms
+- Keep it 2-4 words maximum
+- Use kebab-case (lowercase with hyphens)
+- No special characters except hyphens
+
+Respond with ONLY the branch name, nothing else."
+
+For non-interactive mode, use the -p or --prompt option.
+Try 'copilot --help' for more information.

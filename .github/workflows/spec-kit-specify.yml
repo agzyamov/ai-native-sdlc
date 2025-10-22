@@ -103,7 +103,7 @@ jobs:
           echo "Respond with ONLY the branch name, nothing else." >> name_prompt.txt
           
           # Ask Copilot
-          npx @github/copilot "$(cat name_prompt.txt)" 2>&1 | tee short_name_output.txt
+          npx @github/copilot -p "$(cat name_prompt.txt)" 2>&1 | tee short_name_output.txt
           
           # Extract the short name (last non-empty line)
           SHORT_NAME=$(grep -v "^$" short_name_output.txt | grep -v "Total usage" | grep -v "Total duration" | grep -v "Usage by model" | grep -v "Premium request" | tail -1 | tr -d '`' | xargs)
@@ -198,7 +198,7 @@ jobs:
           echo "Use the exact template structure with all required sections filled in." >> spec_prompt.txt
           
           # Generate spec with Copilot
-          npx @github/copilot "$(cat spec_prompt.txt)" 2>&1 | tee spec_output.txt
+          npx @github/copilot -p "$(cat spec_prompt.txt)" 2>&1 | tee spec_output.txt
           
           # Extract markdown from output (skip usage statistics)
           sed -n '/^#/,${/Total usage/q;p}' spec_output.txt > "$SPEC_FILE"
