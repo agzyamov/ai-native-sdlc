@@ -94,12 +94,17 @@ When creating or modifying Mermaid diagrams:
 
 When creating or modifying `.github/workflows/*.yml` files:
 
-1. **Run actionlint** after creation or modification:
+1. **Run yamllint first** to catch YAML syntax errors:
+   ```bash
+   yamllint .github/workflows/<workflow-file>.yml
+   ```
+
+2. **Run actionlint** for GitHub Actions-specific validation:
    ```bash
    actionlint .github/workflows/<workflow-file>.yml
    ```
 
-2. **Check for common issues:**
+3. **Check for common issues:**
    - Valid YAML syntax (proper indentation, no tabs)
    - Correct trigger syntax (`on:` section)
    - Valid action versions (e.g., `actions/checkout@v4`)
@@ -107,22 +112,23 @@ When creating or modifying `.github/workflows/*.yml` files:
    - Proper environment variable syntax (`${{ }}` for expressions, `$VAR` for shell)
    - No deprecated actions or syntax
 
-3. **Test workflow locally** (if possible):
+4. **Test workflow locally** (if possible):
    - Use `act` tool for local testing: https://github.com/nektos/act
    - Or trigger workflow manually via GitHub UI
 
 **Before committing:**
-- ✅ actionlint passes without errors
-- ✅ YAML syntax is valid
+- ✅ yamllint passes without errors (YAML syntax)
+- ✅ actionlint passes without errors (GitHub Actions validation)
 - ✅ All actions use pinned versions
 - ✅ Workflow triggers are correctly configured
 
-**Install actionlint:**
+**Install tools:**
 ```bash
 # macOS
-brew install actionlint
+brew install yamllint actionlint
 
 # Linux
+pip install yamllint
 go install github.com/rhysd/actionlint/cmd/actionlint@latest
 ```
 
