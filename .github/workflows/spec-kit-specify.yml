@@ -29,24 +29,56 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Setup Python for Spec Kit
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
+
+      - name: Cache uv and Specify CLI
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/uv
+            ~/.local/share/uv
+            ~/.local/bin/specify
+          key: ${{ runner.os }}-uv-specify-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-specify-
 
       - name: Install uv and Specify CLI
         run: |
-          echo "📦 Installing uv package manager..."
-          curl -LsSf https://astral.sh/uv/install.sh | sh
+          if ! command -v uv &> /dev/null; then
+            echo "📦 Installing uv package manager..."
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+          else
+            echo "✅ uv already cached"
+          fi
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-          echo "📦 Installing Specify CLI..."
           export PATH="$HOME/.cargo/bin:$PATH"
-          uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+          
+          if ! command -v specify &> /dev/null; then
+            echo "📦 Installing Specify CLI..."
+            uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+          else
+            echo "✅ Specify CLI already cached"
+          fi
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-          echo "✅ Specify CLI installed"
+          echo "✅ Dependencies ready"
+
+      - name: Cache GitHub Copilot CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-copilot-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-copilot-
+            ${{ runner.os }}-npm-
 
       - name: Install GitHub Copilot CLI
         run: |
