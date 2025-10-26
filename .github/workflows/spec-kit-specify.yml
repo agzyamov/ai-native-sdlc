@@ -168,9 +168,14 @@ jobs:
             2>&1 | tee spec_output.txt
 
           # Copilot with --allow-all-tools may create files directly
-          # Search entire specs directory for newly created markdown files
+          # Search entire specs directory for newly created spec.md files first, then any .md
           SPEC_DIR=$(dirname "$SPEC_FILE")
-          CREATED_SPEC=$(find specs -name "*.md" -type f -newer "$SPEC_FILE" 2>/dev/null | grep -v "spec.md" | head -1)
+          CREATED_SPEC=$(find specs -name "spec.md" -type f -newer "$SPEC_FILE" ! -path "$SPEC_FILE" 2>/dev/null | head -1)
+          
+          # If no spec.md found, look for any other .md file (fallback)
+          if [ -z "$CREATED_SPEC" ]; then
+            CREATED_SPEC=$(find specs -name "*.md" -type f -newer "$SPEC_FILE" ! -path "$SPEC_FILE" 2>/dev/null | head -1)
+          fi
 
           if [ -n "$CREATED_SPEC" ] && [ -f "$CREATED_SPEC" ]; then
             echo "✅ Copilot created file: $CREATED_SPEC"
