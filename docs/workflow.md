@@ -38,7 +38,7 @@ This document describes the complete implementation of an AI-augmented Software 
 Azure DevOps (UI Layer)
 ├── Custom Process Template (AI-SDLC-Agile)
 ├── Work Item Types (Feature, User Story, Task)
-├── Custom Fields (POInput, Specification, etc.)
+├── Custom Fields (ArchitectNotes, Plan, PlanApproved, SpecKitBranch, TokensConsumed*)
 ├── Edit Control Rules
 └── Webhooks to GitHub
 
@@ -90,23 +90,74 @@ Azure Functions (Monitoring)
 
 ### 2. Add Custom Fields
 
-#### Feature Work Item Fields
+#### Feature Work Item Fields (Ultra-Lean Model)
 ```
-POInput (Text, Multi-line, Required)
-Specification (HTML)
-Clarifications (Text, Multi-line)
-Questions (Text, Multi-line)
-QuestionsCount (Integer, Default: 0)
-ArchitectInput (Text, Multi-line)
-Plan (HTML)
-Research (HTML)
-Contracts (Text, Multi-line)
-DataModel (Text, Multi-line)
-ValidationFeedback (Text, Multi-line)
-PlanApproved (Boolean, Default: false)
-TokensConsumed (Integer, Default: 0)
+ArchitectNotes (Text, Multi-line)               # Architect guidance + validation feedback
+Plan (HTML)                                     # Consolidated technical plan (incl. contracts, data model summary, key research)
+PlanApproved (Boolean, Default: false)          # Architect approval gate
 SpecKitBranch (String, Formula: 'feature/[System.Id]')
+TokensConsumed (Integer, Default: 0)            # (Optional/Post-MVP) aggregate token estimate
 ```
+
+System field used for BOTH initial PO intent and evolving specification: **Description**.
+The PO writes the initial problem/context in Description; AI overwrites/appends structured spec sections while keeping the original PO intent embedded (Spec Kit already preserves source input in generated artifacts, avoiding data loss).
+
+##### Removed / Not Created & Rationale
+| Removed / Omitted | Reason |
+|-------------------|--------|
+| POInput | Use built-in Description; eliminates duplication and field sprawl |
+| Specification | Description holds living spec; version history via work item revisions + Git commits |
+| Clarifications | Replaced by child Clarification Issues (see below) |
+| Questions | Transient AI output; persisted in artifacts / issues, not a field |
+| QuestionsCount | Derivable by counting open Clarification Issues |
+| ArchitectInput / ValidationFeedback | Consolidated into `ArchitectNotes` |
+| Research | Folded into `Plan` field (links + summary) |
+| Contracts / DataModel | Embedded or linked inside `Plan` (markdown / attached repo files) |
+
+##### Clarification Handling (No Custom Fields)
+Clarification needs are tracked as **child Issue work items** instead of concatenated text fields:
+1. When the AI detects ambiguity it emits a list of clarification prompts.
+2. Automation (or a manual quick action) creates one child Issue per prompt with:
+  - Title: concise question
+  - Description: (a) AI prompt text (b) PO/BA answer section
+  - Tag: `Clarification`
+3. PO/BA answer by editing the Issue Description (or a dedicated Answer field if desired later).
+4. Closed child Issues = resolved clarifications; open Issues = outstanding.
+5. Regeneration is triggered only when all child Clarification Issues are closed.
+
+Advantages:
+- Natural audit trail & discussion thread per question
+- Eliminates brittle parsing of multi-line fields
+- Enables analytics (time-to-answer, churn) without extra counters
+
+##### Specification / Plan Storage
+- Living specification resides in the system **Description** field (single source inside ADO) and in versioned markdown in Git/GitHub.
+- `Plan` HTML field mirrors key technical planning output (contracts summary, data model overview, links to repo artifacts).
+- Large structured assets (e.g., `contracts.yaml`, `data_model.md`) are committed to the feature branch and linked from Plan / Description rather than stored as individual custom fields.
+
+##### Description Template (Optional Starter)
+Teams may enable a markdown template inside the `Specification` field (or use a Git commit template) instead of extra fields:
+```
+# Context
+<business context>
+
+# User / Stakeholders
+<primary users>
+
+# Functional Requirements
+- 
+
+# Non-Functional / Constraints
+- 
+
+# Open Clarifications
+- (link to child clarification Issues)
+
+# Acceptance Criteria
+- 
+```
+
+> Note: Token consumption tracking (`TokensConsumed`) remains Post-MVP; you may omit creating it initially.
 
 #### User Story Fields
 ```
@@ -121,16 +172,19 @@ ImplementationPhase (String, Picklist)
 
 ### 3. Configure States
 
-#### Feature States
-- New → Spec Draft → Spec Clarify → Spec Ready → Planning → Plan Validation → Ready for Decomposition
+#### Feature States (Lean)
+New → Specification → Planning → Validation → Ready
+
+Notes:
+- Legacy micro-states (Spec Draft, Spec Clarify, Spec Ready, Plan Validation, Ready for Decomposition) were intentionally removed. Board columns and child clarification Issues express intermediate progress.
+- System states (Active, Resolved, Closed, Removed) from the Agile process template remain available but are not part of the core Feature lifecycle unless you explicitly map Ready → Closed later.
 
 #### User Story States  
 - New → Decomposing → Tasks Created → Implementation → Testing → QA Ready → Done
 
-### 3a. Kanban Board Ownership Model
+### 3a. Kanban Board Model (Lean Columns, No AI/Human Split)
 
-We now simplify the boards by using a small set of STAGES, each (where it adds clarity) split into two **sub‑columns**:
-`Doing` (active work happening) and `Done` (stage output ready; safe hand‑off). This reduces column sprawl (e.g. removing separate *AI* vs *Human* variants) while preserving ownership clarity. Ownership is still inferred **only from the current (Stage + Subcolumn)**. No tags or explicit owner field required.
+Each stage has at most a Doing / Done pair. Clarifications occur inside Specification Doing via child Issue work items (Work Item Type: Issue). No dedicated Clarify state or column is required for MVP.
 
 #### Principles of the Simplified Model
 | Principle | Description |
@@ -143,34 +197,20 @@ We now simplify the boards by using a small set of STAGES, each (where it adds c
 | Auditability | History (Stage transitions + subcolumn changes) reconstructs ownership timeline. |
 
 ---
-#### Feature Board (Simplified)
+#### Feature Board Columns
 
-| Stage (Column Group) | Doing Subcolumn (Suggested Name) | Done Subcolumn (Suggested Name) | Primary Active Actor(s) in Doing | Artifact Produced / Criteria for Done | Transition to Next Stage |
-|----------------------|----------------------------------|---------------------------------|----------------------------------|--------------------------------------|--------------------------|
-| Backlog | (single column – no split) | — | PO | Raw idea, minimal POInput | PO pulls into Specification Doing |
-| Specification | Spec – Doing | Spec – Done | AI SpecAgent (initial generation) then PO/BA refinement | Acceptable spec draft OR no open questions generated | If questions → Clarification Doing; else → Planning Doing |
-| Clarification (conditional) | Clarify – Doing | Clarify – Done | PO / BA | All AI questions answered & clarification round closed | Move back to Specification Doing for regeneration OR (if no new questions) to Specification Done → Planning Doing |
-| Planning | Planning – Doing | Planning – Done | Architect (inputs) + AI PlanAgent (plan generation) | Plan, Contracts, Data Model generated | Move to Plan Validation Doing |
-| Plan Validation | Validation – Doing | Validation – Done | Architect | PlanApproved = true | Ready for Decomposition (single) |
-| Ready for Decomposition | (single column) | — | — (Idle) | Feature ready to spawn stories | Story creation automation / manual trigger |
+| Stage | Doing Column | Done Column | Done Criteria |
+|-------|--------------|-------------|--------------|
+| Backlog | Backlog (single) | — | Initial context captured in Description |
+| Specification | Spec – Doing | Spec – Done | Spec stable; zero open Clarification Issues |
+| Planning | Planning – Doing | Planning – Done | Plan artifacts generated & summarized in Plan field |
+| Validation | Validation – Doing | Validation – Done | PlanApproved = true |
+| Ready | Ready (single) | — | Feature ready for story decomposition |
 
-Notes:
-- *Specification Done* replaces previous `Spec Ready`.
-- AI execution happens **inside** Spec / Planning Doing rather than separate AI columns.
-- Clarification Stage appears only if the spec generation produced questions.
+Clarifications: While any child Issue (Clarification) is open the Feature stays in Spec – Doing. (Optional later: add a `Spec – Clarify` column if visual separation is desired.)
 
-##### Old → New Feature Column Mapping
-| Old Column | New Stage/Subcolumn |
-|------------|---------------------|
-| Backlog | Backlog |
-| Spec Draft | Specification – Doing |
-| AI Spec Generating | Specification – Doing (AI run inside) |
-| Spec Clarify | Clarification – Doing / Done (depending on progress) |
-| Spec Ready | Specification – Done |
-| Planning | Planning – Doing |
-| AI Plan Generating | Planning – Doing (AI run inside) |
-| Plan Validation | Plan Validation – Doing / Done |
-| Ready for Decomposition | Ready for Decomposition |
+##### Removed Legacy Columns
+If previously used, retire: Spec Draft, Spec Clarify, Spec Ready, AI Spec Generating, AI Plan Generating, Plan Validation, Ready for Decomposition.
 
 ---
 #### User Story Board (Simplified)
@@ -210,39 +250,39 @@ If you still visualize Tasks, apply the same pattern:
 | Done | (single) | Task closed |
 
 ---
-### Ownership Interpretation Rules (Revised)
-1. **Single Source**: (Stage, Subcolumn) pair encodes ownership & readiness.
-2. **AI Inside Doing**: AI executions do not cause column moves; UI cues (e.g. decoration, automation log) mark active AI window.
-3. **Human Editing Windows**: Humans may edit permitted fields in Doing unless an AI run is active (then protected fields are locked temporarily by rule).
-4. **Done Subcolumns Are Read-Only for Core Artifacts**: Except for explicit “Return to Doing” action (e.g. architect feedback or new clarification discovered).
-5. **Clarification Rounds**: Round counter increments only when moving Clarify Done → Specification Doing for regeneration.
-6. **Audit**: Transition history of Doing/Done boundaries captures cadence and waits (latency hotspots).
+### Ownership Interpretation Rules
+1. Doing = active work (human or brief AI). Done = artifact stable & pullable.
+2. AI runs happen inside existing Doing columns; they do not trigger column moves.
+3. Clarifications = presence of open child Clarification Issues (no extra state/column mandatory).
+4. Rework = explicit move from Done back to Doing.
+5. Progression = only pull from a Done column into the next stage's Doing.
+6. Ready is terminal in the Feature lifecycle (further execution tracked on Stories/Tasks).
 
 #### Workflow Examples
 | Scenario | Action | Board Movement |
 |----------|--------|----------------|
-| AI generates initial spec | Run inside Spec – Doing | Stay in Spec – Doing (spinner) → Spec – Done |
-| Questions produced | Spec – Done → Clarify – Doing | Manual move or automation |
-| Architect requests plan changes | Validation – Doing → Planning – Doing | (Re-open) |
-| Minor spec tweak (no AI) | Spec – Done → Spec – Doing → Spec – Done | Fast cycle |
-| Clarification loop ends | Clarify – Done → Spec – Doing (regen) | Then back to Spec – Done |
+| AI generates specification | Run inside Spec – Doing | Spec – Doing → Spec – Done when stable & no open clarifications |
+| Clarifications discovered | Spec – Doing (remains) | Stays until all Clarification Issues closed |
+| Pull into Planning | Spec – Done → Planning – Doing | Manual pull |
+| Architect requests plan changes | Validation – Doing → Planning – Doing | Rework |
+| Plan approved | Validation – Doing → Validation – Done → Ready | PlanApproved true |
+| Minor spec tweak | Spec – Done → Spec – Doing → Spec – Done | Small cycle |
 
 > Implementation detail: In Azure DevOps, create board columns for each Stage/ Subcolumn pair (e.g. `Specification – Doing`, `Specification – Done`). Limit WIP on Doing columns; use policies on Done columns (Definition of Done checklist).
 
-#### Migration Notes (Legacy → Simplified Board)
-| Legacy Column | New Home | Migration Action |
-|---------------|----------|------------------|
-| AI Spec Generating | Specification – Doing | Remove legacy column; AI runs inline. |
-| Spec Draft | Specification – Doing | Rename. |
-| Spec Ready | Specification – Done | Rename. |
-| Spec Clarify | Clarification – Doing / Done | Split by whether answers complete. |
-| Planning | Planning – Doing | Rename. |
-| AI Plan Generating | Planning – Doing | Remove; AI runs inline. |
-| Plan Validation | Validation – Doing / Done | Split by approval state. |
-| Ready for Decomposition | Ready for Decomposition | Keep. |
-| Decomposing / AI Task Decomposition | Decomposition – Doing | Merge; AI inline. |
-| Tasks Created | Decomposition – Done | Rename. |
-| QA Ready | Testing – Done | Merge. |
+#### Migration Notes (If Coming From Legacy Model)
+Remove any of the following legacy columns if they exist: Spec Draft, Spec Clarify, Spec Ready, AI Spec Generating, AI Plan Generating, Plan Validation, Ready for Decomposition. Map in‑flight items as:
+
+| Legacy Pattern | New Placement |
+|----------------|---------------|
+| Spec Draft / Spec Ready | Specification – Doing / Specification – Done (depending on stability) |
+| Spec Clarify (and its Done) | Specification – Doing (use Clarification Issues) |
+| AI Spec Generating / AI Plan Generating | Corresponding Stage – Doing (AI runs inline) |
+| Plan Validation (Doing/Done) | Validation – Doing / Validation – Done |
+| Ready for Decomposition | Ready |
+| Decomposing / AI Task Decomposition | Decomposition – Doing |
+| Tasks Created | Decomposition – Done |
+| QA Ready | Testing – Done |
 
 Steps:
 1. Freeze board moves briefly (communicate to team).
@@ -259,11 +299,11 @@ Steps:
 
 Navigate to Project Settings → Service Hooks → Create Subscription
 
-#### Webhook: Feature to Spec Draft
+#### Webhook: Feature enters Specification
 ```json
 {
   "Event": "Work item updated",
-  "Filter": "State Changes TO 'Spec Draft'",
+  "Filter": "State Changes TO 'Specification'",
   "URL": "https://api.github.com/repos/{org}/{repo}/dispatches",
   "Headers": {
     "Authorization": "token {GITHUB_PAT}",
@@ -273,7 +313,7 @@ Navigate to Project Settings → Service Hooks → Create Subscription
     "event_type": "spec-create",
     "client_payload": {
       "feature_id": "[System.Id]",
-      "po_input": "[Custom.POInput]"
+      "po_input": "[System.Description]"
     }
   }
 }
@@ -358,7 +398,8 @@ jobs:
       - name: Update ADO Feature
         run: |
           FEATURE_ID="${{ github.event.client_payload.feature_id }}"
-          NEW_STATE=${{ steps.specify.outputs.has_questions == 'true' && '"Spec Clarify"' || '"Spec Ready"' }}
+          # Lean model: stay in Specification state; clarifications handled via child Issues
+          NEW_STATE="Specification"
           
           curl -X PATCH \
             -u :${{ env.ADO_PAT }} \
@@ -392,117 +433,39 @@ Add these secrets in Repository Settings → Secrets:
 **Participants**: Entire team  
 **Output**: constitution.md defining project principles  
 
-### Phase 2: Create Specification
+### Phase 2: Specification (Authoring & Clarification Loop)
 
-1. **PO creates Feature in ADO**
-   - Fills POInput field with requirements
-   - Moves to "Spec Draft" state
-   - ADO auto-assigns to AI:SpecAgent
+1. PO creates Feature, adds initial context in Description, sets state to Specification (Board: Specification – Doing).
+2. Webhook triggers AI spec generation (specification.md produced / updated). If the AI has questions it creates child Clarification Issues (NOT a state change).
+3. PO/BA answers Clarification Issues; AI may regenerate spec. Card remains in Specification – Doing throughout the loop.
+4. Completion: no open Clarification Issues, Description/spec stable, acceptance checklist satisfied → move card to Specification – Done (state still Specification).
 
-2. **AI generates specification**
-   - Webhook triggers GitHub Action
-   - Spec Kit creates specification.md
-   - Generates clarification questions if needed
+### Phase 3: Planning
 
-3. **State transitions**
-   - Has questions → "Spec Clarify" (Human:PO)
-   - No questions → "Spec Ready" (None)
+1. Architect (or designated planner) pulls Feature from Specification – Done into Planning – Doing (state: Planning) and enriches Description / Plan field with architectural notes.
+2. AI (optional) augments plan (contracts/data model/outline) inline; no extra state.
+3. When plan content complete, move card to Planning – Done.
 
-### Phase 3: Specification Clarification
+### Phase 4: Validation
 
-1. **PO/BA answer questions**
-   - Can only edit Clarifications field
-   - Answer all question Task items
-   - Move back to "Spec Draft" when ready
+1. Architect / Tech Lead reviews plan while in Validation – Doing (state: Validation). Uses PlanApproved flag for gating.
+2. If changes needed: move back to Planning – Doing, update, then return.
+3. Approval: Set PlanApproved=true and move to Validation – Done; then transition state to Ready.
 
-2. **AI processes clarifications**
-   - Refines specification
-   - May generate new questions
-   - Maximum 5 rounds enforced
+### Phase 5: Ready & Decomposition
 
-3. **Completion criteria**
-   - All questions answered
-   - Acceptance checklist passed
-   - Specification marked complete
+1. Feature now in Ready state (Ready column). Team creates User Stories (manually or via light templates). No AI state transitions required.
+2. (Optional) Lightweight decomposition can still be assisted by AI scripts, but remains outside core documented flow.
 
-### Phase 4: Create Plan
+### Phase 6: Implementation
 
-1. **Architect provides input**
-   - Pulls from "Spec Ready"
-   - Adds architecture guidance
-   - Specifies tech stack
-   - Moves to "Planning"
+1. Stories pulled into team sprint; Tasks created as needed.
+2. AI assistance (code suggestions/tests) occurs within normal dev workflow; no special states.
+3. Definition of Done: tests pass, code reviewed, acceptance criteria met.
 
-2. **AI generates plan**
-   - Creates contracts.yaml
-   - Generates data model
-   - Produces implementation plan
-   - Conducts research
+### Phase 7: Testing & QA (Inline)
 
-3. **Output stored in ADO**
-   - Plan attached to Feature
-   - State set to "Plan Validation"
-
-### Phase 5: Validate Plan
-
-1. **Architect reviews**
-   - Validates tech stack compliance
-   - Checks for over-engineering
-   - Provides feedback if needed
-
-2. **Iteration if needed**
-   - Add ValidationFeedback
-   - Move back to "Planning"
-   - AI refines based on feedback
-
-3. **Approval**
-   - Set PlanApproved = true
-   - Move to "Ready for Decomposition"
-   - Auto-create User Stories
-
-### Phase 6: Task Decomposition
-
-1. **Developer initiates**
-   - Pulls User Story
-   - Moves to "Decomposing"
-   - Auto-assigns to AI:TaskAgent
-
-2. **AI decomposes**
-   - Generates task list with phases
-   - Estimates effort
-   - Creates Task work items
-
-3. **Review and proceed**
-   - Developer reviews tasks
-   - Moves to "Implementation"
-
-### Phase 7: Implementation
-
-1. **AI generates code**
-   - Creates implementation
-   - Generates unit tests
-   - Runs automated tests
-
-2. **Developer involvement**
-   - Reviews generated code
-   - Makes manual adjustments
-   - Runs local tests
-
-3. **State progression**
-   - Tests pass → "Testing"
-   - Tests fail → Fix and retry
-
-### Phase 8: Testing & QA
-
-1. **Developer testing**
-   - Manual validation
-   - Integration testing
-   - Moves to "QA Ready" if passed
-
-2. **QA validation** (optional)
-   - Functional testing
-   - Logs defects if found
-   - Approves for Done
+Testing occurs continuously; no dedicated QA Ready state. Teams may add a Testing column locally if desired, but it's outside the lean baseline.
 
 ---
 
@@ -510,63 +473,27 @@ Add these secrets in Repository Settings → Secrets:
 
 ### Core Rules Implementation
 
-#### Rule 1: Block Human Edits During AI Work
+#### Lean Guidance (Optional Soft Locks)
+Keep rules minimal; prefer social contracts over complex automation. Example optional rules:
+
+1. Soft lock during generation (optional)
 ```json
 {
-  "name": "Block Human During AI Spec",
-  "conditions": {
-    "State": "Spec Draft",
-    "ChangedBy": "NOT CONTAINS 'AI:'"
-  },
-  "actions": {
-    "MakeReadOnly": ["Specification", "Questions"],
-    "ShowMessage": "AI is generating specification. Please wait."
-  }
+  "name": "Lock Description During Spec Generation",
+  "conditions": { "State": "Specification", "BoardColumn": "Specification – Doing", "ChangedBy": "NOT CONTAINS 'AI:'" },
+  "actions": { "MakeReadOnly": ["System.Description"], "ShowMessage": "Spec generation in progress" }
+}
+```
+2. Prevent AI edits if clarifications open (enforce manual resolution first)
+```json
+{
+  "name": "Block AI When Clarifications Open",
+  "conditions": { "State": "Specification", "OpenClarificationIssues": "> 0", "ChangedBy": "CONTAINS 'AI:'" },
+  "actions": { "RejectChange": "System.Description", "ShowMessage": "Answer remaining Clarification Issues first" }
 }
 ```
 
-#### Rule 2: Block AI During Human Work
-```json
-{
-  "name": "Block AI During Clarification",
-  "conditions": {
-    "State": "Spec Clarify",
-    "ChangedBy": "CONTAINS 'AI:'"
-  },
-  "actions": {
-    "RejectChange": "ALL FIELDS",
-    "ShowMessage": "Waiting for human clarification"
-  }
-}
-```
-
-#### Rule 3: Enforce Max Clarification Rounds
-```json
-{
-  "name": "Max Clarification Rounds",
-  "conditions": {
-    "State": "Spec Clarify",
-    "Custom.ClarificationRound": "> 5"
-  },
-  "actions": {
-    "BlockTransition": "Spec Draft",
-    "RequireApproval": "Architect",
-    "ShowMessage": "Maximum clarification rounds reached. Architect review required."
-  }
-}
-```
-
-### State-Specific Permissions
-
-| State | Can Edit | Cannot Edit |
-|-------|----------|-------------|
-| New | PO, BA | AI Agents |
-| Spec Draft | AI:SpecAgent | All Humans |
-| Spec Clarify | PO, BA | AI Agents |
-| Spec Ready | Architect | PO, BA, AI |
-| Planning | AI:PlanAgent | All Humans |
-| Plan Validation | Architect | PO, BA, Devs |
-| Implementation | AI:ImplementAgent, Developer | PO, BA, Arch |
+No separate clarification state or max-round enforcement required. If governance needed, implement a lightweight dashboard showing open Clarification Issues per Feature.
 
 ---
 
@@ -686,7 +613,7 @@ module.exports = async function (context, req) {
 **Solution**:
 1. Architect reviews and simplifies requirements
 2. Consider splitting into smaller features
-3. Provide more detailed initial POInput
+3. Provide more detailed initial Description context
 
 #### Issue: Token consumption spike
 **Symptoms**: Feature using >100K tokens  

@@ -9,20 +9,20 @@ sequenceDiagram
     participant SK as Spec Kit
     participant AF as Azure Functions
     
-    PO->>ADO: Create Feature with POInput
+    PO->>ADO: Create Feature (Description = initial context)
     PO->>ADO: Move to "Spec Draft"
     ADO->>WH: State change trigger
     WH->>GHA: Repository dispatch event
     GHA->>SK: Run spec-kit specify
     SK->>SK: Generate specification
-    SK->>GHA: Return spec + questions
+    SK->>GHA: Return spec (+ clarification prompts if any)
     GHA->>AF: Log token usage
     AF->>ADO: Update TokensConsumed
-    GHA->>ADO: Update Specification field
-    alt Has Questions
+    GHA->>ADO: Update Description (spec markdown)
+    alt Clarifications Needed
         GHA->>ADO: Set state "Spec Clarify"
         ADO->>PO: Notification
-    else No Questions
+    else No Clarifications Needed
         GHA->>ADO: Set state "Spec Ready"
     end
 :::

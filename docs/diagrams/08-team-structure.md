@@ -6,7 +6,7 @@ mindmap
     Human Roles
       Product Owner
         Creates features
-        Provides POInput
+        Provides initial Description
         Answers clarifications
         Final acceptance
       Business Analyst

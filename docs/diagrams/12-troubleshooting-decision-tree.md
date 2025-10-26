@@ -27,7 +27,7 @@ flowchart TD
         Loop --> ArchReview1[Architect reviews requirements]
         ArchReview1 --> Complexity{Feature<br/>Complexity?}
         Complexity -->|Too complex| SplitFeature[Split into smaller features]
-        Complexity -->|Unclear input| SimplifyInput[Simplify POInput]
+        Complexity -->|Unclear input| SimplifyInput[Clarify Description]
         Complexity -->|AI confusion| DetailedInput[Provide more detailed input]
         SplitFeature --> Resolved2[Resolved]
         SimplifyInput --> Resolved2

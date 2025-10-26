@@ -1,40 +1,27 @@
 # Specification Clarification Loop
 
-::: mermaid
+```mermaid
 flowchart TD
-    Start[PO Creates Feature] --> Input[PO Fills POInput]
+    Start[PO Creates Feature] --> Input[PO Writes Description]
     Input --> SpecDraft[Move to Spec Draft]
     SpecDraft --> AISpec[AI Generates Specification]
-    
-    AISpec --> Questions{AI Has<br/>Questions?}
-    
-    Questions -->|No| Checklist[Run Acceptance Checklist]
+
+    AISpec --> ClarifyNeed{Clarification<br/>Needed?}
+
+    ClarifyNeed -->|No| Checklist[Run Acceptance Checklist]
     Checklist --> CheckPass{Checklist<br/>Pass?}
     CheckPass -->|Yes| SpecReady[State: Spec Ready]
-    CheckPass -->|No| GenQuestions[Generate Questions from Checklist]
-    GenQuestions --> ClarifyState
-    
-    Questions -->|Yes| ClarifyState[State: Spec Clarify]
-    
-    ClarifyState --> CountRound{Round<br/>Count}
-    CountRound -->|< 5| POAnswer[PO/BA Answer Questions]
-    CountRound -->|>= 5| MaxRounds[Max Rounds Reached]
-    
-    MaxRounds --> ArchReview[Architect Review Required]
-    ArchReview --> Decision{Architect<br/>Decision}
-    Decision -->|Simplify| Split[Split into smaller features]
-    Decision -->|Override| ForceReady[Force Spec Ready]
-    Decision -->|Retry| POAnswer
-    
-    POAnswer --> UpdateClar[Update Clarifications Field]
-    UpdateClar --> BackToDraft[Move to Spec Draft]
-    BackToDraft --> IncRound[Increment ClarificationRound]
-    IncRound --> AIRefine[AI Refines Specification]
-    AIRefine --> Questions
-    
-    SpecReady --> NextPhase[Proceed to Planning]
-    Split --> End[Create New Features]
-    ForceReady --> NextPhase
-:::
+    CheckPass -->|No| GenPrompts[Generate Clarification Prompts]
+    GenPrompts --> ClarifyState
 
-This flowchart details the clarification loop process, including the 5-round limit and architect override mechanism.
+    ClarifyNeed -->|Yes| ClarifyState[State: Spec Clarify]
+
+    ClarifyState --> POAnswer[PO/BA Resolve Clarification Issues]
+    POAnswer --> BackToDraft[Move to Spec Draft]
+    BackToDraft --> AIRefine[AI Refines Specification]
+    AIRefine --> ClarifyNeed
+
+    SpecReady --> NextPhase[Proceed to Planning]
+```
+
+This flowchart details the clarification loop process using child Clarification Issues (lean model: no Clarifications / Questions fields or artificial round limit; architect can still intervene manually if churn persists).
