@@ -1,50 +1,90 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version: (new) 1.0.0 (initial adoption)
+Previous Version: none
+Modified Principles: (initial set created)
+Added Sections: Core Principles, Constraints & Standards, Operational Workflow, Governance
+Removed Sections: none
+Templates Reviewed:
+	- .specify/templates/plan-template.md ✅ updated (Constitution Check expanded)
+	- .specify/templates/spec-template.md ✅ aligned (independent user stories already present)
+	- .specify/templates/tasks-template.md ✅ aligned (story-based task grouping already present)
+	- .specify/templates/commands/* ⚠ none present (directory absent) - no action
+Follow-up TODOs: none
+-->
+
+# AI-Native SDLC Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### 1. Single-State Specification Loop
+All specification and clarification occurs within the single workflow state `Specification`.
+Clarification questions MUST be represented exclusively as child Issues. The work item
+MUST NOT change state until exit criteria are satisfied (no open clarification issues,
+acceptance checklist passes, description stabilized). No additional micro-states may be
+introduced without a MAJOR governance amendment.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### 2. Description-as-Spec & Traceability
+The canonical specification MUST live in the work item description. Regenerations MUST
+replace (not append) outdated sections while preserving resolved clarifications. All AI‑
+assisted changes SHOULD be reviewable via normal diff/PR mechanisms. No shadow spec
+files unless explicitly justified (security/compliance).
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### 3. Independently Deliverable User Stories
+Each user story MUST be:
+- Independently implementable
+- Independently testable (can form a temporary MVP)
+- Prioritized (P1, P2, P3...) with rationale
+- Mapped to tasks and tests without cross‑story hard dependencies
+Stories failing independence MUST be decomposed before planning sign‑off.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### 4. Minimal State & Explicit Gates
+State model is fixed: New → Specification → Planning → Validation → Ready. Progression
+MUST depend on clear, testable gates (Specification Done criteria, PlanApproved flag,
+Validation completion). Adding new workflow states, hidden queues, or implicit review
+stages is PROHIBITED without amendment.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### 5. Automated Quality & Structural Integrity
+The following MUST be enforced:
+- Mermaid diagrams: validated via `check_mermaid.js` + mermaid-cli
+- GitHub workflows: linted with `actionlint`
+- Specification exit: zero open clarification issues + acceptance checklist pass
+- Plan: explicit structure + Constitution Check section completed
+- Tasks: grouped strictly by user story; test tasks precede implementation when requested
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Constraints & Standards
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- Line length guidance: target ≤100 characters for authored Markdown and code (non-binding
+	for embedded examples exceeding clarity).
+- Version control hygiene: small, logical commits referencing story or task scope.
+- No introduction of optional “enhancement” states; use labels or metadata instead.
+- Tooling pinning: Critical validation tooling (mermaid-cli version) SHOULD be pinned in
+	scripts to reduce drift.
+- Clarification churn: If >3 regeneration cycles without convergence, escalate manually
+	(human review) rather than adding automation complexity.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Operational Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+1. Specification Phase: Iterate description + clarifications until exit criteria.
+2. Planning Phase: Produce plan.md using template; complete Constitution Check gates.
+3. Validation Phase: Architect/reviewer confirms completeness; set `PlanApproved=true`.
+4. Ready: Downstream decomposition / implementation proceeds (outside constitution scope).
+5. Continuous Quality: Diagrams + workflows validated pre-commit or in CI.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- Scope: This constitution supersedes ad-hoc process documents for specification, planning,
+	and validation activities.
+- Amendments: Propose via PR modifying this file + impact rationale. Version bump per
+	semantic rules (see below). Approval requires at least one maintainer + one architect
+	(if roles diverge) OR documented consensus in PR discussion.
+- Versioning Policy:
+	- MAJOR: Breaking workflow/state changes; removal/redefinition of a principle.
+	- MINOR: Addition of a new principle or new normative constraint.
+	- PATCH: Wording clarity, non-normative edits, formatting.
+- Review Cadence: Minimum quarterly review or triggered earlier by any principle violation
+	encountered during a PR.
+- Compliance: Each plan MUST include a Constitution Check outcome; reviewers MUST block
+	if unmet. Automated scripts MAY surface violations but human approval is final.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2025-10-26 | **Last Amended**: 2025-10-26
