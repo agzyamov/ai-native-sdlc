@@ -1,38 +1,38 @@
-# Feature Work Item State Transitions
+# Lean Feature State Model
 
-::: mermaid
+```mermaid
 stateDiagram-v2
     [*] --> New
-    New --> SpecDraft: PO writes Description
-    SpecDraft --> SpecClarify: AI has questions
-    SpecDraft --> SpecReady: No questions
-    SpecClarify --> SpecDraft: PO answers questions
-    SpecClarify --> SpecReady: Max rounds (5) reached
-    SpecReady --> Planning: Architect adds input
-    Planning --> PlanValidation: AI generates plan
-    PlanValidation --> Planning: Architect requests changes
-    PlanValidation --> ReadyForDecomp: Architect approves
-    ReadyForDecomp --> [*]: Stories created
-    
-    note right of SpecDraft
-        AI:SpecAgent active
-        Humans read-only
-    end note
-    
-    note right of SpecClarify
-        Human:PO active
-        AI read-only
-    end note
-    
-    note right of Planning
-        AI:PlanAgent active
-        Humans read-only
-    end note
-    
-    note right of PlanValidation
-        Human:Architect active
-        AI read-only
-    end note
-:::
+    New --> Specification: Pulled for authoring
+    Specification --> Planning: Exit criteria met
+    Planning --> Validation: Plan ready for approval
+    Validation --> Planning: Changes requested
+    Validation --> Ready: PlanApproved == true
+    Ready --> [*]
 
-This state diagram shows all possible states for a Feature work item and the transitions between them, with ownership notes.
+    state Specification {
+        [*] --> Doing
+        Doing --> Done: No open clarification issues & checklist pass
+        Done --> Doing: New issue opened / major revision
+    }
+
+    note right of Specification
+        Single workflow state
+        Clarifications = child issues
+        Loop stays internal (no extra states)
+    end note
+
+    note right of Planning
+        Enrich technical plan
+        Prepare for validation
+    end note
+
+    note right of Validation
+        Confirm completeness & feasibility
+        Approve via flag (PlanApproved)
+    end note
+```
+
+Collapsed from legacy multi-step (SpecDraft / Clarify / Ready / PlanValidation / ReadyForDecomp) into a
+minimal linear backbone plus an internal loop inside `Specification` using board columns (Doing/Done)
+instead of separate workflow states.

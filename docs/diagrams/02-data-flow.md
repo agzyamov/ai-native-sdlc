@@ -1,30 +1,36 @@
-# Data Flow Sequence
+# Data Flow (Lean Specification Loop)
 
-::: mermaid
+```mermaid
 sequenceDiagram
-    participant PO as Product Owner
-    participant ADO as Azure DevOps
-    participant WH as Webhook
-    participant GHA as GitHub Actions
-    participant SK as Spec Kit
-    participant AF as Azure Functions
-    
-    PO->>ADO: Create Feature (Description = initial context)
-    PO->>ADO: Move to "Spec Draft"
-    ADO->>WH: State change trigger
-    WH->>GHA: Repository dispatch event
-    GHA->>SK: Run spec-kit specify
-    SK->>SK: Generate specification
-    SK->>GHA: Return spec (+ clarification prompts if any)
-    GHA->>AF: Log token usage
-    AF->>ADO: Update TokensConsumed
-    GHA->>ADO: Update Description (spec markdown)
-    alt Clarifications Needed
-        GHA->>ADO: Set state "Spec Clarify"
-        ADO->>PO: Notification
-    else No Clarifications Needed
-        GHA->>ADO: Set state "Spec Ready"
-    end
-:::
+    autonumber
+    participant User as User (PO/Analyst)
+    participant Tracker as Tracker (ADO / Work Item)
+    participant Hook as Webhook
+    participant Actions as GitHub Actions
+    participant SpecKit as Spec Kit
+    participant Issues as Clarification Issues
 
-This sequence diagram illustrates the step-by-step data flow when a Product Owner creates a feature and the AI generates a specification.
+    User->>Tracker: Create Feature (state = New, description seed)
+    User->>Tracker: Move to Specification
+    Tracker-->>Hook: State entered: Specification
+    Hook-->>Actions: Dispatch (spec-generate)
+    Actions->>SpecKit: Generate / update specification
+    SpecKit-->>Actions: Spec markdown + prompts (if questions)
+    Actions->>Tracker: Update Description (spec content)
+    alt Clarification prompts present
+        Actions->>Issues: Create / update clarification issues
+        User->>Issues: Answer & close
+        Issues-->>Actions: All closed
+        Actions->>Actions: (Optional) re-trigger spec regeneration
+    end
+    Actions->>Tracker: Re-run acceptance checklist
+    alt Checklist passes & no open issues
+        User->>Tracker: Mark column = Specification Done
+        User->>Tracker: Transition to Planning when pulled
+    else Still open clarifications / fail
+        Actions->>Tracker: Remain in Specification (Doing)
+    end
+```
+
+This lean sequence removes transitional micro-states: clarifications live purely as child issues while
+the work item remains in `Specification` until exit criteria (no open issues + checklist pass) are met.

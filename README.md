@@ -1,6 +1,6 @@
 # AI-Native SDLC
 
-> Automate your software development lifecycle with GitHub Copilot CLI in GitHub Actions
+> Automating a lean, AI-augmented Specification → Planning → Validation workflow with GitHub Copilot & Spec Kit
 
 [![GitHub Actions](https://img.shields.io/badge/GitHub-Actions-blue?logo=github-actions)](https://github.com/features/actions)
 [![Copilot](https://img.shields.io/badge/GitHub-Copilot-purple?logo=github)](https://github.com/features/copilot)
@@ -8,22 +8,42 @@
 
 ## 🚀 Overview
 
-AI-Native SDLC demonstrates how to integrate GitHub Copilot CLI directly into your CI/CD pipelines using GitHub Actions. This repository showcases automated code generation workflows that create pull requests with AI-generated code based on natural language prompts.
+This repository demonstrates a **lean AI-native feature lifecycle** powered by GitHub Actions + Copilot CLI. It couples:
 
-## ✨ Features
+1. A minimized Azure DevOps (or similar) Feature state model: **New → Specification → Planning → Validation → Ready**
+2. Specification + clarification handled inside a single `Specification` state (clarification questions become child Issues, not extra states)
+3. Lightweight Planning + gated Plan Validation (boolean approval flag vs extra states)
+4. Optional generation workflows (spec initiation, spec refinement, code generation, Q&A)
 
-- 🤖 **Automated Code Generation**: Generate production-ready Python code using natural language prompts
-- 🔄 **Pull Request Automation**: Automatically creates feature branches and PRs with generated code
-- 🔐 **GitHub App Integration**: Secure authentication using GitHub Apps for `gh agent-task` automation
-- 📝 **Interactive Q&A**: Query documentation and get answers saved to markdown files
-- 🎯 **Zero Configuration**: Works out of the box with GitHub Actions
-- 🏷️ **Smart Labeling**: Automatically tags PRs with `ai-generated` and `needs-review` labels
+The goal: **Reduce process drag while safely injecting AI assistance** without proliferating micro-states or “AI vs Human” ownership distinctions.
+
+Full lifecycle details live in `docs/workflow.md`.
+
+## 📚 Documentation Overview
+
+| Path | Status | Summary |
+|------|--------|---------|
+| `docs/workflow.md` | Active | Implementation guide: lean states (New → Specification → Planning → Validation → Ready), board model, clarification via Issues, optional rules, migration notes. |
+| `docs/diagrams/` | Updated | Core diagrams (02 data flow, 03 feature states, 10 clarification loop) now lean; remaining diagrams under routine review. |
+
+Removed legacy GitHub App documentation files; focus now is only on the lean Spec + Plan + Validate flow. Core diagrams (02,03,10) reflect the current model; remaining diagrams are reviewed opportunistically.
+
+## ✨ Key Capabilities
+
+- 🧭 **Lean Feature Flow**: Single specification loop (no Spec Draft / Clarify / Ready micro-states)
+- 🗂️ **Description-as-Spec**: Canonical spec text lives in the work item (no custom spec field required)
+- 🧩 **Clarification via Issues**: Questions surfaced as child Issues; closing them drives spec completeness
+- 🧪 **Planning & Validation**: Plan enrichment + approval using a simple flag instead of extra states
+- 🤖 **Automated Code Generation**: Trigger Copilot-powered code generation for features or ad‑hoc prompts
+- 🔄 **Pull Request Automation**: Branch + PR creation with labels and structured content
+- 🧱 **Spec Kit Workflows**: Initialize & (re)generate specs from repository prompts/components
+- 📝 **Q&A & Research**: Store AI answers in-version for traceability
 
 ## 📋 Prerequisites
 
 - GitHub repository with Actions enabled
 - GitHub Copilot subscription
-- Personal Access Token (PAT) with Copilot scope
+- A PAT for workflows (code generation, Q&A, spec kit)
 
 ## 🛠️ Setup
 
@@ -34,279 +54,65 @@ AI-Native SDLC demonstrates how to integrate GitHub Copilot CLI directly into yo
    - ✅ **Read and write permissions**
    - ✅ **Allow GitHub Actions to create and approve pull requests**
 
-### 2. Add Secrets
+<!-- Secrets & label creation section removed as not required in minimal setup -->
 
-⚠️ **Important Note about `gh agent-task` in GitHub Actions:**
+## 💻 Usage Overview
 
-The `gh agent-task create` command requires an **OAuth token** (prefix `gho_`), not a standard Personal Access Token (prefix `github_pat_` or `ghp_`). 
+High-level lifecycle (see `docs/workflow.md` for full detail):
 
-**Current Limitation:** `gh agent-task` cannot be fully automated in GitHub Actions with PAT tokens. The command works best when run locally or requires a GitHub App for automation.
+1. Create Feature (state: New → Specification)
+2. Run spec generation (stays in Specification – Doing; clarifications become Issues)
+3. Close clarification Issues → move to Specification – Done (still Specification)
+4. Enter Planning (state: Planning) → enrich plan
+5. Move to Validation (state: Validation) → approve (PlanApproved=true) → state transitions to Ready
+6. Decompose into Stories / Tasks; proceed with normal development and optional code generation support
 
-**For local usage:**
-1. Authenticate with `gh auth login` (creates OAuth token)
-2. Run `gh agent-task create "your task description"`
+<!-- Archived workflow usage sections removed -->
 
-**For CI/CD automation with `gh agent-task`:**
-- 🎯 **Recommended:** Use GitHub App authentication
-- 📖 **Complete Guide:** [GitHub App Setup](docs/github-app-setup.md)
-- ⚡ **Workflow:** [copilot-agent-github-app.yml](.github/workflows/copilot-agent-github-app.yml)
+##  Workflows
 
-**Alternative approaches:**
-- Use other Copilot workflows in this repo that work with PAT tokens
+Current workflow files (see `.github/workflows/`):
 
-If you still want to try with PAT:
-1. Create a [Personal Access Token](https://github.com/settings/tokens/new) with these scopes:
-   - `repo` (Full control of private repositories)
-   - `workflow` (Update GitHub Actions workflows)
+| File | Purpose | Auth Mode |
+|------|---------|-----------|
+| `spec-kit-specify.yml` | Generate / refine specification artifacts using Spec Kit | PAT |
 
-2. Add to repository secrets as `COPILOT_TOKEN`:
-   ```
-   Settings → Secrets and variables → Actions → New repository secret
-   Name: COPILOT_TOKEN
-   Value: <your-token>
-   ```
+> Archived / disabled former workflows are stored under `.github/workflows/archive/` and suffixed with `.disabled` (e.g. previous feature, QA, query, init demos). Reactivate by moving them back and removing the suffix.
 
-### 3. Create Labels
+### `spec-kit-specify.yml`
+Primary (active) workflow: invokes Spec Kit to generate or refine specification artifacts using repository context. See its YAML for inputs.
 
-Run these commands in your repository:
-```bash
-gh label create "ai-generated" --description "Code generated by AI" --color "0E8A16"
-gh label create "needs-review" --description "Requires code review" --color "FBCA04"
-```
+<!-- Removed example output & use cases tied to archived feature/qa workflows -->
 
-## 💻 Usage
+<!-- stray command reference removed -->
+## 🔍 Validation & Quality
 
-### Copilot Feature Development Workflow
+- YAML / GitHub Actions lint: use `actionlint` or `@action-validator/cli`
+- Mermaid diagrams: run `scripts/validate_diagrams.sh` (internally uses `check_mermaid.js` + mermaid-cli)
+- Pre-commit (optional): add a hook calling both diagram + action lint steps
+- See `docs/workflow.md` for governance and optional edit control patterns
 
-Generate code and create a pull request automatically:
+### Mermaid Diagram Validation
+
+Validate all diagrams:
 
 ```bash
-gh workflow run copilot-feature-dev.yml \
-  -f feature_prompt="Create a function to calculate Fibonacci numbers"
+scripts/validate_diagrams.sh
 ```
 
-**What it does:**
-1. Creates a new feature branch
-2. Generates Python code using GitHub Copilot CLI
-3. Commits code to the branch
-4. Creates a pull request with generated code
-5. Adds appropriate labels for review
-
-**Example prompts:**
-```bash
-# Generate a calculator function
-gh workflow run copilot-feature-dev.yml \
-  -f feature_prompt="Create a calculator class with add, subtract, multiply, divide methods"
-
-# Generate data validation
-gh workflow run copilot-feature-dev.yml \
-  -f feature_prompt="Create a function to validate email addresses using regex"
-
-# Generate API client
-gh workflow run copilot-feature-dev.yml \
-  -f feature_prompt="Create a REST API client for weather data with error handling"
-```
-
-### Copilot Q&A Workflow
-
-Ask questions and get answers committed to the repository:
+Only staged (changed) diagrams:
 
 ```bash
-gh workflow run copilot-qa.yml \
-  -f question="How do I implement OAuth 2.0 authentication in Python?"
+scripts/validate_diagrams.sh changed
 ```
 
-**What it does:**
-1. Sends your question to GitHub Copilot CLI
-2. Saves the response to `response.md` in the root directory
-3. Archives a timestamped copy in `responses/` directory
-4. Commits both files to the repository
-5. Makes response available as downloadable artifact
-
-**Response saved to:**
-- `response.md` - Latest response (overwritten each time)
-- `responses/response_YYYYMMDD_HHMMSS.md` - Archived copy with timestamp
-
-**Example questions:**
-```bash
-# Ask about implementation
-gh workflow run copilot-qa.yml \
-  -f question="How do I implement rate limiting in Python using decorators?"
-
-# Ask about best practices
-gh workflow run copilot-qa.yml \
-  -f question="What are the best practices for error handling in REST APIs?"
-
-# Ask for code examples
-gh workflow run copilot-qa.yml \
-  -f question="Show me how to implement a simple caching system in Python"
-```
-
-### Copilot Agent with GitHub App (Recommended for CI/CD)
-
-🎯 **Use GitHub App for production-grade automation:**
-
-**Prerequisites:** Complete [GitHub App Setup Guide](docs/github-app-setup.md)
+Sample `.git/hooks/pre-commit` snippet (make executable):
 
 ```bash
-# Create a feature with Copilot Agent
-gh workflow run copilot-agent-github-app.yml \
-  -f task_description="Create a Python function to parse and validate JSON schemas"
-
-# Generate tests
-gh workflow run copilot-agent-github-app.yml \
-  -f task_description="Add unit tests for the authentication module"
-
-# Refactor code
-gh workflow run copilot-agent-github-app.yml \
-  -f task_description="Refactor the database connection code to use connection pooling"
-```
-
-**Why use GitHub App:**
-- ✅ Works with `gh agent-task` (requires OAuth token)
-- ✅ Secure, scoped permissions
-- ✅ Short-lived tokens (1 hour)
-- ✅ Better for CI/CD automation
-- ✅ Audit trail for all actions
-
-**What it does:**
-1. Generates GitHub App installation token
-2. Runs `gh agent-task create` with your description
-3. Copilot creates a PR and works autonomously
-4. Commits code as it progresses
-5. Adds you as reviewer when complete
-
-📖 **Full documentation:** [docs/github-app-setup.md](docs/github-app-setup.md)
-
-### Legacy Copilot Query Workflow
-
-Ask questions and get answers saved as markdown:
-
-```bash
-gh workflow run copilot-query.yml \
-  -f prompt="How do I implement OAuth 2.0 authentication in Python?"
-```
-
-**Response saved to:** `copilot_response.md` (available as artifact)
-
-## 📁 Generated Files Structure
-
-```
-generated/
-├── create_a_calculator_class_with_add_subtract_multi_1760685544.py
-├── create_a_function_to_validate_email_addresses_u_1760685724.py
-└── create_a_function_to_calculate_fibonacci_numbers_1760687827.py
-```
-
-Each file contains:
-- Complete, production-ready Python code
-- Type hints and docstrings
-- Error handling
-- Unit tests (when applicable)
-
-## 🔧 Workflows
-
-### 1. `copilot-feature-dev.yml` - Code Generation
-**Trigger:** Manual (`workflow_dispatch`)
-
-**Inputs:**
-- `feature_prompt`: Natural language description of what to build
-
-**Outputs:**
-- New feature branch (`feature/copilot-<timestamp>`)
-- Generated Python code in `generated/` directory
-- Pull request with code review checklist
-
-**Example:**
-```bash
-gh workflow run copilot-feature-dev.yml \
-  -f feature_prompt="Create a binary search tree implementation"
-```
-
-### 2. `copilot-qa.yml` - Interactive Q&A
-**Trigger:** Manual (`workflow_dispatch`)
-
-**Inputs:**
-- `question`: Any question or request for Copilot
-
-**Outputs:**
-- `response.md`: Latest answer in root directory (committed to repo)
-- `responses/response_YYYYMMDD_HHMMSS.md`: Archived timestamped copy
-- Downloadable artifact with the response
-
-**Example:**
-```bash
-gh workflow run copilot-qa.yml \
-  -f question="Explain async/await in Python with examples"
-```
-
-### 3. `copilot-query.yml` - Documentation Query (Legacy)
-**Trigger:** Manual (`workflow_dispatch`)
-
-**Inputs:**
-- `prompt`: Question or documentation query
-- `search_docs`: Include Microsoft Docs search (boolean)
-
-**Outputs:**
-- `copilot_response.md`: Markdown file with Copilot's answer (artifact only)
-
-### 4. `ai-code-review.yml` - Code Review
-**Trigger:** Manual (`workflow_dispatch`)
-
-**Performs:**
-- Analyzes git diff
-- Provides AI-powered code review comments
-- Suggests improvements and best practices
-
-## 📊 Example Output
-
-### Generated Code Quality
-
-The workflow generates professional code with:
-
-```python
-def is_prime(n: Union[int, float]) -> bool:
-    """
-    Check if a number is prime.
-    
-    Args:
-        n: The number to check. Can be int or float.
-        
-    Returns:
-        bool: True if prime, False otherwise.
-        
-    Raises:
-        TypeError: If n cannot be converted to integer.
-        ValueError: If n is negative.
-    """
-    # Implementation with edge cases and validation
-    ...
-```
-
-### Pull Request Template
-
-Every PR includes:
-- 🤖 AI-Generated Feature badge
-- Original prompt
-- Generated file path
-- Link to workflow run
-- Code review checklist
-
-## 🎯 Use Cases
-
-1. **Rapid Prototyping**: Quickly generate boilerplate code for new features
-2. **Learning Tool**: See how Copilot implements common patterns
-3. **Code Generation Pipeline**: Integrate into existing SDLC workflows
-4. **Documentation Assistant**: Query technical documentation on-demand
-5. **Code Review Automation**: Get AI-powered code review suggestions
-
-## 🔍 Validation
-
-The repository includes `@action-validator/cli` for YAML syntax checking:
-
-```bash
-npm install -g @action-validator/cli
-action-validator .github/workflows/copilot-feature-dev.yml
+#!/usr/bin/env bash
+set -euo pipefail
+scripts/validate_diagrams.sh changed
+actionlint || { echo "actionlint failed" >&2; exit 1; }
 ```
 
 ## 🤝 Contributing
@@ -345,10 +151,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Check that "Allow GitHub Actions to create and approve pull requests" is enabled
 - Verify workflow has `pull-requests: write` permission
 
-### Labels not found
-- Run the label creation commands from Setup section
-- Or remove `--label` flags from workflow
+<!-- Removed troubleshooting subsection for labels (labels feature deprecated in this trimmed setup) -->
 
 ---
 
-Made with ❤️ using GitHub Copilot CLI
+Made with ❤️ using a lean AI-native workflow (Copilot CLI + Spec Kit)

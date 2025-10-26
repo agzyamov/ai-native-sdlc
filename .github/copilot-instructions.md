@@ -88,6 +88,52 @@ When creating or modifying Mermaid diagrams:
 
 **Never commit broken Mermaid diagrams!**
 
+### Additional Automated Validation (mermaid-cli)
+
+To strengthen validation, also run `@mermaid-js/mermaid-cli` (mmdc) against every changed diagram file
+in `docs/diagrams/` before committing:
+
+1. Install (or use npx):
+   ```bash
+   npm install --save-dev @mermaid-js/mermaid-cli
+   # or just use npx mmdc ... without installing
+   ```
+2. For markdown diagram files that contain a single mermaid code fence, you can validate via pipe:
+   ```bash
+   awk '/```mermaid/{flag=1;next}/```/{flag=0}flag' docs/diagrams/<file>.md \
+     | npx mmdc -i /dev/stdin -o /dev/null
+   ```
+3. (Optional) Create (or use existing) helper script `scripts/validate_diagrams.sh` to validate all modified diagrams:
+   ```bash
+   set -euo pipefail
+   CHANGED=$(git diff --name-only --cached | grep '^docs/diagrams/.*\.md$' || true)
+   [ -z "$CHANGED" ] && exit 0
+   for f in $CHANGED; do
+     echo "Validating $f (mermaid-cli)" >&2
+     awk '/```mermaid/{flag=1;next}/```/{flag=0}flag' "$f" \
+       | npx @mermaid-js/mermaid-cli -i /dev/stdin -o /dev/null || {
+           echo "Mermaid validation failed for $f" >&2
+           exit 1
+         }
+   done
+   ```
+4. (Optional) Add a pre-commit hook (`.git/hooks/pre-commit`) invoking the script so commits fail if any
+   diagram does not parse.
+
+Success criteria:
+- ✅ `mmdc` exits with status 0 for every changed diagram
+- ✅ No warnings or parse errors printed
+- ✅ Existing `check_mermaid.js` script also passes
+
+If either validation fails, fix the diagram before committing.
+
+Existing repository helper:
+
+```bash
+scripts/validate_diagrams.sh            # validate all diagrams
+scripts/validate_diagrams.sh changed    # only staged diagrams
+```
+
 ## GitHub Actions Workflow Validation
 
 **Always validate GitHub Actions workflows** before committing:
