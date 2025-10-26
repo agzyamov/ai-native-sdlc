@@ -129,48 +129,130 @@ ImplementationPhase (String, Picklist)
 
 ### 3a. Kanban Board Ownership Model
 
-Instead of tags or an `AIOwner` field, ownership is inferred from **which column a work item occupies**. Columns are intentionally granular where AI automation occurs so humans instantly understand who/what is acting.
+We now simplify the boards by using a small set of STAGES, each (where it adds clarity) split into two **sub‑columns**:
+`Doing` (active work happening) and `Done` (stage output ready; safe hand‑off). This reduces column sprawl (e.g. removing separate *AI* vs *Human* variants) while preserving ownership clarity. Ownership is still inferred **only from the current (Stage + Subcolumn)**. No tags or explicit owner field required.
 
-#### Feature Board Columns
-| Column | Ownership Meaning | Primary Actor(s) | Transition Trigger | Notes |
-|--------|-------------------|------------------|--------------------|-------|
-| Backlog | Not started | PO | Created | Input not yet provided |
-| Spec Draft | PO authoring | PO / BA | PO moves item | Editable: POInput |
-| AI Spec Generating | AI producing spec | SpecAgent (workflow) | State change to Spec Draft triggers webhook | Temporarily read-only core spec fields |
-| Spec Clarify | Waiting on human answers | PO / BA | AI produced questions | Clarifications field unlocked |
-| Spec Ready | Idle / awaiting architecture | None | All questions resolved & checklist pass | Hand-off point |
-| Planning | Architect enriching | Architect | Architect pulls | ArchitectInput editable |
-| AI Plan Generating | AI producing plan | PlanAgent | Architect moves to Planning | Plan/DataModel/Contracts generated |
-| Plan Validation | Architect review | Architect | AI finishes plan | Approve or send back |
-| Ready for Decomposition | Idle | None | Plan approved | Start story creation |
+#### Principles of the Simplified Model
+| Principle | Description |
+|-----------|-------------|
+| Stage Minimalism | Only major value producing phases become board stages. |
+| Doing / Done Pair | Doing = work in progress; Done = artifact stable & waiting for pull. |
+| Implicit Actor | Actor is implied by the nature of work in that Stage (see tables). |
+| Mixed Responsibility Windows | If both AI & Human act inside a Doing subcolumn, protected fields remain read-only while AI is executing; humans resume editing when AI run completes (without moving columns). |
+| Idempotent AI Runs | Re-running AI inside the same Doing subcolumn never requires a column move (prevents “AI Generating” noise columns). |
+| Auditability | History (Stage transitions + subcolumn changes) reconstructs ownership timeline. |
 
-#### User Story Board Columns
-| Column | Ownership | Actor(s) | Trigger | Notes |
-|--------|-----------|----------|---------|-------|
-| Backlog | Not started | PO / BA | Story created | Awaiting pull |
-| Decomposing | Human initiating breakdown | Developer | Dev pulls | Prep for AI |
-| AI Task Decomposition | AI expanding tasks | TaskAgent | Column move / webhook | tasks.json generated |
-| Tasks Created | Idle / review | Developer | AI finished | Dev reviews/edit tasks |
-| Implementation | Active build | Developer & ImplementAgent (per task) | Dev starts work | Code + tests cycles |
-| Testing | Developer verification | Developer | Implementation complete | Local & integration tests |
-| QA Ready | QA validation | QA | Dev marks ready | Optional phase |
-| Done | Completed | Team | Tests + acceptance passed | Locked except fixes |
+---
+#### Feature Board (Simplified)
 
-#### Task Board Columns (Optional Granularity)
-| Column | Meaning |
-|--------|---------|
-| Ready | Task available |
-| AI Generating | ImplementAgent working |
-| Dev Refining | Human adjusting AI output |
-| Verifying | Tests executing / being fixed |
-| Done | Complete |
+| Stage (Column Group) | Doing Subcolumn (Suggested Name) | Done Subcolumn (Suggested Name) | Primary Active Actor(s) in Doing | Artifact Produced / Criteria for Done | Transition to Next Stage |
+|----------------------|----------------------------------|---------------------------------|----------------------------------|--------------------------------------|--------------------------|
+| Backlog | (single column – no split) | — | PO | Raw idea, minimal POInput | PO pulls into Specification Doing |
+| Specification | Spec – Doing | Spec – Done | AI SpecAgent (initial generation) then PO/BA refinement | Acceptable spec draft OR no open questions generated | If questions → Clarification Doing; else → Planning Doing |
+| Clarification (conditional) | Clarify – Doing | Clarify – Done | PO / BA | All AI questions answered & clarification round closed | Move back to Specification Doing for regeneration OR (if no new questions) to Specification Done → Planning Doing |
+| Planning | Planning – Doing | Planning – Done | Architect (inputs) + AI PlanAgent (plan generation) | Plan, Contracts, Data Model generated | Move to Plan Validation Doing |
+| Plan Validation | Validation – Doing | Validation – Done | Architect | PlanApproved = true | Ready for Decomposition (single) |
+| Ready for Decomposition | (single column) | — | — (Idle) | Feature ready to spawn stories | Story creation automation / manual trigger |
 
-### Ownership Interpretation Rules
-1. **Single Source**: Column placement is the *only* ownership signal.
-2. **Automation Windows**: Any column beginning with `AI` implies temporary write-protection for protected fields.
-3. **Human Columns**: Only explicitly human columns permit editing related narrative or acceptance data.
-4. **Idle Columns**: Indicate safe hand-off moments; automation will not act until next move.
-5. **Audit**: Historical ownership can be reconstructed from board column change history (no separate field needed).
+Notes:
+- *Specification Done* replaces previous `Spec Ready`.
+- AI execution happens **inside** Spec / Planning Doing rather than separate AI columns.
+- Clarification Stage appears only if the spec generation produced questions.
+
+##### Old → New Feature Column Mapping
+| Old Column | New Stage/Subcolumn |
+|------------|---------------------|
+| Backlog | Backlog |
+| Spec Draft | Specification – Doing |
+| AI Spec Generating | Specification – Doing (AI run inside) |
+| Spec Clarify | Clarification – Doing / Done (depending on progress) |
+| Spec Ready | Specification – Done |
+| Planning | Planning – Doing |
+| AI Plan Generating | Planning – Doing (AI run inside) |
+| Plan Validation | Plan Validation – Doing / Done |
+| Ready for Decomposition | Ready for Decomposition |
+
+---
+#### User Story Board (Simplified)
+
+| Stage (Column Group) | Doing Subcolumn | Done Subcolumn | Primary Actor(s) in Doing | Output / Done Criteria | Next Stage Trigger |
+|----------------------|-----------------|----------------|---------------------------|-----------------------|--------------------|
+| Backlog | (single) | — | PO / BA | Story defined | Developer pulls to Decomposition Doing |
+| Decomposition | Decomposition – Doing | Decomposition – Done | Developer (setup) + AI TaskAgent (task expansion) | Tasks enumerated & reviewed | Implementation Doing |
+| Implementation | Implementation – Doing | Implementation – Done | Developer + AI ImplementAgent | Code + unit tests passing locally | Testing Doing (or directly Done for trivial stories) |
+| Testing | Testing – Doing | Testing – Done | Developer (dev tests) / QA (if present) | All required tests pass & acceptance verified | Done |
+| Done | (single) | — | Team | Story meets Definition of Done | — |
+
+Old QA Ready column merges into Testing (Done = “QA / acceptance complete”).
+
+##### Old → New User Story Column Mapping
+| Old Column | New Stage/Subcolumn |
+|------------|---------------------|
+| Backlog | Backlog |
+| Decomposing | Decomposition – Doing |
+| AI Task Decomposition | Decomposition – Doing (AI run) |
+| Tasks Created | Decomposition – Done |
+| Implementation | Implementation – Doing |
+| Testing | Testing – Doing |
+| QA Ready | Testing – Done |
+| Done | Done |
+
+---
+#### Task (Optional) Board (Lean Version)
+
+If you still visualize Tasks, apply the same pattern:
+
+| Stage | Doing | Done Meaning |
+|-------|-------|--------------|
+| Ready | (single) | Task not yet pulled |
+| Implementation | Impl – Doing | Impl – Done = code + unit test passing |
+| Verification | Verify – Doing | Verify – Done = merged / integrated |
+| Done | (single) | Task closed |
+
+---
+### Ownership Interpretation Rules (Revised)
+1. **Single Source**: (Stage, Subcolumn) pair encodes ownership & readiness.
+2. **AI Inside Doing**: AI executions do not cause column moves; UI cues (e.g. decoration, automation log) mark active AI window.
+3. **Human Editing Windows**: Humans may edit permitted fields in Doing unless an AI run is active (then protected fields are locked temporarily by rule).
+4. **Done Subcolumns Are Read-Only for Core Artifacts**: Except for explicit “Return to Doing” action (e.g. architect feedback or new clarification discovered).
+5. **Clarification Rounds**: Round counter increments only when moving Clarify Done → Specification Doing for regeneration.
+6. **Audit**: Transition history of Doing/Done boundaries captures cadence and waits (latency hotspots).
+
+#### Workflow Examples
+| Scenario | Action | Board Movement |
+|----------|--------|----------------|
+| AI generates initial spec | Run inside Spec – Doing | Stay in Spec – Doing (spinner) → Spec – Done |
+| Questions produced | Spec – Done → Clarify – Doing | Manual move or automation |
+| Architect requests plan changes | Validation – Doing → Planning – Doing | (Re-open) |
+| Minor spec tweak (no AI) | Spec – Done → Spec – Doing → Spec – Done | Fast cycle |
+| Clarification loop ends | Clarify – Done → Spec – Doing (regen) | Then back to Spec – Done |
+
+> Implementation detail: In Azure DevOps, create board columns for each Stage/ Subcolumn pair (e.g. `Specification – Doing`, `Specification – Done`). Limit WIP on Doing columns; use policies on Done columns (Definition of Done checklist).
+
+#### Migration Notes (Legacy → Simplified Board)
+| Legacy Column | New Home | Migration Action |
+|---------------|----------|------------------|
+| AI Spec Generating | Specification – Doing | Remove legacy column; AI runs inline. |
+| Spec Draft | Specification – Doing | Rename. |
+| Spec Ready | Specification – Done | Rename. |
+| Spec Clarify | Clarification – Doing / Done | Split by whether answers complete. |
+| Planning | Planning – Doing | Rename. |
+| AI Plan Generating | Planning – Doing | Remove; AI runs inline. |
+| Plan Validation | Validation – Doing / Done | Split by approval state. |
+| Ready for Decomposition | Ready for Decomposition | Keep. |
+| Decomposing / AI Task Decomposition | Decomposition – Doing | Merge; AI inline. |
+| Tasks Created | Decomposition – Done | Rename. |
+| QA Ready | Testing – Done | Merge. |
+
+Steps:
+1. Freeze board moves briefly (communicate to team).
+2. Create new columns (Doing then Done for each stage) in desired order.
+3. Bulk move items based on rules above (filter by current column & state).
+4. Delete obsolete AI-prefixed columns.
+5. Update any automation referencing old column names.
+6. Announce new WIP limits & Done policies.
+7. Monitor first week: capture friction & adjust naming if needed.
+
 
 
 ### 4. Set Up Webhooks
