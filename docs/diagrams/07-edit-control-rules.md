@@ -1,6 +1,6 @@
 # Edit Control Rules Flow
 
-::: mermaid
+```mermaid
 flowchart TD
     Edit[User Attempts Edit] --> CheckState{Check<br/>Current State}
     

@@ -572,7 +572,15 @@ Add these secrets in Repository Settings → Secrets:
 
 ## Token Tracking
 
-### Azure Function Setup
+> Post-MVP Notice: Full automated token consumption tracking (Azure Function, storage, dashboards,
+> alerting) is **deferred to the Post-MVP phase**. For the MVP the team will:
+> - Capture approximate token usage manually from GitHub Action logs (aggregate per Feature weekly)
+> - Track a simple cumulative estimate in a temporary custom field (optional) or a shared spreadsheet
+> - Skip Azure Function + Table Storage deployment until stability of core spec/plan/implementation loop is validated
+>
+> Sections below describe the intended Post-MVP target architecture; implement only after core workflow adoption metrics (feature cycle time, clarification loop stability) are satisfactory.
+
+### Azure Function Setup (Post-MVP Target)
 
 1. **Create Function App** in Azure Portal
 2. **Deploy token tracking function**:
@@ -603,7 +611,7 @@ module.exports = async function (context, req) {
 
 3. **Configure webhook** in GitHub Actions to call function
 
-### Token Budget Estimates
+### Token Budget Estimates (Planning Reference)
 
 | Phase | Agent | Tokens | Cost |
 |-------|-------|--------|------|
