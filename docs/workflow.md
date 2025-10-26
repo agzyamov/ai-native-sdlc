@@ -23,7 +23,7 @@ sequenceDiagram
         Note over PO, AI_S: Phase 2: Create Specification
         PO->>ADO: Create Feature with POInput
         PO->>ADO: Move to "Spec Draft" column
-        ADO->>ADO: Auto-assign to AI:SpecAgent
+        ADO->>ADO: Auto-assign to AI-SpecAgent
         ADO->>ADO: Block human edits to specification fields
         ADO-->>GH: Webhook: trigger spec-create
         GH->>AI_S: Run spec-kit specify command
@@ -33,7 +33,7 @@ sequenceDiagram
         GH-->>ADO: Update Feature with spec & questions
         ADO->>ADO: Set state to "Spec Clarify"
         ADO->>ADO: Create Task items for each question
-        ADO->>ADO: Auto-assign to Human:PO
+        ADO->>ADO: Auto-assign to Human-PO
     end
 
     rect rgb(255, 255, 240)
@@ -42,7 +42,7 @@ sequenceDiagram
             PO->>ADO: Answer questions in Task items
             BA->>ADO: Add clarifications
             PO->>ADO: Move to "Spec Draft" when ready
-            ADO->>ADO: Auto-assign to AI:SpecAgent
+            ADO->>ADO: Auto-assign to AI-SpecAgent
             ADO-->>GH: Webhook: trigger spec-clarify
             GH->>AI_S: Run spec-kit specify with clarifications
             AI_S->>GH: Update specification
@@ -63,7 +63,7 @@ sequenceDiagram
         ARCH->>ADO: Pull Feature from "Spec Ready"
         ARCH->>ADO: Add architecture guidance & tech stack
         ARCH->>ADO: Move to "Planning" state
-        ADO->>ADO: Auto-assign to AI:PlanAgent
+        ADO->>ADO: Auto-assign to AI-PlanAgent
         ADO-->>GH: Webhook: trigger plan-create
         GH->>AI_P: Run spec-kit plan command
         AI_P->>GH: Generate contracts.yaml
@@ -72,7 +72,7 @@ sequenceDiagram
         AI_P->>GH: Generate research.md
         GH-->>ADO: Update Feature with plan artifacts
         ADO->>ADO: Set state to "Plan Validation"
-        ADO->>ADO: Auto-assign to Human:Architect
+        ADO->>ADO: Auto-assign to Human-Architect
     end
 
     rect rgb(255, 240, 255)
@@ -97,7 +97,7 @@ sequenceDiagram
         Note over DEV, AI_T: Phase 6: Task Decomposition
         DEV->>ADO: Pull User Story
         DEV->>ADO: Move to "Decomposing" state
-        ADO->>ADO: Auto-assign to AI:TaskAgent
+        ADO->>ADO: Auto-assign to AI-TaskAgent
         ADO-->>GH: Webhook: trigger task-decompose
         GH->>AI_T: Run spec-kit tasks command
         AI_T->>GH: Generate tasks.json with phases
@@ -111,7 +111,7 @@ sequenceDiagram
     rect rgb(255, 255, 240)
         Note over DEV, AI_I: Phase 7: Implementation
         loop For each Task in Story
-            ADO->>ADO: Auto-assign task to AI:ImplementAgent
+            ADO->>ADO: Auto-assign task to AI-ImplementAgent
             ADO-->>GH: Webhook: trigger implement
             GH->>AI_I: Run spec-kit implement
             AI_I->>GH: Generate code for task
@@ -121,7 +121,7 @@ sequenceDiagram
             alt Tests pass
                 ADO->>ADO: Mark Task as "Done"
             else Tests fail
-                ADO->>ADO: Assign to Human:Developer
+                ADO->>ADO: Assign to Human-Developer
                 DEV->>GH: Fix implementation manually
                 DEV->>ADO: Mark Task as "Done"
             end
