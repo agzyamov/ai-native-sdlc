@@ -9,7 +9,7 @@ flowchart TD
     CheckUser1 -->|No| Block1[Block: AI is working]
     
     CheckState -->|Spec Clarify| CheckUser2{Is User<br/>Human PO/BA?}
-    CheckUser2 -->|Yes| Allow2[Allow Clarifications Only]
+    CheckUser2 -->|Yes| Allow2[Allow Clarification Issue Edits]
     CheckUser2 -->|No| Block2[Block: Awaiting clarification]
     
     CheckState -->|Planning| CheckUser3{Is User<br/>AI:PlanAgent?}

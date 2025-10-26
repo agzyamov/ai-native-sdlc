@@ -3,7 +3,7 @@
 ::: mermaid
 stateDiagram-v2
     [*] --> New
-    New --> SpecDraft: PO adds POInput
+    New --> SpecDraft: PO writes Description
     SpecDraft --> SpecClarify: AI has questions
     SpecDraft --> SpecReady: No questions
     SpecClarify --> SpecDraft: PO answers questions

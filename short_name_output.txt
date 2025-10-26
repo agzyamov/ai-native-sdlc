@@ -1,9 +1,0 @@
-toddler-simple-game
-
-
-Total usage est:       1 Premium request
-Total duration (API):  1.6s
-Total duration (wall): 3.5s
-Total code changes:    0 lines added, 0 lines removed
-Usage by model:
-    claude-sonnet-4.5    13.1k input, 10 output, 0 cache read, 0 cache write (Est. 1 Premium request)
