@@ -156,6 +156,12 @@ jobs:
           BRANCH_NAME="${{ steps.create_feature.outputs.branch_name }}"
           FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
 
+          # Fallback: Derive FEATURE_DIR from SPEC_FILE if null
+          if [ -z "$FEATURE_DIR" ] || [ "$FEATURE_DIR" = "null" ]; then
+            FEATURE_DIR="$(dirname "$SPEC_FILE")"
+            echo "ℹ️  FEATURE_DIR was null, derived from SPEC_FILE: $FEATURE_DIR"
+          fi
+
           echo "📝 Step 3-6: Generating specification with Copilot..."
           echo ""
 
@@ -179,10 +185,18 @@ jobs:
 
           if [ -n "$CREATED_SPEC" ] && [ -f "$CREATED_SPEC" ]; then
             echo "✅ Copilot created file: $CREATED_SPEC"
-            echo "📋 Moving to: $SPEC_FILE"
+            CREATED_DIR=$(dirname "$CREATED_SPEC")
+            echo "📋 Moving spec to: $SPEC_FILE"
             cat "$CREATED_SPEC" > "$SPEC_FILE"
-            echo "🧹 Removing Copilot-created directory: $(dirname "$CREATED_SPEC")"
-            rm -rf "$(dirname "$CREATED_SPEC")"
+            
+            # Copy checklists directory if it exists
+            if [ -d "$CREATED_DIR/checklists" ]; then
+              echo "📋 Copying checklists directory"
+              cp -r "$CREATED_DIR/checklists" "$SPEC_DIR/"
+            fi
+            
+            echo "🧹 Removing Copilot-created directory: $CREATED_DIR"
+            rm -rf "$CREATED_DIR"
           else
             echo "⚠️ Copilot didn't create file directly, extracting from output..."
             # Extract markdown from output
