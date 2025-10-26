@@ -206,6 +206,13 @@ jobs:
           echo "Spec file: $SPEC_FILE"
           echo ""
 
+          # Ensure we're on the correct branch (Copilot may have switched branches)
+          CURRENT_BRANCH=$(git branch --show-current)
+          if [ "$CURRENT_BRANCH" != "$BRANCH_NAME" ]; then
+            echo "⚠️  Currently on branch '$CURRENT_BRANCH', switching to '$BRANCH_NAME'"
+            git checkout "$BRANCH_NAME"
+          fi
+
           # Add all generated files
           git add -A
 
