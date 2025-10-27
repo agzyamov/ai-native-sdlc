@@ -153,3 +153,12 @@ docs/_build/
 # Generated files
 pr_diff.txt
 review.md
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+terraform.tfplan
+tfplan
