@@ -3,7 +3,7 @@
 
 terraform {
   required_version = ">= 1.6.0"
-  
+
   backend "local" {
     path = "terraform.tfstate"
   }
@@ -22,7 +22,7 @@ data "azurerm_resource_group" "existing" {
 }
 
 locals {
-  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.spec_automation[0].name
+  resource_group_name     = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.spec_automation[0].name
   resource_group_location = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.spec_automation[0].location
 }
 
@@ -33,7 +33,7 @@ resource "azurerm_storage_account" "function_storage" {
   location                 = local.resource_group_location
   account_tier             = "Standard"
   account_replication_type = "LRS"
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -47,8 +47,8 @@ resource "azurerm_service_plan" "function_plan" {
   resource_group_name = local.resource_group_name
   location            = local.resource_group_location
   os_type             = "Linux"
-  sku_name            = "Y1"  # Consumption plan
-  
+  sku_name            = "Y1" # Consumption plan
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"
@@ -63,33 +63,33 @@ resource "azurerm_linux_function_app" "spec_dispatcher" {
   service_plan_id            = azurerm_service_plan.function_plan.id
   storage_account_name       = azurerm_storage_account.function_storage.name
   storage_account_access_key = azurerm_storage_account.function_storage.primary_access_key
-  
+
   site_config {
     application_stack {
       python_version = "3.11"
     }
   }
-  
+
   app_settings = {
     # GitHub configuration
-    GITHUB_OWNER               = var.github_owner
-    GITHUB_REPO                = var.github_repo
-    GITHUB_WORKFLOW_FILENAME   = "spec-kit-specify.yml"
-    
+    GITHUB_OWNER             = var.github_owner
+    GITHUB_REPO              = var.github_repo
+    GITHUB_WORKFLOW_FILENAME = "spec-kit-specify.yml"
+
     # Azure DevOps configuration
-    SPEC_COLUMN_NAME           = var.spec_column_name
-    AI_USER_MATCH              = var.ai_user_match
-    
+    SPEC_COLUMN_NAME = var.spec_column_name
+    AI_USER_MATCH    = var.ai_user_match
+
     # Application configuration
-    FUNCTIONS_WORKER_RUNTIME   = "python"
-    LOG_LEVEL                  = var.log_level
-    FUNCTION_TIMEOUT_SECONDS   = "30"
-    
+    FUNCTIONS_WORKER_RUNTIME = "python"
+    LOG_LEVEL                = var.log_level
+    FUNCTION_TIMEOUT_SECONDS = "30"
+
     # Secrets (placeholder - set via portal or Key Vault reference)
     # GH_WORKFLOW_DISPATCH_PAT = "@Microsoft.KeyVault(SecretUri=...)" # Set manually
     # ADO_WORK_ITEM_PAT        = "@Microsoft.KeyVault(SecretUri=...)" # Set manually
   }
-  
+
   tags = {
     Environment = var.environment
     ManagedBy   = "Terraform"

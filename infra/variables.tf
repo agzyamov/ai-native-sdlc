@@ -22,7 +22,7 @@ variable "storage_account_name" {
   description = "Name of the storage account (must be globally unique, 3-24 lowercase alphanumeric). Required for Azure Functions runtime."
   type        = string
   default     = "stspecauto001"
-  
+
   validation {
     condition     = can(regex("^[a-z0-9]{3,24}$", var.storage_account_name))
     error_message = "Storage account name must be 3-24 lowercase alphanumeric characters."
@@ -39,7 +39,7 @@ variable "function_app_name" {
   description = "Name of the Azure Function App (must be globally unique). This will be part of the function URL."
   type        = string
   default     = "func-spec-dispatch-001"
-  
+
   validation {
     condition     = can(regex("^[a-z0-9-]{2,60}$", var.function_app_name))
     error_message = "Function app name must be 2-60 lowercase alphanumeric characters or hyphens."
@@ -72,7 +72,7 @@ variable "log_level" {
   description = "Logging level (DEBUG, INFO, WARNING, ERROR). Use DEBUG for troubleshooting, INFO for normal operation."
   type        = string
   default     = "INFO"
-  
+
   validation {
     condition     = contains(["DEBUG", "INFO", "WARNING", "ERROR"], var.log_level)
     error_message = "Log level must be one of: DEBUG, INFO, WARNING, ERROR."
@@ -83,7 +83,7 @@ variable "environment" {
   description = "Environment tag (dev, staging, prod). Used for resource tagging and cost tracking."
   type        = string
   default     = "dev"
-  
+
   validation {
     condition     = contains(["dev", "staging", "prod"], var.environment)
     error_message = "Environment must be one of: dev, staging, prod."

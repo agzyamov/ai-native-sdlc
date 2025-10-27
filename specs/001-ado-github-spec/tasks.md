@@ -114,21 +114,21 @@ Tasks T026–T040 complete → Automatic generation loop validated via real or s
 
 ## Phase 4: Polish & Cross-Cutting Concerns
 
-- [ ] T041 [P] Add debounce design placeholder (hash plan) in `function_app/__init__.py`
-- [ ] T042 Implement correlation id utility (UUID4) in `function_app/util.py`
-- [ ] T043 [P] Add structured logger abstraction in `function_app/logging.py`
-- [ ] T044 Add timeout constants module `function_app/constants.py`
-- [ ] T045 Create security review checklist `specs/001-ado-github-spec/security-review.md`
-- [ ] T046 [P] Add Terraform variable descriptions & types in `infra/variables.tf`
-- [ ] T047 [P] Document outputs usage in `infra/README.md`
-- [ ] T048 Remove deprecated pipeline file after grace period (verify Function stability first)
-- [ ] T049 Add CI workflow `.github/workflows/ci-infra-validation.yml` (terraform fmt + actionlint)
-- [ ] T050 [P] Add retry behavior tests in `tests/test_dispatch.py`
-- [ ] T051 Add 403 validation failure test in `tests/test_validation.py`
-- [ ] T052 Add performance measurement note (latency log extraction) to `quickstart.md`
-- [ ] T053 [P] Add manual curl test section to `function_app/README.md`
-- [ ] T054 Add log sampling strategy comment in `function_app/logging.py`
-- [ ] T055 [P] Add guidance for capturing Terraform plan artifact/screenshot in `infra/README.md`
+- [X] T041 [P] Add debounce design placeholder (hash plan) in `function_app/__init__.py`
+- [X] T042 Implement correlation id utility (UUID4) in `function_app/util.py`
+- [X] T043 [P] Add structured logger abstraction in `function_app/logging.py`
+- [X] T044 Add timeout constants module `function_app/constants.py`
+- [X] T045 Create security review checklist `specs/001-ado-github-spec/security-review.md`
+- [X] T046 [P] Add Terraform variable descriptions & types in `infra/variables.tf`
+- [X] T047 [P] Document outputs usage in `infra/README.md`
+- [X] T048 Remove deprecated pipeline file after grace period (verify Function stability first)
+- [X] T049 Add CI workflow `.github/workflows/ci-infra-validation.yml` (terraform fmt + actionlint)
+- [X] T050 [P] Add retry behavior tests in `tests/test_dispatch.py`
+- [X] T051 Add 403 validation failure test in `tests/test_validation.py`
+- [X] T052 Add performance measurement note (latency log extraction) to `quickstart.md`
+- [X] T053 [P] Add manual curl test section to `function_app/README.md`
+- [X] T054 Add log sampling strategy comment in `function_app/logging.py`
+- [X] T055 [P] Add guidance for capturing Terraform plan artifact/screenshot in `infra/README.md`
 
 ## Dependencies & Execution Order
 

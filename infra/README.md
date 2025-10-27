@@ -103,14 +103,82 @@ See `function_app/README.md` for deployment instructions.
 
 ## Outputs
 
-After successful deployment, retrieve important values:
+After successful deployment, Terraform exports these outputs:
 
+| Output | Description | Usage |
+|--------|-------------|-------|
+| `function_name` | Name of the deployed Function App | Use with Azure CLI: `az functionapp show -n <name> -g <rg>` |
+| `function_url` | Complete HTTPS URL to function endpoint | Service Hook URL (append function key as query param) |
+| `function_default_hostname` | Function App hostname only | For custom domain configuration |
+| `resource_group_name` | Resource group containing all resources | Use for resource management commands |
+
+**Retrieve outputs**:
 ```bash
-terraform output function_url
-terraform output function_name
+terraform output
+terraform output -raw function_url  # Get specific output without quotes
 ```
 
-Use the `function_url` when configuring the Azure DevOps Service Hook.
+**Use outputs in CI/CD**:
+```bash
+# Export for subsequent steps
+export FUNCTION_URL=$(terraform output -raw function_url)
+export FUNCTION_NAME=$(terraform output -raw function_name)
+```
+
+## Terraform Plan Artifact Guidance
+
+For production deployments with approval workflows:
+
+**Generate plan artifact**:
+```bash
+# In CI pipeline or pre-deployment
+terraform plan -out=tfplan.binary
+
+# Convert to human-readable for review
+terraform show -no-color tfplan.binary > tfplan.txt
+
+# Optional: JSON format for automated policy checks
+terraform show -json tfplan.binary > tfplan.json
+```
+
+**Store plan securely**:
+```bash
+# Option 1: GitHub Actions artifact (ephemeral, 7 days retention)
+- uses: actions/upload-artifact@v4
+  with:
+    name: terraform-plan
+    path: infra/tfplan.binary
+    retention-days: 7
+
+# Option 2: Azure Storage (persistent)
+az storage blob upload \
+  --account-name <storage> \
+  --container tfplans \
+  --name "plan-$(date +%Y%m%d-%H%M%S).binary" \
+  --file tfplan.binary
+```
+
+**Apply from plan**:
+```bash
+# In approval/apply stage
+terraform apply tfplan.binary
+```
+
+**Plan validation in CI**:
+```yaml
+# Add to .github/workflows/ci-infra-validation.yml
+- name: Terraform Plan
+  run: terraform plan -input=false -no-color
+  env:
+    TF_VAR_github_owner: ${{ github.repository_owner }}
+    TF_VAR_github_repo: ${{ github.event.repository.name }}
+```
+
+**Best practices**:
+- Always review `tfplan.txt` before approval
+- Store plan artifacts for audit trail
+- Use `-lock-timeout=5m` for concurrent deployment protection
+- Verify resource_group_name output matches expectations
 
 ## Maintenance
 
