@@ -1,0 +1,164 @@
+# Azure DevOps Pipeline: Spec Dispatch (MVP)
+# Purpose: Validates work item event (column + assignee) and dispatches GitHub spec generation workflow
+# Status: Implements T011-T019 with STUB validation pending payload access
+# Future: Add debounce logic (see comment markers), payload-based validation
+
+trigger: none  # No CI triggers; started via Service Hook → Pipeline Run REST API
+pr: none
+
+variables:
+  # Column name to match (externalized for resilience)
+  SPEC_COLUMN: 'Specification – Doing'
+  # AI teammate display name (exact match required)
+  AI_TEAMMATE_NAME: 'AI Teammate'
+
+stages:
+  - stage: Dispatch
+    displayName: 'Validate & Dispatch GitHub Workflow'
+    jobs:
+      - job: validate_and_dispatch
+        displayName: 'Parse event and dispatch'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          # T014: Payload capture diagnostics
+          - script: |
+              echo '=== Spec Dispatch Pipeline Start ==='
+              echo 'Environment diagnostics:'
+              echo "PWD: $(pwd)"
+              echo "WORK_ITEM_ID (if set): ${WORK_ITEM_ID:-NOT_SET}"
+              echo ""
+              echo 'Raw environment variables (filtered):'
+              env | grep -E '^(WORK_ITEM|SYSTEM|BUILD)' | sort || echo "No matching variables"
+              echo ""
+              echo 'Attempting payload capture...'
+            displayName: 'Diagnostics & Payload Capture (T014)'
+
+          # T015: Fallback path if payload not available
+          - script: |
+              set -euo pipefail
+              if [ -z "${WORK_ITEM_ID:-}" ]; then
+                echo '⚠️  WARNING: WORK_ITEM_ID not supplied via pipeline variable'
+                echo 'This is expected if Service Hook payload forwarding is not configured'
+                echo 'Fallback: Manually set WORK_ITEM_ID as a pipeline variable for testing'
+                echo 'Exiting gracefully (no-op)'
+                exit 0
+              fi
+              echo "✅ WORK_ITEM_ID detected: $WORK_ITEM_ID"
+              echo "##vso[task.setvariable variable=WORK_ITEM_ID]$WORK_ITEM_ID"
+            displayName: 'Validate WORK_ITEM_ID (T015)'
+
+          # STUB validation (T011): Column + assignee checks not implemented until payload accessible
+          - script: |
+              set -euo pipefail
+              if [ -z "${WORK_ITEM_ID:-}" ]; then
+                echo 'No work item id; skipping (handled above)'
+                exit 0
+              fi
+              
+              # STUB: Real validation requires payload or ADO REST fetch
+              echo "⚠️  STUB VALIDATION: Assuming column=${SPEC_COLUMN} and assignee=${AI_TEAMMATE_NAME}"
+              echo "TODO: Add ADO REST API fetch to validate column/assignee when payload unavailable"
+              # Future enhancement point for debounce (T022 marker)
+              echo "# DEBOUNCE INSERTION POINT: Add hash-based duplicate check here (FR-008)"
+            displayName: 'Validate Criteria (STUB - T011)'
+
+          # T016: Branch hint slugification + T017: Use branch_hint or fallback
+          - script: |
+              set -euo pipefail
+              if [ -z "${WORK_ITEM_ID:-}" ]; then
+                echo 'No work item id; skipping dispatch'
+                exit 0
+              fi
+              
+              # Slugify: lowercase, alphanumeric + hyphen only
+              BRANCH_HINT="feature/wi-${WORK_ITEM_ID}"
+              echo "Generated branch hint: $BRANCH_HINT"
+              echo "##vso[task.setvariable variable=BRANCH_HINT]$BRANCH_HINT"
+            displayName: 'Generate Branch Hint (T016/T017)'
+
+          # T018, T019: Dispatch with logging
+          - script: |
+              set -euo pipefail
+              if [ -z "${WORK_ITEM_ID:-}" ]; then
+                echo 'No work item id; skipping dispatch'
+                exit 0
+              fi
+              
+              if [ -z "${GH_WORKFLOW_DISPATCH_PAT:-}" ]; then
+                echo '❌ ERROR: GH_WORKFLOW_DISPATCH_PAT not set in pipeline variables'
+                echo 'Please add this secret to your pipeline variable group'
+                exit 1
+              fi
+              
+              if [ -z "${GITHUB_OWNER:-}" ] || [ -z "${GITHUB_REPO:-}" ]; then
+                echo '❌ ERROR: GITHUB_OWNER and GITHUB_REPO variables required'
+                echo 'Set these in pipeline variables'
+                exit 1
+              fi
+              
+              echo "🚀 Dispatching GitHub workflow..."
+              echo "  Work Item: $WORK_ITEM_ID"
+              echo "  Branch Hint: $BRANCH_HINT"
+              echo "  Target: ${GITHUB_OWNER}/${GITHUB_REPO}"
+              echo ""
+              
+              # T018: Commit message enhancement (ADO Feature ID embedded in payload)
+              RESPONSE=$(curl -sSL -w "\n%{http_code}" -X POST \
+                -H "Authorization: Bearer ${GH_WORKFLOW_DISPATCH_PAT}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "Content-Type: application/json" \
+                "https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/spec-kit-specify.yml/dispatches" \
+                -d "{\"ref\":\"main\",\"inputs\":{\"work_item_id\":\"${WORK_ITEM_ID}\",\"branch_hint\":\"${BRANCH_HINT}\",\"feature_description\":\"ADO Work Item #${WORK_ITEM_ID}\",\"create_branch\":\"true\"}}")
+              
+              HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+              BODY=$(echo "$RESPONSE" | sed '$d')
+              
+              if [ "$HTTP_CODE" = "204" ]; then
+                echo "✅ Dispatch successful (HTTP $HTTP_CODE)"
+                echo "Check GitHub Actions: https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions"
+              else
+                echo "❌ Dispatch failed (HTTP $HTTP_CODE)"
+                echo "Response: $BODY"
+                exit 1
+              fi
+            displayName: 'Dispatch GitHub Workflow (T018/T019)'
+            env:
+              GH_WORKFLOW_DISPATCH_PAT: $(GH_WORKFLOW_DISPATCH_PAT)
+              GITHUB_OWNER: $(GITHUB_OWNER)
+              GITHUB_REPO: $(GITHUB_REPO)
+              WORK_ITEM_ID: $(WORK_ITEM_ID)
+              BRANCH_HINT: $(BRANCH_HINT)
+
+          - script: |
+              echo '✅ Pipeline complete'
+            displayName: 'Complete'
+
+# Required Pipeline Variables (set in Variable Group or pipeline settings):
+# - GH_WORKFLOW_DISPATCH_PAT : GitHub PAT (scopes: repo workflows + contents:read)
+# - GITHUB_OWNER : GitHub organization or user name
+# - GITHUB_REPO  : Target repository name
+# - WORK_ITEM_ID : (Temporary) Manual injection until Service Hook payload forwarding resolved
+#
+# Optional (for future):
+# - ADO_ORG : Azure DevOps organization (for REST fetch validation)
+# - ADO_PROJECT : Azure DevOps project name
+# - ADO_WORKITEM_RW_PAT : For fetching work item details (validation enhancement)
+#
+# Service Hook Configuration (T013):
+# 1. Create Service Hook: Work Item Updated
+# 2. Target: Web Hook → POST to Pipeline Run REST API
+#    URL: https://dev.azure.com/{org}/{project}/_apis/pipelines/{pipelineId}/runs?api-version=7.0
+# 3. Auth: Basic (using ADO PAT with pipeline run permission)
+#
+# Assumptions (from quickstart.md):
+# - Payload forwarding mechanism TBD (may require relay or manual WORK_ITEM_ID injection)
+# - Column/assignee validation stubbed until payload accessible or ADO REST fetch added
+# - Branch hint simplified (no title slugification yet; fallback to work item id pattern)
+# - Debounce deferred (see marker in validation step)
+#
+# Future Enhancements (Backlog FR-004..FR-011):
+# - Hash-based debounce (FR-008)
+# - Performance metrics (FR-004)
+# - Failure surfacing to ADO (FR-005)
+# - Automated assumption insertion (FR-011)

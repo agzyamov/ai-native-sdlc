@@ -12,7 +12,7 @@ Automate initial specification generation when an Azure DevOps Feature (Assigned
 ## Technical Context
 
 **Language/Version**: GitHub Actions composite environment (YAML) + Bash; Spec Kit CLI (Python runtime 3.11 in workflow).  
-**Primary Dependencies**: Existing `spec-kit-specify.yml` workflow (checkout, setup-node, setup-python, specify-cli via uv); Azure DevOps Service Hook (Work Item Updated + board column) → Azure Function proxy; Azure DevOps Work Item Update REST endpoint `PATCH https://dev.azure.com/{org}/{project}/_apis/wit/workitems/{id}?api-version=7.0` (JSON Patch replace `/fields/System.Description`); secrets: `ADO_WORKITEM_RW_PAT` (Description overwrite) and `GH_WORKFLOW_DISPATCH_PAT` (workflow_dispatch PAT stored only in Function config).  
+**Primary Dependencies**: Existing `spec-kit-specify.yml` workflow (checkout, setup-node, setup-python, specify-cli via uv); Azure DevOps Service Hook (Work Item Updated + board column) → Azure DevOps YAML pipeline; Azure DevOps Work Item Update REST endpoint `PATCH https://dev.azure.com/{org}/{project}/_apis/wit/workitems/{id}?api-version=7.0` (JSON Patch replace `/fields/System.Description`); secrets: `ADO_WORKITEM_RW_PAT` (Description overwrite in GitHub workflow) and `GH_WORKFLOW_DISPATCH_PAT` (workflow_dispatch PAT stored in ADO pipeline variables).  
 **Storage**: None (stateless; spec stored in Git + ADO work item Description).  
 **Testing**: Minimal pilot checklist: (1) trigger via real Service Hook event, (2) confirm branch + `spec.md`, (3) verify Description overwrite, (4) second save in same column produces no duplicate branch. No automated harness in MVP (deferred).  
 **Target Platform**: Cloud CI (GitHub Actions Ubuntu runners) & Azure DevOps Boards.  
@@ -22,7 +22,7 @@ Automate initial specification generation when an Azure DevOps Feature (Assigned
 **Scale/Scope**: Pilot scale (<20 Features) initial; Backlog criteria for scale resilience.
 
 ### Integration Flow (MVP) — Pipeline Variant (No Azure Function)
-1. Azure DevOps Service Hook (Work Item Updated) invokes Azure DevOps Pipelines Run REST API (assumption: permitted via Service Hook Web Hook using PAT Basic auth) to start dedicated YAML pipeline `azure-pipelines-spec-dispatch.yml`.
+1. Azure DevOps Service Hook (Work Item Updated) invokes Azure DevOps Pipelines Run REST API (assumption: permitted via Service Hook Web Hook using PAT Basic auth) to start dedicated YAML pipeline `.azure-pipelines/spec-dispatch.yml`.
 2. Pipeline job downloads the triggering event body (passed verbatim by Service Hook) from predefined file (`event.json`) or environment variable (assumption: service hook POST body is forwarded to pipeline as `SYSTEM_WEBHOOK_PAYLOAD`; if not, a thin relay may be required — documented in assumptions).
 3. Pipeline Bash step parses work item id, new board column, work item type, assignee; validates: column == `Specification – Doing`, type == Feature, Assigned To == AI Teammate.
 4. On pass, pipeline derives `branch_hint` (slugified Title) and calls GitHub `workflow_dispatch` (PAT: `GH_WORKFLOW_DISPATCH_PAT`) supplying inputs: work_item_id, branch_hint.
@@ -37,7 +37,7 @@ Automate initial specification generation when an Azure DevOps Feature (Assigned
 ### Deferred / Provisional Items (Tracked in research.md)
 | Item | Current Stance | Promotion Trigger |
 |------|----------------|-------------------|
-| Intermediary function (Azure Function proxy) | Mandatory | Evolves with debounce/metrics |
+| ADO pipeline dispatch (Service Hook trigger) | Provisional (payload forwarding TBD) | Evolves with debounce/metrics |
 | Debounce logic | Deferred | Observed duplicate dispatch noise |
 | Automated test harness | Deferred | >10 pilot Features executed |
 | Failure surfacing to ADO comment | Deferred | First meaningful failure or stakeholder request |

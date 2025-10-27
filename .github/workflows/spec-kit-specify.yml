@@ -1,5 +1,11 @@
 name: Spec Kit - Specify Feature
 
+# Implements: Feature specification generation + Azure DevOps Description overwrite
+# Deferred (Backlog): FR-004 (logging), FR-005 (failure surfacing), FR-006 (enhanced traceability),
+#                     FR-007 (regeneration), FR-008 (debounce), FR-010 (performance SLO),
+#                     FR-011 (assumption auto-insertion)
+# See: specs/001-ado-github-spec/spec.md Backlog section
+
 on:
   workflow_dispatch:
     inputs:
@@ -12,6 +18,14 @@ on:
         required: false
         type: boolean
         default: true
+      work_item_id:
+        description: 'Azure DevOps Work Item ID (for Description overwrite)'
+        required: false
+        type: string
+      branch_hint:
+        description: 'Suggested branch name (from ADO pipeline)'
+        required: false
+        type: string
 
 jobs:
   specify-feature:
@@ -280,6 +294,72 @@ jobs:
 
             echo "✅ Specification committed and pushed to $BRANCH_NAME"
           fi
+
+      # ADO Description Overwrite (T007, T008, T009)
+      # Contract reference: specs/001-ado-github-spec/contracts/README.md
+      # Implements JSON Patch REPLACE operation with exponential backoff retry
+      - name: Overwrite ADO Work Item Description
+        if: github.event.inputs.work_item_id != ''
+        env:
+          ADO_WORKITEM_RW_PAT: ${{ secrets.ADO_WORKITEM_RW_PAT }}
+          ADO_ORG: ${{ vars.ADO_ORG || 'your-org' }}
+          ADO_PROJECT: ${{ vars.ADO_PROJECT || 'your-project' }}
+        run: |
+          WORK_ITEM_ID="${{ github.event.inputs.work_item_id }}"
+          SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
+
+          if [ -z "$ADO_WORKITEM_RW_PAT" ]; then
+            echo "⚠️ ADO_WORKITEM_RW_PAT not set; skipping Description overwrite"
+            exit 0
+          fi
+
+          echo "🔄 Overwriting ADO Work Item #$WORK_ITEM_ID Description with generated spec..."
+
+          # Read spec content and escape for JSON
+          SPEC_CONTENT=$(<"$SPEC_FILE")
+          SPEC_JSON=$(jq -Rs . <<< "$SPEC_CONTENT")
+
+          # Construct JSON Patch payload
+          PAYLOAD=$(cat <<EOF
+          [
+            {
+              "op": "replace",
+              "path": "/fields/System.Description",
+              "value": $SPEC_JSON
+            }
+          ]
+          EOF
+          )
+
+          # PATCH with retry (x2 exponential backoff)
+          ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0"
+          
+          for ATTEMPT in 1 2 3; do
+            echo "Attempt $ATTEMPT..."
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+              -H "Content-Type: application/json-patch+json" \
+              -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64)" \
+              -d "$PAYLOAD" \
+              "$ENDPOINT")
+            
+            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+              echo "✅ ADO Description overwritten successfully (HTTP $HTTP_CODE)"
+              exit 0
+            elif [[ "$HTTP_CODE" =~ ^4 ]]; then
+              echo "❌ Client error (HTTP $HTTP_CODE); not retrying"
+              echo "Response: $BODY"
+              exit 1
+            else
+              echo "⚠️ Server error (HTTP $HTTP_CODE); retrying after backoff..."
+              [ $ATTEMPT -lt 3 ] && sleep $((2 ** ATTEMPT))
+            fi
+          done
+          
+          echo "❌ Failed after 3 attempts"
+          exit 1
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
