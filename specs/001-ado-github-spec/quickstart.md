@@ -38,12 +38,12 @@ Run and validate the automatic spec generation loop for a pilot Feature.
    5. Select branch: `001-ado-github-spec` (or your feature branch)
    6. Path: `/.azure-pipelines/spec-dispatch.yml`
    7. Click **Continue**, then **Save** (do not run yet)
-   8. **Record pipeline ID** (visible in URL after save): `____________`
-      - URL format: `https://dev.azure.com/{org}/{project}/_build?definitionId={pipelineId}`
+   8. **Record pipeline ID** (visible in URL after save): `3` ✅
+      - URL: `https://dev.azure.com/RustemAgziamov/ai-native-sdlc-blueprint/_build?definitionId=3`
    
    **Note:** This connects the pipeline to your GitHub repo for source code. The Service Hook (step 6) is what triggers the pipeline when work items update.
 
-5. ⚠️ **ACTION REQUIRED**: Configure Azure DevOps pipeline variables (T012)
+5. ✅ Configure Azure DevOps pipeline variables (T012) - **COMPLETED**
    
    **Step-by-step:**
    1. Go to **Pipelines** → select your newly created pipeline
@@ -52,7 +52,7 @@ Run and validate the automatic spec generation loop for a pilot Feature.
       
       **Secret variable:**
       - Name: `GH_WORKFLOW_DISPATCH_PAT`
-      - Value: `<your-github-pat>` (scopes: `repo`, `workflow`)
+      - Value: `<your-github-pat>` (Fine-grained PAT repository permissions: **Actions: Read and write**, **Contents: Read**)
       - ✅ Check "Keep this value secret"
       - Click **OK**
       
@@ -63,43 +63,28 @@ Run and validate the automatic spec generation loop for a pilot Feature.
    
    4. Click **Save** (top right)
 
-6. ⚠️ **ACTION REQUIRED**: Create Service Hook (Work Item Updated) (T013)
+6. ⚠️ **DEFERRED**: Automatic Service Hook triggering (T013)
    
-   **Step-by-step:**
-   1. Navigate to **Project Settings** (bottom left gear icon)
-   2. Under **General**, select **Service hooks**
-   3. Click **+ Create subscription**
-   4. Select **Web Hooks** → **Next**
+   **Status**: The Pipeline Run API requires a specific JSON format (`{"resources": {...}}`) that doesn't match the Service Hook payload structure. Service Hooks send the full work item event payload, causing 400 Bad Request errors.
    
-   **Trigger configuration:**
-   - Event: **Work item updated**
-   - Filters:
-     - Area path: `{your-project}` (or leave blank for all)
-     - Work item type: `Feature`
-     - (Optional) Changed by: `AI Teammate` (to reduce noise)
-   - Click **Next**
+   **MVP Approach**: Manual pipeline testing
+   - Go to **Pipelines** → select **spec-dispatch** pipeline → **Run pipeline**
+   - Uses `WORK_ITEM_ID` variable configured in step 5
+   - Validates full integration: Pipeline → GitHub workflow → ADO Description update
    
-   **Action configuration:**
-   - URL: `https://dev.azure.com/{org}/{project}/_apis/pipelines/{pipelineId}/runs?api-version=7.0`
-     - Replace `{org}`, `{project}`, and `{pipelineId}` with your values
-   - HTTP headers:
-     ```
-     Content-Type: application/json
-     Authorization: Basic {base64-encoded-PAT}
-     ```
-     - To generate Base64 PAT: `echo -n ":{your-ado-pat}" | base64`
-     - PAT scopes needed: **Build (read and execute)**
-   - Resource details to send: **All**
-   - Messages to send: **All**
-   - Detailed messages to send: **All**
+   **Future Options** (requires additional dependencies):
+   - **Azure Function**: Transform Service Hook payload to Pipeline API format
+   - **Logic App**: Same transformation via low-code workflow
+   - **Azure Pipelines Service Hook**: Native integration (not available in your org)
    
-   5. Click **Test** to verify connection
-   6. Click **Finish**
-   
-   **Troubleshooting:**
-   - If test fails with 401: Check PAT is valid and has Build execute permission
-   - If test fails with 404: Verify pipeline ID is correct
-   - Check Service Hook history: Project Settings → Service hooks → select hook → History
+   **To test automatic triggering later**:
+   1. Create transformation service (Function/Logic App)
+   2. Service Hook → Transformation service → Pipeline Run API
+   3. Payload transformation:
+      ```json
+      // Input: Service Hook work item payload
+      // Output: {"resources": {"repositories": {"self": {"refName": "refs/heads/main"}}}, "variables": {"WORK_ITEM_ID": {"value": "123"}}}
+      ```
 6. ✅ Validate mermaid & workflow tooling (T004):
    - `./scripts/validate_diagrams.sh changed` (if diagrams modified)
    - `actionlint .github/workflows/spec-kit-specify.yml` (shellcheck warnings acceptable)## Automatic Trigger (Pipeline Variant – Planned)

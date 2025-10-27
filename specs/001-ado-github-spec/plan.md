@@ -12,7 +12,7 @@ Automate initial specification generation when an Azure DevOps Feature (Assigned
 ## Technical Context
 
 **Language/Version**: GitHub Actions composite environment (YAML) + Bash; Spec Kit CLI (Python runtime 3.11 in workflow).  
-**Primary Dependencies**: Existing `spec-kit-specify.yml` workflow (checkout, setup-node, setup-python, specify-cli via uv); Azure DevOps Service Hook (Work Item Updated + board column) → Azure DevOps YAML pipeline; Azure DevOps Work Item Update REST endpoint `PATCH https://dev.azure.com/{org}/{project}/_apis/wit/workitems/{id}?api-version=7.0` (JSON Patch replace `/fields/System.Description`); secrets: `ADO_WORKITEM_RW_PAT` (Description overwrite in GitHub workflow) and `GH_WORKFLOW_DISPATCH_PAT` (workflow_dispatch PAT stored in ADO pipeline variables).  
+**Primary Dependencies**: Existing `spec-kit-specify.yml` workflow (checkout, setup-node, setup-python, specify-cli via uv); Azure DevOps Service Hook (Work Item Updated) → Azure Function (HTTP trigger) → GitHub `workflow_dispatch`; Azure DevOps Work Item Update REST endpoint `PATCH https://dev.azure.com/{org}/{project}/_apis/wit/workitems/{id}?api-version=7.0` (JSON Patch replace `/fields/System.Description`); secrets/app settings: `ADO_WORKITEM_RW_PAT` (Description overwrite), `GH_WORKFLOW_DISPATCH_PAT` (GitHub fine‑grained PAT: Actions RW, Contents R), `ADO_WORK_ITEM_PAT` (Work Items Read) used only inside Function for validation fetch.  
 **Storage**: None (stateless; spec stored in Git + ADO work item Description).  
 **Testing**: Minimal pilot checklist: (1) trigger via real Service Hook event, (2) confirm branch + `spec.md`, (3) verify Description overwrite, (4) second save in same column produces no duplicate branch. No automated harness in MVP (deferred).  
 **Target Platform**: Cloud CI (GitHub Actions Ubuntu runners) & Azure DevOps Boards.  
@@ -20,15 +20,23 @@ Automate initial specification generation when an Azure DevOps Feature (Assigned
 **Performance Goals**: Deferred (latency SLO in Backlog).  
 **Constraints**: MUST not introduce new workflow states; MUST preserve Description-as-spec; MUST avoid partial Description merges (full overwrite).  
 **Scale/Scope**: Pilot scale (<20 Features) initial; Backlog criteria for scale resilience.
+**Infrastructure Provisioning (Principle 7)**: Terraform IaC REQUIRED before production for Azure Function + associated storage/plan; scaffold is PENDING (acceptable for pilot, blocks production hardening gate).
 
-### Integration Flow (MVP) — Pipeline Variant (No Azure Function)
-1. Azure DevOps Service Hook (Work Item Updated) invokes Azure DevOps Pipelines Run REST API (assumption: permitted via Service Hook Web Hook using PAT Basic auth) to start dedicated YAML pipeline `.azure-pipelines/spec-dispatch.yml`.
-2. Pipeline job downloads the triggering event body (passed verbatim by Service Hook) from predefined file (`event.json`) or environment variable (assumption: service hook POST body is forwarded to pipeline as `SYSTEM_WEBHOOK_PAYLOAD`; if not, a thin relay may be required — documented in assumptions).
-3. Pipeline Bash step parses work item id, new board column, work item type, assignee; validates: column == `Specification – Doing`, type == Feature, Assigned To == AI Teammate.
-4. On pass, pipeline derives `branch_hint` (slugified Title) and calls GitHub `workflow_dispatch` (PAT: `GH_WORKFLOW_DISPATCH_PAT`) supplying inputs: work_item_id, branch_hint.
-5. GitHub Actions workflow: branch create/reuse → Spec Kit generation → PATCH overwrite of ADO Description via `ADO_WORKITEM_RW_PAT` (retry x2 on 5xx) → commit.
-6. ADO feature shows updated Description + Development tab branch; human review moves to `Specification – Done` (no further automation in MVP).
-7. If validation fails (wrong column/assignee), pipeline exits 0 (no-op) to avoid noise; logging retained for audit.
+### Integration Flow (MVP) — Azure Function Variant (Pipeline Removed)
+1. Azure DevOps Service Hook (Work Item Updated) POSTs raw event JSON to an Azure Function HTTPS endpoint secured by a function key (future: HMAC shared secret header).
+2. Function extracts `resource.workItemId`; validates `eventType == workitem.updated`; 400 on malformed payload.
+3. Function (if required) performs ADO REST fetch for full work item to obtain board column / assignee (GET work item). Validation rules:
+  - Type == Feature
+  - Assigned To matches configured AI teammate display name (case-insensitive)
+  - Column/State == `Specification – Doing` (env configurable `SPEC_COLUMN_NAME`)
+  - On any rule failure → 403 (no dispatch)
+4. Derive `branch_hint = feature/wi-{id}` (title slug deferred) and invoke GitHub `workflow_dispatch` with inputs: `work_item_id`, `branch_hint`, `feature_description` placeholder.
+5. GitHub workflow executes unchanged (generation + Description overwrite via `ADO_WORKITEM_RW_PAT` with retry on transient 5xx).
+6. Function returns 204 on success (future: 202 for debounce short‑circuit). Structured log written (item id, validation result, dispatch status, latency ms).
+7. Deprecated pipeline `.azure-pipelines/spec-dispatch.yml` retained temporarily for rollback but no longer part of active flow.
+8. Debounce hashing, metrics export, and failure comment surfacing intentionally deferred to backlog.
+
+Rationale: Service Hook payload shape incompatible with Pipelines Run API (`RunPipelineParameters`), causing 400 errors; Function provides flexible transformation + validation without extra CI hop (Principle 6: Direct Event Path).
 
 ### Known Reusable Assets
 - `spec-kit-specify.yml` (short-name + generation + commit logic)
@@ -56,8 +64,10 @@ The plan MUST explicitly confirm each gate below (FAIL any → plan not approvab
 | Minimal State Model | No added workflow states; only New→Specification→Planning→Validation→Ready referenced | OK |
 | Quality Automation | Diagram + workflow validation steps documented (mermaid-cli, actionlint) | OK (steps in quickstart) |
 | Complexity Justification | Any structural deviations justified in Complexity Tracking section | OK (none) |
+| Direct Event Path (Principle 6) | No unnecessary intermediary hops in automation path | OK (pipeline removed) |
+| IaC Declaration (Principle 7) | Durable infra declared via Terraform prior to production usage | PENDING (Terraform scaffold not yet created) |
 
-Remediation: None pending for gates; remaining unknowns tracked in research.md.
+Remediation: IaC Declaration gate PENDING — create `infra/` Terraform scaffold (Function App, Storage, Plan) before moving beyond pilot. Schedule: within current branch prior to enabling production secrets. Owner: AI Teammate.
 
 Add a brief note if any gate is FAIL with remediation path and responsible owner.
 
@@ -96,13 +106,15 @@ scripts/
 
 ## Complexity Tracking
 
-Deviation Introduced (Post-Revision): Replaced earlier planned Azure Function intermediary with Azure DevOps YAML pipeline for validation + dispatch.
+Current Deviation: Removed YAML pipeline hop; reinstated Azure Function to align payload format & enable richer validation before dispatch.
 
-| Aspect | Original | Current | Risk | Mitigation |
-|--------|----------|---------|------|------------|
-| Event Validation | Function (rich payload) | Pipeline (stub validation) | False positives | Add payload relay or revert to direct dispatch if noise high |
-| Secret Isolation | Function config | Split: ADO pipeline vs GitHub secrets | Slight sprawl | Consolidate under GitHub App later |
-| Extensibility (debounce/metrics) | High (code) | Medium (scripts) | Added effort later | Backlog item to migrate to Function/App if complexity grows |
-| Work Item Context Access | Direct re-fetch in Function | Not implemented (would happen in GitHub step only) | Missed pre-dispatch filter | Add ADO REST fetch in pipeline if payload accessible |
+| Aspect | Previous (Pipeline) | Current (Function) | Risk | Mitigation |
+|--------|---------------------|--------------------|------|------------|
+| Event Validation | Stub (limited fields) | Full (fetch + rules) | Slight latency increase | Use short HTTP timeouts; skip redundant fetch if data present |
+| Secret Distribution | Split (pipeline vars + GH secrets) | Consolidated (Function app settings) | Central secret compromise | Rotate PATs; future GitHub App integration |
+| Debounce Implementation | Awkward (state external) | Straightforward (hash + store) | Not yet implemented | Backlog FR; design hash schema now |
+| Observability | Minimal job logs | Structured JSON logs | Log noise | Introduce sampling / severity levels |
+| Rollback | Hard (recreate function) | Simple (invoke manual workflow or resurrect pipeline) | Stale pipeline drift | Schedule deletion after Function GA |
+| Infrastructure as Code | Not applicable (no runtime) | Required Terraform not yet authored | Drift / manual config risk | Add infra/ Terraform early; enforce plan in CI |
 
-Status: Accepted for MVP per user directive (eliminate Azure Function dependency).
+Status: Accepted; pipeline marked deprecated (scheduled removal by 2025-11-26); function path is prerequisite for future debounce & metrics enhancements; IaC compliance pending.

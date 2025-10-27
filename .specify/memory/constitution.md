@@ -1,16 +1,17 @@
 <!--
 Sync Impact Report
-Version: (new) 1.0.0 (initial adoption)
-Previous Version: none
-Modified Principles: (initial set created)
-Added Sections: Core Principles, Constraints & Standards, Operational Workflow, Governance
+Version: (new) 1.1.0 (minor) – add Principles 6 & 7; new constraints (deprecation retention, idempotency)
+Previous Version: 1.0.0
+Modified Principles: Core Principles section extended (added #6, #7)
+Added Sections: New subsections in Constraints & Standards (Deprecation Retention, Idempotency & Observability)
 Removed Sections: none
 Templates Reviewed:
-	- .specify/templates/plan-template.md ✅ updated (Constitution Check expanded)
-	- .specify/templates/spec-template.md ✅ aligned (independent user stories already present)
-	- .specify/templates/tasks-template.md ✅ aligned (story-based task grouping already present)
-	- .specify/templates/commands/* ⚠ none present (directory absent) - no action
-Follow-up TODOs: none
+	- .specify/templates/plan-template.md ✅ no change needed (Function path already documented in plan.md)
+	- .specify/templates/spec-template.md ✅ unaffected
+	- .specify/templates/tasks-template.md ✅ will require future task archetypes for infra (deferred)
+	- .specify/templates/commands/* ⚠ none present - still no action
+Follow-up TODOs:
+	- Add infrastructure task archetype examples (MINOR, separate PR)
 -->
 
 # AI-Native SDLC Constitution
@@ -52,6 +53,21 @@ The following MUST be enforced:
 - Plan: explicit structure + Constitution Check section completed
 - Tasks: grouped strictly by user story; test tasks precede implementation when requested
 
+### 6. Direct Event Path (Eliminate Unnecessary Intermediaries)
+Event-driven automation MUST avoid superfluous workflow hops. Transformations, validation,
+and dispatch orchestration SHOULD occur in the minimal viable component (e.g., direct Azure
+Function) rather than chaining CI pipelines purely as relays. Intermediary removal is
+encouraged when it reduces latency, secret proliferation, or failure surfaces—provided
+observability is preserved. Re‑introducing an intermediary requires justification tied to
+debounce, batching, or compliance.
+
+### 7. Infrastructure as Code Mandate
+Durable cloud resources (Function Apps, storage, plans, schedulers, Key Vault, queues) MUST
+be declared via Infrastructure as Code (Terraform baseline) before production usage. Manual
+portal or ad-hoc creation is permissible only for exploratory spikes and MUST NOT persist
+past the spike branch lifecycle. All IaC changes SHOULD remain reviewable with plan output
+attached or summarized.
+
 ## Constraints & Standards
 
 - Line length guidance: target ≤100 characters for authored Markdown and code (non-binding
@@ -62,6 +78,20 @@ The following MUST be enforced:
 	scripts to reduce drift.
 - Clarification churn: If >3 regeneration cycles without convergence, escalate manually
 	(human review) rather than adding automation complexity.
+
+### Deprecation Retention & Sunset
+Deprecated automation components (e.g., superseded pipeline definitions) MAY remain for a
+grace period spanning one MINOR version or 30 days (whichever is shorter) unless they
+introduce security, reliability, or cost risk. Each deprecated artifact MUST include a
+comment header: `DEPRECATED: <reason> (remove by <date>)`.
+
+### Idempotency & External Observability
+Automation entry points (functions, dispatch handlers) MUST be:
+- Idempotent with respect to duplicate upstream events (safe no-op or merged effect)
+- Externally observable through structured logs (include correlation/work item id)
+- Bounded by explicit timeouts on outbound network calls
+Retries MUST use exponential backoff with bounded attempts; validation failures MUST NOT be
+retried.
 
 ## Operational Workflow
 
@@ -88,3 +118,6 @@ The following MUST be enforced:
 	if unmet. Automated scripts MAY surface violations but human approval is final.
 
 **Version**: 1.0.0 | **Ratified**: 2025-10-26 | **Last Amended**: 2025-10-26
+**Version**: 1.1.0 | **Ratified**: 2025-10-27 | **Last Amended**: 2025-10-27 (Added Principles 6 & 7; new
+constraints on deprecation, idempotency, observability; formalized IaC requirement; documented
+direct Function dispatch replacing interim pipeline hop.)
