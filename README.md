@@ -69,6 +69,11 @@ High-level lifecycle (see `docs/workflow.md` for full detail):
 
 <!-- Archived workflow usage sections removed -->
 
+## 📖 Feature-Specific Guides
+
+For detailed setup and usage of specific integrations (e.g., Azure DevOps → GitHub spec generation), see:
+- `specs/001-ado-github-spec/quickstart.md` - ADO → GitHub integration guide
+
 ##  Workflows
 
 Current workflow files (see `.github/workflows/`):
@@ -76,6 +81,8 @@ Current workflow files (see `.github/workflows/`):
 | File | Purpose | Auth Mode |
 |------|---------|-----------|
 | `spec-kit-specify.yml` | Generate / refine specification artifacts using Spec Kit | PAT |
+
+For feature-specific integration guides (such as Azure DevOps → GitHub integration), see `specs/[feature-id]/quickstart.md` in each feature directory.
 
 > Archived / disabled former workflows are stored under `.github/workflows/archive/` and suffixed with `.disabled` (e.g. previous feature, QA, query, init demos). Reactivate by moving them back and removing the suffix.
 

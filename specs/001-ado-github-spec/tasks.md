@@ -12,20 +12,20 @@ description: "Implementation task list for Azure DevOps → GitHub Spec Generati
 ## Phase 1: Setup (Shared Infrastructure)
 Purpose: Ensure repo + baseline tooling ready for integration changes.
 
-- [ ] T001 Create placeholder pipeline design note in `specs/001-ado-github-spec/plan.md` (already present – verify, no edit if consistent)
+- [X] T001 Create placeholder pipeline design note in `specs/001-ado-github-spec/plan.md` (already present – verify, no edit if consistent)
 - [ ] T002 Add secret `ADO_WORKITEM_RW_PAT` to GitHub repository settings (external action; document completion in `quickstart.md`)
-- [ ] T003 Add rotation note for tokens in `specs/001-ado-github-spec/quickstart.md` (verify existing text; adjust if missing interval)
-- [ ] T004 [P] Validate `.github/workflows/spec-kit-specify.yml` exists and is syntactically valid (actionlint) (no content change yet)
-- [ ] T005 [P] Add local developer note in `README.md` referencing feature quickstart (documentation cross-link)
+- [X] T003 Add rotation note for tokens in `specs/001-ado-github-spec/quickstart.md` (verify existing text; adjust if missing interval)
+- [X] T004 [P] Validate `.github/workflows/spec-kit-specify.yml` exists and is syntactically valid (actionlint) (no content change yet)
+- [X] T005 [P] Add local developer note in `README.md` referencing feature quickstart (documentation cross-link)
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 Purpose: Core modifications required before story logic executes.
 
-- [ ] T006 Insert new workflow inputs (`work_item_id`, `branch_hint`) scaffold into `.github/workflows/spec-kit-specify.yml` (commented / no-op until dispatch path finalized)
-- [ ] T007 Implement ADO Description PATCH step in `.github/workflows/spec-kit-specify.yml` after spec generation commit (uses `ADO_WORKITEM_RW_PAT`)
-- [ ] T008 [P] Add minimal retry (x2 exponential) around PATCH step (inline shell or composite action) in `.github/workflows/spec-kit-specify.yml`
-- [ ] T009 [P] Document PATCH contract reference link inside workflow as comment (maintainability)
-- [ ] T010 Remove residual intermediary (Azure Function) language from `plan.md` (if any stray references remain)
+- [X] T006 Insert new workflow inputs (`work_item_id`, `branch_hint`) scaffold into `.github/workflows/spec-kit-specify.yml` (commented / no-op until dispatch path finalized)
+- [X] T007 Implement ADO Description PATCH step in `.github/workflows/spec-kit-specify.yml` after spec generation commit (uses `ADO_WORKITEM_RW_PAT`)
+- [X] T008 [P] Add minimal retry (x2 exponential) around PATCH step (inline shell or composite action) in `.github/workflows/spec-kit-specify.yml`
+- [X] T009 [P] Document PATCH contract reference link inside workflow as comment (maintainability)
+- [X] T010 Remove residual intermediary (Azure Function) language from `plan.md` (if any stray references remain)
 
 **Checkpoint**: Workflow can be manually triggered with manual inputs (temporary) and successfully overwrites an ADO work item Description in a dry run (using test ID).
 
@@ -34,16 +34,16 @@ Purpose: Core modifications required before story logic executes.
 **Independent Test**: Move qualifying Feature → verify spec commit + Description overwrite without manual workflow dispatch.
 
 ### Implementation (US1)
-- [ ] T011 [US1] Author pipeline YAML `azure-pipelines-spec-dispatch.yml` (reintroduced from design) with clearly marked STUB validation
-- [ ] T012 [P] [US1] Add `GH_WORKFLOW_DISPATCH_PAT` as secret pipeline variable (document completion in `quickstart.md`)
-- [ ] T013 [P] [US1] Add Service Hook (Work Item Updated) → pipeline run (external action; record pipeline ID in `quickstart.md`)
-- [ ] T014 [P] [US1] Enhance pipeline to attempt payload capture (log raw environment for diagnosis)
-- [ ] T015 [US1] Add fallback path in pipeline: if payload missing, require `WORK_ITEM_ID` variable (documented in quickstart)
-- [ ] T016 [US1] Add branch hint slugification (sanitized: lowercase, alnum + hyphen) inside pipeline dispatch step
-- [ ] T017 [US1] Update workflow to use `branch_hint` if supplied, else compute default (comment guarding existing logic)
-- [ ] T018 [US1] Add commit message enhancement including ADO Feature ID placeholder
-- [ ] T019 [P] [US1] Add minimal logging (echo lines) around spec generation to surface debugging context
-- [ ] T020 [US1] Manual end-to-end test: move test Feature → confirm pipeline triggers, workflow runs, Description overwritten (record test evidence in `responses/` directory)
+- [X] T011 [US1] Author pipeline YAML `.azure-pipelines/spec-dispatch.yml` (reintroduced from design) with clearly marked STUB validation
+- [ ] T012 [P] [US1] Add `GH_WORKFLOW_DISPATCH_PAT` as secret pipeline variable (⚠️ **EXTERNAL ACTION** - document completion in `quickstart.md`)
+- [ ] T013 [P] [US1] Add Service Hook (Work Item Updated) → pipeline run (⚠️ **EXTERNAL ACTION** - record pipeline ID in `quickstart.md`)
+- [X] T014 [P] [US1] Enhance pipeline to attempt payload capture (log raw environment for diagnosis)
+- [X] T015 [US1] Add fallback path in pipeline: if payload missing, require `WORK_ITEM_ID` variable (documented in quickstart)
+- [X] T016 [US1] Add branch hint slugification (sanitized: lowercase, alnum + hyphen) inside pipeline dispatch step
+- [X] T017 [US1] Update workflow to use `branch_hint` if supplied, else compute default (comment guarding existing logic)
+- [X] T018 [US1] Add commit message enhancement including ADO Feature ID placeholder
+- [X] T019 [P] [US1] Add minimal logging (echo lines) around spec generation to surface debugging context
+- [ ] T020 [US1] Manual end-to-end test: move test Feature → confirm pipeline triggers, workflow runs, Description overwritten (⚠️ **BLOCKED** - requires T012 & T013 completion; record test evidence in `responses/` directory)
 
 **Checkpoint**: US1 end-to-end functional with a real Feature.
 
