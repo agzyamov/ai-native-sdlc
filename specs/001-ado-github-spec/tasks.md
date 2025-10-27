@@ -57,34 +57,34 @@ description: "Task list for Azure DevOps → GitHub Spec Generation feature"
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Create `infra/` directory structure (infra/main.tf, infra/providers.tf, infra/variables.tf, infra/outputs.tf)
-- [ ] T002 Initialize Terraform local backend (state kept local) in `infra/main.tf`
-- [ ] T003 [P] Add Terraform provider block (azurerm + features) in `infra/providers.tf`
-- [ ] T004 [P] Define Terraform variables (resource_group_name, function_app_name, github_owner, github_repo) in `infra/variables.tf`
-- [ ] T005 Add infrastructure README stub at `infra/README.md` (purpose, apply steps)
-- [ ] T006 Update `.gitignore` to include Terraform artifacts (`.terraform/`, `*.tfstate*`)
-- [ ] T007 [P] Add mermaid + workflow validation reminder to `specs/001-ado-github-spec/quickstart.md`
-- [ ] T008 Capture sample ADO Service Hook payload in `specs/001-ado-github-spec/contracts/sample-ado-hook.json`
-- [ ] T009 [P] Document required function environment variables in quickstart (append section)
+- [X] T001 Create `infra/` directory structure (infra/main.tf, infra/providers.tf, infra/variables.tf, infra/outputs.tf)
+- [X] T002 Initialize Terraform local backend (state kept local) in `infra/main.tf`
+- [X] T003 [P] Add Terraform provider block (azurerm + features) in `infra/providers.tf`
+- [X] T004 [P] Define Terraform variables (resource_group_name, function_app_name, github_owner, github_repo) in `infra/variables.tf`
+- [X] T005 Add infrastructure README stub at `infra/README.md` (purpose, apply steps)
+- [X] T006 Update `.gitignore` to include Terraform artifacts (`.terraform/`, `*.tfstate*`)
+- [X] T007 [P] Add mermaid + workflow validation reminder to `specs/001-ado-github-spec/quickstart.md`
+- [X] T008 Capture sample ADO Service Hook payload in `specs/001-ado-github-spec/contracts/sample-ado-hook.json`
+- [X] T009 [P] Document required function environment variables in quickstart (append section)
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T010 Define Azure resources in `infra/main.tf` (resource group reuse variable, storage account, service plan, linux function app)
-- [ ] T011 Add function app settings (SPEC_COLUMN_NAME, AI_USER_MATCH, GITHUB_REPO, GITHUB_OWNER placeholders) in `infra/main.tf`
-- [ ] T012 [P] Add Terraform outputs (`function_name`, `function_default_hostname`) in `infra/outputs.tf`
-- [ ] T013 Implement minimal Python Azure Function scaffold at `function_app/__init__.py` (HTTP trigger, parse JSON, 400 on missing resource.workItemId)
-- [ ] T014 [P] Create `function_app/validation.py` with stub `validate_event(event: dict)` (checks eventType == workitem.updated)
-- [ ] T015 [P] Create `function_app/dispatch.py` with placeholder `dispatch(work_item_id: int, branch_hint: str)` (TODO comment for network)
-- [ ] T016 Add `requirements.txt` with pinned `azure-functions`, `requests`
-- [ ] T017 Add `function_app/README.md` (env vars, flow overview)
-- [ ] T018 Implement GitHub workflow dispatch POST (timeout=15s) in `function_app/dispatch.py`
-- [ ] T019 Add structured JSON logging in `function_app/__init__.py` (correlation_id, work_item_id, dispatch_status)
-- [ ] T020 Add dataclass `WorkItemEvent` in `function_app/models.py` (fields: work_item_id, event_type)
-- [ ] T021 [P] Create `tests/test_validation.py` (happy path + invalid eventType)
-- [ ] T022 Add idempotency inline comment in `function_app/__init__.py` (hash-based debounce deferred)
-- [ ] T023 Verify plan.md complexity tracking IaC row; adjust if drift detected
-- [ ] T024 Add pipeline removal task reference in plan.md Backlog section
-- [ ] T025 [P] Add Terraform version constraint (`terraform { required_version = ">= 1.6.0" }`) in providers.tf
+- [X] T010 Define Azure resources in `infra/main.tf` (resource group reuse variable, storage account, service plan, linux function app)
+- [X] T011 Add function app settings (SPEC_COLUMN_NAME, AI_USER_MATCH, GITHUB_REPO, GITHUB_OWNER placeholders) in `infra/main.tf`
+- [X] T012 [P] Add Terraform outputs (`function_name`, `function_default_hostname`) in `infra/outputs.tf`
+- [X] T013 Implement minimal Python Azure Function scaffold at `function_app/__init__.py` (HTTP trigger, parse JSON, 400 on missing resource.workItemId)
+- [X] T014 [P] Create `function_app/validation.py` with stub `validate_event(event: dict)` (checks eventType == workitem.updated)
+- [X] T015 [P] Create `function_app/dispatch.py` with placeholder `dispatch(work_item_id: int, branch_hint: str)` (TODO comment for network)
+- [X] T016 Add `requirements.txt` with pinned `azure-functions`, `requests`
+- [X] T017 Add `function_app/README.md` (env vars, flow overview)
+- [X] T018 Implement GitHub workflow dispatch POST (timeout=15s) in `function_app/dispatch.py`
+- [X] T019 Add structured JSON logging in `function_app/__init__.py` (correlation_id, work_item_id, dispatch_status)
+- [X] T020 Add dataclass `WorkItemEvent` in `function_app/models.py` (fields: work_item_id, event_type)
+- [X] T021 [P] Create `tests/test_validation.py` (happy path + invalid eventType)
+- [X] T022 Add idempotency inline comment in `function_app/__init__.py` (hash-based debounce deferred)
+- [X] T023 Verify plan.md complexity tracking IaC row; adjust if drift detected
+- [X] T024 Add pipeline removal task reference in plan.md Backlog section
+- [X] T025 [P] Add Terraform version constraint (`terraform { required_version = ">= 1.6.0" }`) in providers.tf
 
 ## Phase 3: User Story 1 - Automatic Spec Generation (Priority: P1)
 
@@ -93,21 +93,21 @@ Independent Test: Move test Feature to Specification – Doing and verify: Funct
 
 ### Implementation Tasks
 
-- [ ] T026 [US1] Implement full validation in `function_app/validation.py` (Feature type, assignee match, column match)
-- [ ] T027 [US1] Create ADO client in `function_app/ado_client.py` (GET work item by id, timeout=15s)
-- [ ] T028 [US1] Integrate ADO fetch fallback in `function_app/__init__.py` when column/assignee absent
-- [ ] T029 [US1] Implement retry (3 attempts exponential backoff) for dispatch in `function_app/dispatch.py`
-- [ ] T030 [US1] Map validation failure → 403 response in `function_app/__init__.py`
-- [ ] T031 [US1] Derive `branch_hint = feature/wi-{id}` in `function_app/__init__.py`
-- [ ] T032 [US1] Extract `work_item_id` defensively from payload (`resource.workItemId`) in `function_app/__init__.py`
-- [ ] T033 [US1] Return 204 on successful dispatch (log latency ms) in `function_app/__init__.py`
-- [ ] T034 [US1] Pass description placeholder to dispatch inputs
-- [ ] T035 [US1] Add `function_app/config.py` loader for env vars & defaults
-- [ ] T036 [US1] Add error classification (validation vs transport) to log output
-- [ ] T037 [US1] Extend `tests/test_validation.py` with column/assignee negatives
-- [ ] T038 [US1] Add `tests/test_dispatch.py` (mock `requests.post` success/failure)
-- [ ] T039 [US1] Update `quickstart.md` replacing pipeline instructions with Function flow (mark pipeline deprecated)
-- [ ] T040 [US1] Remove any pipeline references from `function_app/README.md`
+- [X] T026 [US1] Implement full validation in `function_app/validation.py` (Feature type, assignee match, column match)
+- [X] T027 [US1] Create ADO client in `function_app/ado_client.py` (GET work item by id, timeout=15s)
+- [X] T028 [US1] Integrate ADO fetch fallback in `function_app/__init__.py` when column/assignee absent
+- [X] T029 [US1] Implement retry (3 attempts exponential backoff) for dispatch in `function_app/dispatch.py`
+- [X] T030 [US1] Map validation failure → 403 response in `function_app/__init__.py`
+- [X] T031 [US1] Derive `branch_hint = feature/wi-{id}` in `function_app/__init__.py`
+- [X] T032 [US1] Extract `work_item_id` defensively from payload (`resource.workItemId`) in `function_app/__init__.py`
+- [X] T033 [US1] Return 204 on successful dispatch (log latency ms) in `function_app/__init__.py`
+- [X] T034 [US1] Pass description placeholder to dispatch inputs
+- [X] T035 [US1] Add `function_app/config.py` loader for env vars & defaults
+- [X] T036 [US1] Add error classification (validation vs transport) to log output
+- [X] T037 [US1] Extend `tests/test_validation.py` with column/assignee negatives
+- [X] T038 [US1] Add `tests/test_dispatch.py` (mock `requests.post` success/failure)
+- [X] T039 [US1] Update `quickstart.md` replacing pipeline instructions with Function flow (mark pipeline deprecated)
+- [X] T040 [US1] Remove any pipeline references from `function_app/README.md`
 
 ### Completion Criteria
 Tasks T026–T040 complete → Automatic generation loop validated via real or simulated event.

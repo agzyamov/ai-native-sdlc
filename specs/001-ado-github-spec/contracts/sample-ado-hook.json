@@ -1,0 +1,85 @@
+{
+  "subscriptionId": "12345678-1234-1234-1234-123456789abc",
+  "notificationId": 1,
+  "id": "03c164c2-8912-4d5e-8009-3707d5f83734",
+  "eventType": "workitem.updated",
+  "publisherId": "tfs",
+  "message": {
+    "text": "Feature #123 updated by AI Teammate",
+    "html": "Feature <a href=\"...\">123</a> updated by AI Teammate",
+    "markdown": "Feature [123](...) updated by AI Teammate"
+  },
+  "detailedMessage": {
+    "text": "Feature #123 (Implement automated spec generation) updated by AI Teammate\\r\\n(https://dev.azure.com/org/project/_workitems/edit/123)"
+  },
+  "resource": {
+    "id": 123,
+    "workItemId": 123,
+    "rev": 5,
+    "revisedBy": null,
+    "revisedDate": "0001-01-01T00:00:00",
+    "fields": {
+      "System.AreaPath": "Project\\Area",
+      "System.TeamProject": "ProjectName",
+      "System.IterationPath": "Project\\Sprint 1",
+      "System.WorkItemType": "Feature",
+      "System.State": "Active",
+      "System.Reason": "Moved to state Active",
+      "System.AssignedTo": {
+        "displayName": "AI Teammate",
+        "url": "https://spsprodeus21.vssps.visualstudio.com/...",
+        "id": "user-id-guid",
+        "uniqueName": "ai.teammate@example.com"
+      },
+      "System.CreatedDate": "2025-10-26T10:00:00Z",
+      "System.CreatedBy": {
+        "displayName": "Product Owner",
+        "url": "...",
+        "id": "...",
+        "uniqueName": "po@example.com"
+      },
+      "System.ChangedDate": "2025-10-27T14:30:00Z",
+      "System.ChangedBy": {
+        "displayName": "Product Owner",
+        "url": "...",
+        "id": "...",
+        "uniqueName": "po@example.com"
+      },
+      "System.Title": "Implement automated spec generation",
+      "System.BoardColumn": "Specification – Doing",
+      "System.BoardColumnDone": false,
+      "Microsoft.VSTS.Common.StateChangeDate": "2025-10-27T14:30:00Z",
+      "Microsoft.VSTS.Common.Priority": 2,
+      "System.Description": "<div>Initial user story description goes here...</div>",
+      "System.Tags": "automation; spec-kit"
+    },
+    "_links": {
+      "self": {
+        "href": "https://dev.azure.com/org/project/_apis/wit/workItems/123"
+      },
+      "workItemUpdates": {
+        "href": "https://dev.azure.com/org/project/_apis/wit/workItems/123/updates"
+      },
+      "workItemRevisions": {
+        "href": "https://dev.azure.com/org/project/_apis/wit/workItems/123/revisions"
+      },
+      "html": {
+        "href": "https://dev.azure.com/org/project/_workitems/edit/123"
+      }
+    },
+    "url": "https://dev.azure.com/org/project/_apis/wit/workItems/123"
+  },
+  "resourceVersion": "1.0",
+  "resourceContainers": {
+    "collection": {
+      "id": "collection-guid"
+    },
+    "account": {
+      "id": "account-guid"
+    },
+    "project": {
+      "id": "project-guid"
+    }
+  },
+  "createdDate": "2025-10-27T14:30:05Z"
+}
