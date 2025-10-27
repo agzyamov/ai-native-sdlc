@@ -179,3 +179,10 @@ go install github.com/rhysd/actionlint/cmd/actionlint@latest
 ```
 
 **Never commit broken GitHub Actions workflows!**
+
+## Active Technologies
+- GitHub Actions composite environment (YAML) + Bash; Spec Kit CLI (Python runtime 3.11 in workflow). (001-ado-github-spec)
+- None (stateless; spec stored in Git + ADO work item Description). (001-ado-github-spec)
+
+## Recent Changes
+- 001-ado-github-spec: Added GitHub Actions composite environment (YAML) + Bash; Spec Kit CLI (Python runtime 3.11 in workflow).
