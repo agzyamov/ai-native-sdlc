@@ -1,31 +1,63 @@
-# Terraform Outputs for Spec Automation Infrastructure
+# Terraform Outputs for Azure Functions Infrastructure (CAF Compliant)
 
 output "function_name" {
   description = "Name of the deployed Azure Function App"
-  value       = azurerm_linux_function_app.spec_dispatcher.name
+  value       = azurerm_linux_function_app.main.name
 }
 
 output "function_default_hostname" {
-  description = "Default hostname for the Azure Function (HTTPS URL)"
-  value       = azurerm_linux_function_app.spec_dispatcher.default_hostname
+  description = "Default hostname of the Function App"
+  value       = azurerm_linux_function_app.main.default_hostname
 }
 
 output "function_url" {
-  description = "Full HTTPS URL for the Azure Function"
-  value       = "https://${azurerm_linux_function_app.spec_dispatcher.default_hostname}"
+  description = "URL of the Function App"
+  value       = "https://${azurerm_linux_function_app.main.default_hostname}"
 }
 
 output "resource_group_name" {
-  description = "Name of the resource group containing all resources"
-  value       = local.resource_group_name
+  description = "Name of the resource group"
+  value       = azurerm_resource_group.main.name
 }
 
 output "storage_account_name" {
-  description = "Name of the storage account used by the function"
-  value       = azurerm_storage_account.function_storage.name
+  description = "Name of the storage account"
+  value       = azurerm_storage_account.main.name
 }
 
 output "function_identity_principal_id" {
-  description = "Principal ID of the function's managed identity (if enabled)"
-  value       = try(azurerm_linux_function_app.spec_dispatcher.identity[0].principal_id, null)
+  description = "Principal ID of the Function App's managed identity"
+  value       = try(azurerm_linux_function_app.main.identity[0].principal_id, null)
+  sensitive   = true
+}
+
+output "application_insights_name" {
+  description = "Name of the Application Insights resource"
+  value       = azurerm_application_insights.main.name
+}
+
+output "application_insights_instrumentation_key" {
+  description = "Instrumentation key for Application Insights"
+  value       = azurerm_application_insights.main.instrumentation_key
+  sensitive   = true
+}
+
+output "application_insights_app_id" {
+  description = "Application ID of Application Insights"
+  value       = azurerm_application_insights.main.app_id
+}
+
+output "key_vault_uri" {
+  description = "URI of the Key Vault for secrets management"
+  value       = azurerm_key_vault.main.vault_uri
+}
+
+output "log_analytics_workspace_id" {
+  description = "ID of the Log Analytics Workspace"
+  value       = azurerm_log_analytics_workspace.main.id
+}
+
+output "vnet_id" {
+  description = "ID of the Virtual Network"
+  value       = azurerm_virtual_network.main.id
 }

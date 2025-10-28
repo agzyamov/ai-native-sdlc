@@ -1,0 +1,11 @@
+.git*
+.vscode
+.venv
+.venv311
+__pycache__
+*.pyc
+.python_packages
+local.settings.json
+tests
+.DS_Store
+*.md

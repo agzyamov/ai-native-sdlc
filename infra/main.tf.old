@@ -1,0 +1,322 @@
+# Azure DevOps → GitHub Spec Generation - Infrastructure
+# Terraform configuration for Azure Function deployment
+
+terraform {
+  required_version = ">= 1.6.0"
+
+  backend "local" {
+    path = "terraform.tfstate"
+  }
+}
+
+# Resource Group (reuse existing or create new)
+resource "azurerm_resource_group" "spec_automation" {
+  count    = var.use_existing_resource_group ? 0 : 1
+  name     = var.resource_group_name
+  location = var.location
+}
+
+data "azurerm_resource_group" "existing" {
+  count = var.use_existing_resource_group ? 1 : 0
+  name  = var.resource_group_name
+}
+
+locals {
+  resource_group_name     = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.spec_automation[0].name
+  resource_group_location = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.spec_automation[0].location
+}
+
+# Data source for existing VNet
+data "azurerm_virtual_network" "existing" {
+  name                = var.vnet_name
+  resource_group_name = var.vnet_resource_group
+}
+
+data "azurerm_subnet" "function_subnet" {
+  name                 = var.function_subnet_name
+  virtual_network_name = var.vnet_name
+  resource_group_name  = var.vnet_resource_group
+}
+
+data "azurerm_subnet" "private_endpoint_subnet" {
+  name                 = var.private_endpoint_subnet_name
+  virtual_network_name = var.vnet_name
+  resource_group_name  = var.vnet_resource_group
+}
+
+# Storage Account (required for Azure Functions)
+# SECURITY MODEL: Public endpoint + Network ACLs (defaultAction=Deny + VNet allowlist)
+# This is the CORRECT approach for Premium Functions with file share access.
+# publicNetworkAccess=Disabled blocks file share access even with VNet integration.
+resource "azurerm_storage_account" "function_storage" {
+  name                     = var.storage_account_name
+  resource_group_name      = local.resource_group_name
+  location                 = local.resource_group_location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+
+  # Public endpoint enabled - fully open for testing
+  public_network_access_enabled   = true
+  allow_nested_items_to_be_public = false  # Required by Azure Policy - disallow blob/container public access
+
+  # Network ACLs - allow all for testing
+  network_rules {
+    default_action = "Allow"
+    bypass         = ["AzureServices"]
+  }
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+    Purpose     = "SpecAutomation"
+  }
+}
+
+# Application Insights for function monitoring
+resource "azurerm_application_insights" "function_insights" {
+  name                = "ai-${var.function_app_name}"
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
+  application_type    = "web"
+  retention_in_days   = 30
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+    Purpose     = "SpecAutomation"
+  }
+}
+
+# Service Plan (Elastic Premium for VNet integration and network isolation)
+resource "azurerm_service_plan" "function_plan" {
+  name                = var.service_plan_name
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
+  os_type             = "Linux"
+  sku_name            = var.service_plan_sku # Controlled by variable with validation
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Linux Function App
+# SECURITY: VNet integrated, public access DISABLED (VPN-only)
+resource "azurerm_linux_function_app" "spec_dispatcher" {
+  name                       = var.function_app_name
+  resource_group_name        = local.resource_group_name
+  location                   = local.resource_group_location
+  service_plan_id            = azurerm_service_plan.function_plan.id
+  storage_account_name       = azurerm_storage_account.function_storage.name
+  
+  # Use managed identity instead of access key for network-restricted storage
+  storage_uses_managed_identity = true
+
+  # Public endpoint enabled BUT restricted by IP allowlist (see site_config)
+  # This allows deployment from specific IPs while blocking everyone else
+  public_network_access_enabled = true
+
+  # VNet integration for outbound and inbound traffic
+  virtual_network_subnet_id = data.azurerm_subnet.function_subnet.id
+  
+  # Enable system-assigned managed identity
+  identity {
+    type = "SystemAssigned"
+  }
+
+  site_config {
+    # Route all traffic through VNet
+    vnet_route_all_enabled = true
+    
+    # IP restrictions - deny all by default, only allow specific access
+    ip_restriction_default_action = "Deny"
+    scm_ip_restriction_default_action = "Deny"
+    
+    # Allow Azure DevOps Service Hooks (using service tag)
+    ip_restriction {
+      name        = "AllowAzureDevOps"
+      priority    = 100
+      action      = "Allow"
+      service_tag = "AzureDevOps"
+    }
+    
+    # Allow your IP for testing/management (update with scripts/update-deployment-ip.sh)
+    ip_restriction {
+      name       = "MyIP-Testing"
+      priority   = 90
+      action     = "Allow"
+      ip_address = var.deployment_allowed_ip
+    }
+    
+    # Allow deployment from your current IP (update with scripts/update-deployment-ip.sh)
+    scm_ip_restriction {
+      name       = "AllowDeploymentIP"
+      priority   = 100
+      action     = "Allow"
+      ip_address = var.deployment_allowed_ip
+    }
+
+    application_stack {
+      python_version = "3.11"
+    }
+  }
+
+  app_settings = {
+    # Required: Azure Functions runtime storage (use managed identity)
+    AzureWebJobsStorage__accountName = azurerm_storage_account.function_storage.name
+    
+    # Required for Premium plan: File share for content (connection string required - can't use managed identity yet)
+    WEBSITE_CONTENTAZUREFILECONNECTIONSTRING = azurerm_storage_account.function_storage.primary_connection_string
+    WEBSITE_CONTENTSHARE = "${var.function_app_name}-content"
+    WEBSITE_CONTENTOVERVNET = "1"  # Enable content share access over VNet (required for network-restricted storage)
+    
+    # Application Insights
+    APPLICATIONINSIGHTS_CONNECTION_STRING = azurerm_application_insights.function_insights.connection_string
+    
+    # GitHub configuration
+    GITHUB_OWNER             = var.github_owner
+    GITHUB_REPO              = var.github_repo
+    GITHUB_WORKFLOW_FILENAME = "spec-kit-specify.yml"
+
+    # Azure DevOps configuration
+    SPEC_COLUMN_NAME = var.spec_column_name
+    AI_USER_MATCH    = var.ai_user_match
+
+    # Application configuration
+    FUNCTIONS_WORKER_RUNTIME = "python"
+    LOG_LEVEL                = var.log_level
+    FUNCTION_TIMEOUT_SECONDS = "30"
+
+    # Secrets (placeholder - set via portal or Key Vault reference)
+    # GH_WORKFLOW_DISPATCH_PAT = "@Microsoft.KeyVault(SecretUri=...)" # Set manually
+    # ADO_WORK_ITEM_PAT        = "@Microsoft.KeyVault(SecretUri=...)" # Set manually
+  }
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+    Purpose     = "SpecAutomation"
+  }
+}
+
+# Private Endpoint for Storage Account (blob)
+# Allows Function to access storage via private network
+resource "azurerm_private_endpoint" "storage_blob" {
+  name                = "${var.storage_account_name}-blob-pe"
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
+  subnet_id           = data.azurerm_subnet.private_endpoint_subnet.id
+
+  private_service_connection {
+    name                           = "${var.storage_account_name}-blob-psc"
+    private_connection_resource_id = azurerm_storage_account.function_storage.id
+    subresource_names              = ["blob"]
+    is_manual_connection           = false
+  }
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private Endpoint for Storage Account (file)
+resource "azurerm_private_endpoint" "storage_file" {
+  name                = "${var.storage_account_name}-file-pe"
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
+  subnet_id           = data.azurerm_subnet.private_endpoint_subnet.id
+
+  private_service_connection {
+    name                           = "${var.storage_account_name}-file-psc"
+    private_connection_resource_id = azurerm_storage_account.function_storage.id
+    subresource_names              = ["file"]
+    is_manual_connection           = false
+  }
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private DNS Zone for Storage Blob
+resource "azurerm_private_dns_zone" "blob" {
+  name                = "privatelink.blob.core.windows.net"
+  resource_group_name = local.resource_group_name
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private DNS Zone VNet Link
+resource "azurerm_private_dns_zone_virtual_network_link" "blob" {
+  name                  = "${var.vnet_name}-blob-link"
+  resource_group_name   = local.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.blob.name
+  virtual_network_id    = data.azurerm_virtual_network.existing.id
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private DNS Zone for Storage File
+resource "azurerm_private_dns_zone" "file" {
+  name                = "privatelink.file.core.windows.net"
+  resource_group_name = local.resource_group_name
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private DNS Zone VNet Link for File
+resource "azurerm_private_dns_zone_virtual_network_link" "file" {
+  name                  = "${var.vnet_name}-file-link"
+  resource_group_name   = local.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.file.name
+  virtual_network_id    = data.azurerm_virtual_network.existing.id
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Role assignment for function app managed identity to access storage
+# Required when using storage_uses_managed_identity = true
+resource "azurerm_role_assignment" "function_storage_blob" {
+  scope                = azurerm_storage_account.function_storage.id
+  role_definition_name = "Storage Blob Data Owner"
+  principal_id         = azurerm_linux_function_app.spec_dispatcher.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "function_storage_queue" {
+  scope                = azurerm_storage_account.function_storage.id
+  role_definition_name = "Storage Queue Data Contributor"
+  principal_id         = azurerm_linux_function_app.spec_dispatcher.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "function_storage_table" {
+  scope                = azurerm_storage_account.function_storage.id
+  role_definition_name = "Storage Table Data Contributor"
+  principal_id         = azurerm_linux_function_app.spec_dispatcher.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "function_storage_file" {
+  scope                = azurerm_storage_account.function_storage.id
+  role_definition_name = "Storage File Data Privileged Contributor"
+  principal_id         = azurerm_linux_function_app.spec_dispatcher.identity[0].principal_id
+}
+
+# NOTE: File share "func-spec-dispatch-001-content" is pre-created manually
+# and NOT managed by Terraform due to network access restrictions.
+# It must exist before function app deployment.
+
+
