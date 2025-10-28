@@ -315,9 +315,21 @@ jobs:
 
           echo "🔄 Overwriting ADO Work Item #$WORK_ITEM_ID Description with generated spec..."
 
+          # Check if spec file exists
+          if [ ! -f "$SPEC_FILE" ]; then
+            echo "❌ Spec file not found: $SPEC_FILE"
+            exit 1
+          fi
+
           # Read spec content and escape for JSON
           SPEC_CONTENT=$(<"$SPEC_FILE")
+          echo "📄 Spec file size: $(wc -c < "$SPEC_FILE") bytes"
+          
           SPEC_JSON=$(jq -Rs . <<< "$SPEC_CONTENT")
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed to JSON-encode spec content"
+            exit 1
+          fi
 
           # Construct JSON Patch payload
           PAYLOAD=$(cat <<EOF
