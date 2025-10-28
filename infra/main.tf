@@ -1,114 +1,239 @@
-# Azure DevOps → GitHub Spec Generation - Infrastructure
-# Terraform configuration for Azure Function deployment
+# Azure Functions Infrastructure - CAF Compliant
+# Following Microsoft Cloud Adoption Framework best practices
+# Region: West Europe (proximity to Europe/Türkiye)
 
 terraform {
   required_version = ">= 1.6.0"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0"
+    }
+  }
 
   backend "local" {
     path = "terraform.tfstate"
   }
 }
 
-# Resource Group (reuse existing or create new)
-resource "azurerm_resource_group" "spec_automation" {
-  count    = var.use_existing_resource_group ? 0 : 1
+provider "azurerm" {
+  features {
+    key_vault {
+      purge_soft_delete_on_destroy = true
+      recover_soft_deleted_key_vaults = true
+    }
+  }
+}
+
+# Local variables for consistent tagging
+locals {
+  common_tags = {
+    env        = var.environment
+    owner      = var.owner
+    costCenter = var.cost_center
+    managedBy  = "Terraform"
+    purpose    = "SpecAutomation"
+  }
+}
+
+#=============================================================================
+# FOUNDATION LAYER - Base Infrastructure (CAF Requirement)
+#=============================================================================
+
+# Resource Group
+resource "azurerm_resource_group" "main" {
   name     = var.resource_group_name
   location = var.location
+  tags     = local.common_tags
 }
 
-data "azurerm_resource_group" "existing" {
-  count = var.use_existing_resource_group ? 1 : 0
-  name  = var.resource_group_name
+# VNet with subnets for Functions and Private Endpoints
+resource "azurerm_virtual_network" "main" {
+  name                = "vnet-${var.environment}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  address_space       = var.vnet_address_space
+  tags                = local.common_tags
 }
 
-locals {
-  resource_group_name     = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.spec_automation[0].name
-  resource_group_location = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.spec_automation[0].location
+# Subnet for Functions (with delegation to Microsoft.Web/serverFarms)
+resource "azurerm_subnet" "function" {
+  name                 = "snet-func"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [var.function_subnet_prefix]
+
+  # Service Endpoints required for Storage/Key Vault network ACLs
+  service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
+
+  delegation {
+    name = "function-delegation"
+    service_delegation {
+      name = "Microsoft.Web/serverFarms"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/action"
+      ]
+    }
+  }
 }
 
-# Data source for existing VNet
-data "azurerm_virtual_network" "existing" {
-  name                = var.vnet_name
-  resource_group_name = var.vnet_resource_group
+# Subnet for Private Endpoints
+resource "azurerm_subnet" "private_endpoint" {
+  name                 = "snet-pe"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [var.private_endpoint_subnet_prefix]
 }
 
-data "azurerm_subnet" "function_subnet" {
-  name                 = var.function_subnet_name
-  virtual_network_name = var.vnet_name
-  resource_group_name  = var.vnet_resource_group
+# Log Analytics Workspace (CAF Foundation Layer requirement)
+resource "azurerm_log_analytics_workspace" "main" {
+  name                = "law-${var.environment}-func"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+  tags                = local.common_tags
 }
 
-data "azurerm_subnet" "private_endpoint_subnet" {
-  name                 = var.private_endpoint_subnet_name
-  virtual_network_name = var.vnet_name
-  resource_group_name  = var.vnet_resource_group
+# Application Insights linked to Log Analytics
+resource "azurerm_application_insights" "main" {
+  name                = "ai-${var.environment}-func"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  application_type    = "web"
+  workspace_id        = azurerm_log_analytics_workspace.main.id
+  retention_in_days   = 30
+  tags                = local.common_tags
 }
 
-# Storage Account (required for Azure Functions)
-# SECURITY: Public access disabled, private endpoint required
-resource "azurerm_storage_account" "function_storage" {
+# Storage Account for Functions (CAF Foundation Layer)
+resource "azurerm_storage_account" "main" {
   name                     = var.storage_account_name
-  resource_group_name      = local.resource_group_name
-  location                 = local.resource_group_location
+  resource_group_name      = azurerm_resource_group.main.name
+  location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+  min_tls_version          = "TLS1_2"
 
-  # CRITICAL: Disable public access
-  public_network_access_enabled = var.enable_public_access
+  # Public endpoint enabled with network rules (correct model for Premium Functions)
+  public_network_access_enabled   = true
+  allow_nested_items_to_be_public = false
 
-  # Network ACLs - deny by default, allow Azure services
   network_rules {
-    default_action = "Deny"
-    bypass         = ["AzureServices"]
+    default_action             = "Deny"
+    bypass                     = ["AzureServices"]
+    virtual_network_subnet_ids = [azurerm_subnet.function.id]
   }
 
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-    Purpose     = "SpecAutomation"
-  }
+  tags = local.common_tags
 }
 
-# Service Plan (Elastic Premium for VNet integration and network isolation)
-resource "azurerm_service_plan" "function_plan" {
-  name                = var.service_plan_name
-  resource_group_name = local.resource_group_name
-  location            = local.resource_group_location
-  os_type             = "Linux"
-  sku_name            = var.service_plan_sku # Controlled by variable with validation
+# Key Vault for secrets (CAF Foundation Layer requirement)
+resource "azurerm_key_vault" "main" {
+  name                       = "kv-${var.environment}-func"
+  resource_group_name        = azurerm_resource_group.main.name
+  location                   = azurerm_resource_group.main.location
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = false # Dev environment
+  enable_rbac_authorization  = true  # Use RBAC instead of access policies (CAF requirement)
 
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
+  public_network_access_enabled = false # Network isolated (CAF security rule)
+
+  network_acls {
+    default_action             = "Deny"
+    bypass                     = "AzureServices"
+    virtual_network_subnet_ids = [azurerm_subnet.function.id]
   }
+
+  tags = local.common_tags
+}
+
+# Current client config for Key Vault
+data "azurerm_client_config" "current" {}
+
+#=============================================================================
+# FUNCTIONS LAYER - Workload Resources
+#=============================================================================
+
+# Service Plan (Elastic Premium for VNet integration)
+resource "azurerm_service_plan" "main" {
+  name                = var.service_plan_name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  os_type             = "Linux"
+  sku_name            = var.service_plan_sku
+  tags                = local.common_tags
 }
 
 # Linux Function App
-# SECURITY: VNet integrated, public access DISABLED (VPN-only)
-resource "azurerm_linux_function_app" "spec_dispatcher" {
+resource "azurerm_linux_function_app" "main" {
   name                       = var.function_app_name
-  resource_group_name        = local.resource_group_name
-  location                   = local.resource_group_location
-  service_plan_id            = azurerm_service_plan.function_plan.id
-  storage_account_name       = azurerm_storage_account.function_storage.name
-  storage_account_access_key = azurerm_storage_account.function_storage.primary_access_key
+  resource_group_name        = azurerm_resource_group.main.name
+  location                   = azurerm_resource_group.main.location
+  service_plan_id            = azurerm_service_plan.main.id
+  storage_account_name       = azurerm_storage_account.main.name
+  storage_uses_managed_identity = true
 
-  # CRITICAL: Disable public access (VPN-only)
-  public_network_access_enabled = var.enable_public_access
+  # HTTPS only (CAF security requirement)
+  https_only                    = true
+  public_network_access_enabled = true
+  virtual_network_subnet_id     = azurerm_subnet.function.id
 
-  # VNet integration for outbound and inbound traffic
-  virtual_network_subnet_id = data.azurerm_subnet.function_subnet.id
+  # System-assigned Managed Identity (CAF requirement)
+  identity {
+    type = "SystemAssigned"
+  }
 
   site_config {
-    # Route all traffic through VNet
-    vnet_route_all_enabled = true
+    vnet_route_all_enabled            = true
+    ip_restriction_default_action     = "Deny"
+    scm_ip_restriction_default_action = "Deny"
+
+    # Allow Azure DevOps Service Hooks
+    ip_restriction {
+      name        = "AllowAzureDevOps"
+      priority    = 100
+      action      = "Allow"
+      service_tag = "AzureDevOps"
+    }
+
+    # Allow deployment from current IP
+    ip_restriction {
+      name       = "AllowDeploymentIP"
+      priority   = 90
+      action     = "Allow"
+      ip_address = var.deployment_allowed_ip
+    }
+
+    scm_ip_restriction {
+      name       = "AllowDeploymentIP"
+      priority   = 100
+      action     = "Allow"
+      ip_address = var.deployment_allowed_ip
+    }
 
     application_stack {
       python_version = "3.11"
     }
+
+    ftps_state = "Disabled" # CAF security requirement
   }
 
   app_settings = {
+    # Required: Azure Functions runtime storage
+    AzureWebJobsStorage__accountName = azurerm_storage_account.main.name
+
+    # Required for Premium plan: File share for content
+    WEBSITE_CONTENTAZUREFILECONNECTIONSTRING = azurerm_storage_account.main.primary_connection_string
+    WEBSITE_CONTENTSHARE                     = "${var.function_app_name}-content"
+    WEBSITE_CONTENTOVERVNET                  = "1"
+
+    # Application Insights
+    APPLICATIONINSIGHTS_CONNECTION_STRING = azurerm_application_insights.main.connection_string
+
     # GitHub configuration
     GITHUB_OWNER             = var.github_owner
     GITHUB_REPO              = var.github_repo
@@ -119,107 +244,169 @@ resource "azurerm_linux_function_app" "spec_dispatcher" {
     AI_USER_MATCH    = var.ai_user_match
 
     # Application configuration
-    FUNCTIONS_WORKER_RUNTIME = "python"
-    LOG_LEVEL                = var.log_level
-    FUNCTION_TIMEOUT_SECONDS = "30"
+    FUNCTIONS_WORKER_RUNTIME  = "python"
+    FUNCTIONS_EXTENSION_VERSION = "~4"
+    WEBSITE_RUN_FROM_PACKAGE    = "1"
+    LOG_LEVEL                   = var.log_level
+    FUNCTION_TIMEOUT_SECONDS    = "30"
 
-    # Secrets (placeholder - set via portal or Key Vault reference)
-    # GH_WORKFLOW_DISPATCH_PAT = "@Microsoft.KeyVault(SecretUri=...)" # Set manually
-    # ADO_WORK_ITEM_PAT        = "@Microsoft.KeyVault(SecretUri=...)" # Set manually
+    # Secrets - Use Key Vault references (CAF security requirement)
+    # GH_WORKFLOW_DISPATCH_PAT = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault.main.vault_uri}secrets/gh-pat)"
+    # ADO_WORK_ITEM_PAT        = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault.main.vault_uri}secrets/ado-pat)"
   }
 
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-    Purpose     = "SpecAutomation"
-  }
+  tags = local.common_tags
 }
 
+#=============================================================================
+# NETWORKING LAYER - Private Endpoints & DNS
+#=============================================================================
+
 # Private Endpoint for Storage Account (blob)
-# Allows Function to access storage via private network
 resource "azurerm_private_endpoint" "storage_blob" {
   name                = "${var.storage_account_name}-blob-pe"
-  resource_group_name = local.resource_group_name
-  location            = local.resource_group_location
-  subnet_id           = data.azurerm_subnet.private_endpoint_subnet.id
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  subnet_id           = azurerm_subnet.private_endpoint.id
 
   private_service_connection {
     name                           = "${var.storage_account_name}-blob-psc"
-    private_connection_resource_id = azurerm_storage_account.function_storage.id
+    private_connection_resource_id = azurerm_storage_account.main.id
     subresource_names              = ["blob"]
     is_manual_connection           = false
   }
 
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-  }
+  tags = local.common_tags
 }
 
 # Private Endpoint for Storage Account (file)
 resource "azurerm_private_endpoint" "storage_file" {
   name                = "${var.storage_account_name}-file-pe"
-  resource_group_name = local.resource_group_name
-  location            = local.resource_group_location
-  subnet_id           = data.azurerm_subnet.private_endpoint_subnet.id
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  subnet_id           = azurerm_subnet.private_endpoint.id
 
   private_service_connection {
     name                           = "${var.storage_account_name}-file-psc"
-    private_connection_resource_id = azurerm_storage_account.function_storage.id
+    private_connection_resource_id = azurerm_storage_account.main.id
     subresource_names              = ["file"]
     is_manual_connection           = false
   }
 
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-  }
+  tags = local.common_tags
 }
 
 # Private DNS Zone for Storage Blob
 resource "azurerm_private_dns_zone" "blob" {
   name                = "privatelink.blob.core.windows.net"
-  resource_group_name = local.resource_group_name
-
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-  }
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
 }
 
-# Private DNS Zone VNet Link
+# Private DNS Zone VNet Link (blob)
 resource "azurerm_private_dns_zone_virtual_network_link" "blob" {
-  name                  = "${var.vnet_name}-blob-link"
-  resource_group_name   = local.resource_group_name
+  name                  = "vnet-link-blob"
+  resource_group_name   = azurerm_resource_group.main.name
   private_dns_zone_name = azurerm_private_dns_zone.blob.name
-  virtual_network_id    = data.azurerm_virtual_network.existing.id
-
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-  }
+  virtual_network_id    = azurerm_virtual_network.main.id
+  tags                  = local.common_tags
 }
 
 # Private DNS Zone for Storage File
 resource "azurerm_private_dns_zone" "file" {
   name                = "privatelink.file.core.windows.net"
-  resource_group_name = local.resource_group_name
-
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-  }
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
 }
 
-# Private DNS Zone VNet Link for File
+# Private DNS Zone VNet Link (file)
 resource "azurerm_private_dns_zone_virtual_network_link" "file" {
-  name                  = "${var.vnet_name}-file-link"
-  resource_group_name   = local.resource_group_name
+  name                  = "vnet-link-file"
+  resource_group_name   = azurerm_resource_group.main.name
   private_dns_zone_name = azurerm_private_dns_zone.file.name
-  virtual_network_id    = data.azurerm_virtual_network.existing.id
+  virtual_network_id    = azurerm_virtual_network.main.id
+  tags                  = local.common_tags
+}
 
-  tags = {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
+#=============================================================================
+# RBAC - Role Assignments for Managed Identity
+#=============================================================================
+
+# Function App Managed Identity → Storage Account roles
+resource "azurerm_role_assignment" "function_storage_blob" {
+  scope                = azurerm_storage_account.main.id
+  role_definition_name = "Storage Blob Data Owner"
+  principal_id         = azurerm_linux_function_app.main.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "function_storage_queue" {
+  scope                = azurerm_storage_account.main.id
+  role_definition_name = "Storage Queue Data Contributor"
+  principal_id         = azurerm_linux_function_app.main.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "function_storage_table" {
+  scope                = azurerm_storage_account.main.id
+  role_definition_name = "Storage Table Data Contributor"
+  principal_id         = azurerm_linux_function_app.main.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "function_storage_file" {
+  scope                = azurerm_storage_account.main.id
+  role_definition_name = "Storage File Data Privileged Contributor"
+  principal_id         = azurerm_linux_function_app.main.identity[0].principal_id
+}
+
+# Function App Managed Identity → Key Vault access
+resource "azurerm_role_assignment" "function_keyvault_secrets" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_linux_function_app.main.identity[0].principal_id
+}
+
+#=============================================================================
+# DIAGNOSTIC SETTINGS - CAF Requirement
+#=============================================================================
+
+# Function App diagnostic settings → Log Analytics
+resource "azurerm_monitor_diagnostic_setting" "function_app" {
+  name                       = "diag-${var.function_app_name}"
+  target_resource_id         = azurerm_linux_function_app.main.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+
+  enabled_log {
+    category = "FunctionAppLogs"
+  }
+
+  metric {
+    category = "AllMetrics"
   }
 }
+
+# Storage Account diagnostic settings → Log Analytics
+resource "azurerm_monitor_diagnostic_setting" "storage" {
+  name                       = "diag-${var.storage_account_name}"
+  target_resource_id         = azurerm_storage_account.main.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+
+  metric {
+    category = "AllMetrics"
+  }
+}
+
+# Key Vault diagnostic settings → Log Analytics
+resource "azurerm_monitor_diagnostic_setting" "keyvault" {
+  name                       = "diag-kv-${var.environment}-func"
+  target_resource_id         = azurerm_key_vault.main.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+
+  enabled_log {
+    category = "AuditEvent"
+  }
+
+  metric {
+    category = "AllMetrics"
+  }
+}
+
+
