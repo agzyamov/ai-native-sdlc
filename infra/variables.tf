@@ -73,6 +73,16 @@ variable "github_repo" {
   type        = string
 }
 
+variable "ado_org_url" {
+  description = "Azure DevOps organization URL. Example: 'https://dev.azure.com/yourorg'"
+  type        = string
+}
+
+variable "ado_project" {
+  description = "Azure DevOps project name. Example: 'YourProject'"
+  type        = string
+}
+
 variable "spec_column_name" {
   description = "Azure DevOps board column name that triggers spec generation. Must match board configuration exactly."
   type        = string
