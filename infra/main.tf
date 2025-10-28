@@ -190,7 +190,7 @@ resource "azurerm_linux_function_app" "main" {
 
   site_config {
     vnet_route_all_enabled            = true
-    ip_restriction_default_action     = "Deny"
+    ip_restriction_default_action     = "Allow"  # TEMPORARY: Allow all for ADO webhook testing
     scm_ip_restriction_default_action = "Deny"
 
     # Allow Azure DevOps Service Hooks
@@ -227,10 +227,12 @@ resource "azurerm_linux_function_app" "main" {
     # Required: Azure Functions runtime storage
     AzureWebJobsStorage__accountName = azurerm_storage_account.main.name
 
-    # Required for Premium plan: File share for content
-    WEBSITE_CONTENTAZUREFILECONNECTIONSTRING = azurerm_storage_account.main.primary_connection_string
-    WEBSITE_CONTENTSHARE                     = "${var.function_app_name}-content"
-    WEBSITE_CONTENTOVERVNET                  = "1"
+    # NOTE: WEBSITE_CONTENTAZUREFILECONNECTIONSTRING and WEBSITE_CONTENTSHARE removed
+    # Premium plans use Azure Files by default, but this causes deployment issues:
+    # - Deployment with config-zip deploys to /site/wwwroot/
+    # - Function runtime reads from Azure Files share
+    # - Result: deployments succeed but code never updates
+    # Solution: Let function run from /site/wwwroot/ where deployments actually go
 
     # Application Insights
     APPLICATIONINSIGHTS_CONNECTION_STRING = azurerm_application_insights.main.connection_string
@@ -247,11 +249,14 @@ resource "azurerm_linux_function_app" "main" {
     AI_USER_MATCH    = var.ai_user_match
 
     # Application configuration
-    FUNCTIONS_WORKER_RUNTIME  = "python"
-    FUNCTIONS_EXTENSION_VERSION = "~4"
-    WEBSITE_RUN_FROM_PACKAGE    = "1"
-    LOG_LEVEL                   = var.log_level
-    FUNCTION_TIMEOUT_SECONDS    = "30"
+    FUNCTIONS_WORKER_RUNTIME      = "python"
+    FUNCTIONS_EXTENSION_VERSION   = "~4"
+    LOG_LEVEL                     = var.log_level
+    FUNCTION_TIMEOUT_SECONDS      = "30"
+    
+    # Remote build configuration (required for Python on Linux)
+    SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
+    # ENABLE_ORYX_BUILD is true by default for Linux Python apps per Microsoft docs
 
     # Secrets - Use Key Vault references (CAF security requirement)
     GH_WORKFLOW_DISPATCH_PAT = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault.main.vault_uri}secrets/gh-pat)"
