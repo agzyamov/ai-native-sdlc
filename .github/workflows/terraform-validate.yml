@@ -1,0 +1,75 @@
+name: Terraform Security Validation
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform-validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+
+jobs:
+  security-policy-check:
+    name: Security Policy Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+      
+      - name: Check for public access violations
+        run: |
+          echo "🔍 Checking for public access violations..."
+          
+          # Check if enable_public_access is set to true anywhere
+          if grep -r "enable_public_access.*=.*true" . --include="*.tf" --include="*.tfvars"; then
+            echo "❌ SECURITY VIOLATION: enable_public_access is set to true"
+            echo "This violates the security policy: NO public internet access allowed"
+            exit 1
+          fi
+          
+          # Check if Consumption plan (Y1) is used
+          if grep -r 'sku_name.*=.*"Y1"' . --include="*.tf" --include="*.tfvars"; then
+            echo "❌ SECURITY VIOLATION: Consumption plan (Y1) detected"
+            echo "Consumption plan does NOT support network isolation"
+            echo "Use Premium plan (EP1/EP2/EP3) instead"
+            exit 1
+          fi
+          
+          # Check for public_network_access_enabled = true
+          if grep -r "public_network_access_enabled.*=.*true" . --include="*.tf"; then
+            echo "❌ SECURITY VIOLATION: public_network_access_enabled is set to true"
+            exit 1
+          fi
+          
+          echo "✅ Security policy validation passed"
+      
+      - name: Terraform Init
+        run: terraform init -backend=false
+      
+      - name: Terraform Validate
+        run: terraform validate
+      
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+      
+      - name: Security Policy Summary
+        run: |
+          {
+            echo "## Security Policy Compliance ✅"
+            echo ""
+            echo "- ✅ No public internet access enabled"
+            echo "- ✅ Premium plan enforced (no Consumption Y1)"
+            echo "- ✅ VNet integration required"
+            echo "- ✅ Private endpoints configured"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -22,6 +22,7 @@ def validate_event(event: dict) -> tuple[bool, str]:
         - workItemType must be "Feature"
         - assignee display name must match AI_USER_MATCH (case-insensitive)
         - board column must match SPEC_COLUMN_NAME
+        - board column done state must be false (Doing, not Done)
     """
     # Check event type
     event_type = event.get("eventType", "")
@@ -47,11 +48,16 @@ def validate_event(event: dict) -> tuple[bool, str]:
     if assignee_name.lower() != ai_user_match.lower():
         return False, f"Assignee mismatch: '{assignee_name}' (expected '{ai_user_match}')"
     
-    # Validate board column
-    spec_column = os.getenv("SPEC_COLUMN_NAME", "Specification – Doing")
+    # Validate board column and "Doing" state (not Done)
+    spec_column = os.getenv("SPEC_COLUMN_NAME", "Specification")
     board_column = fields.get("System.BoardColumn", "")
+    board_column_done = fields.get("System.BoardColumnDone", False)
+    
     if board_column != spec_column:
         return False, f"Column mismatch: '{board_column}' (expected '{spec_column}')"
+    
+    if board_column_done:
+        return False, f"Column state is 'Done' (expected 'Doing' - BoardColumnDone should be false)"
     
     return True, "ok"
 

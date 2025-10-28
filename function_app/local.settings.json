@@ -1,0 +1,18 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "GITHUB_OWNER": "agzyamov",
+    "GITHUB_REPO": "ai-native-sdlc",
+    "GITHUB_WORKFLOW_FILENAME": "spec-kit-specify.yml",
+    "GITHUB_WORKFLOW_REF": "001-ado-github-spec",
+    "ADO_ORG_URL": "https://dev.azure.com/RustemAgziamov",
+    "ADO_PROJECT": "ai-native-sdlc-blueprint",
+    "SPEC_COLUMN_NAME": "Specification",
+    "AI_USER_MATCH": "AI Teammate",
+    "LOG_LEVEL": "DEBUG",
+    "GH_WORKFLOW_DISPATCH_PAT": "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",
+    "ADO_WORK_ITEM_PAT": "CT3dNvWwrwR6r1V8OaDNBLzHoGJMfVsWK5HoUP9Fykf8uBAbeEKNJQQJ99BJACAAAAAc0or1AAASAZDOaUC8"
+  }
+}
