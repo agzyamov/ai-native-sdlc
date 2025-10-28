@@ -19,15 +19,44 @@ jobs:
           PROJECT: ${{ vars.ADO_PROJECT }}
           WI: ${{ github.event.inputs.work_item_id }}
         run: |
+          echo "=== Debug Info ==="
+          echo "ORG: $ORG"
+          echo "PROJECT: $PROJECT"
+          echo "WI: $WI"
+          echo "PAT length: ${#PAT}"
+          echo ""
+          
           CONTENT="Test from GitHub Actions at $(date -u)"
           JSON=$(jq -Rs . <<< "$CONTENT")
           PAYLOAD="[{\"op\":\"replace\",\"path\":\"/fields/System.Description\",\"value\":$JSON}]"
           URL="https://dev.azure.com/$ORG/$PROJECT/_apis/wit/workitems/$WI?api-version=7.0"
           
-          curl -X PATCH "$URL" \
+          echo "=== Request ==="
+          echo "URL: $URL"
+          echo "Payload: $PAYLOAD"
+          echo ""
+          
+          echo "=== Response ==="
+          RESPONSE=$(curl -X PATCH "$URL" \
             --http1.1 \
             -H "Content-Type: application/json-patch+json" \
-            -H "Authorization: Basic $(echo -n ":$PAT" | base64)" \
+            -H "Authorization: Basic $(echo -n ":$PAT" | base64 | tr -d '\n')" \
             -d "$PAYLOAD" \
-            -w "\nHTTP: %{http_code}\n" \
-            -v
+            -w "\n###HTTP_CODE###%{http_code}" \
+            -s)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | grep "###HTTP_CODE###" | sed 's/.*###HTTP_CODE###//')
+          BODY=$(echo "$RESPONSE" | sed '/###HTTP_CODE###/d')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response Body:"
+          echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
+            echo ""
+            echo "ERROR: Update failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ Work item #$WI updated successfully!"
