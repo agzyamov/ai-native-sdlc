@@ -1,0 +1,133 @@
+name: Test ADO API Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      work_item_id:
+        description: 'Azure DevOps Work Item ID to update'
+        required: true
+        type: string
+        default: '448'
+      test_message:
+        description: 'Test message to write to description'
+        required: false
+        type: string
+        default: 'Test update from GitHub Actions'
+
+jobs:
+  test-ado-update:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Test ADO API Connection
+        shell: bash
+        env:
+          ADO_WORKITEM_RW_PAT: ${{ secrets.ADO_WORKITEM_RW_PAT }}
+          ADO_ORG: ${{ vars.ADO_ORG }}
+          ADO_PROJECT: ${{ vars.ADO_PROJECT }}
+        run: |
+          set +e  # Disable exit on error
+          
+          WORK_ITEM_ID="${{ github.event.inputs.work_item_id }}"
+          TEST_MESSAGE="${{ github.event.inputs.test_message }}"
+          
+          echo "🔍 Environment Check"
+          echo "===================="
+          echo "Work Item ID: $WORK_ITEM_ID"
+          echo "ADO_ORG: $ADO_ORG"
+          echo "ADO_PROJECT: $ADO_PROJECT"
+          echo "PAT set: $([ -n "$ADO_WORKITEM_RW_PAT" ] && echo "Yes" || echo "No")"
+          echo ""
+          
+          # Test DNS resolution
+          echo "🌐 Testing DNS resolution..."
+          nslookup dev.azure.com || echo "⚠️ DNS lookup failed"
+          echo ""
+          
+          # Test connectivity
+          echo "🔌 Testing connectivity to dev.azure.com..."
+          curl -v --max-time 10 https://dev.azure.com 2>&1 | head -20
+          echo ""
+          
+          # Prepare JSON payload
+          echo "📝 Preparing JSON payload..."
+          SPEC_CONTENT="# Test from GitHub Actions
+
+Workflow Run: ${{ github.run_id }}
+Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+Message: $TEST_MESSAGE"
+          
+          SPEC_JSON=$(jq -Rs . <<< "$SPEC_CONTENT")
+          echo "Spec JSON created: ${#SPEC_JSON} chars"
+          echo ""
+          
+          PAYLOAD=$(cat <<EOF
+[
+  {
+    "op": "replace",
+    "path": "/fields/System.Description",
+    "value": $SPEC_JSON
+  }
+]
+EOF
+)
+          
+          echo "Payload size: ${#PAYLOAD} chars"
+          echo ""
+          
+          # Build endpoint
+          ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0"
+          echo "🎯 Endpoint: $ENDPOINT"
+          echo ""
+          
+          # Test API call with verbose output
+          echo "📡 Attempting PATCH request..."
+          echo "================================"
+          
+          RESPONSE=$(curl -v -s -w "\n%{http_code}" -X PATCH \
+            --max-time 30 \
+            --connect-timeout 10 \
+            -H "Content-Type: application/json-patch+json" \
+            -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64)" \
+            -d "$PAYLOAD" \
+            "$ENDPOINT" 2>&1)
+          
+          EXIT_CODE=$?
+          echo ""
+          echo "Curl exit code: $EXIT_CODE"
+          echo ""
+          
+          # Parse response
+          HTTP_CODE=$(echo "$RESPONSE" | grep -o "< HTTP/.*" | tail -1 | awk '{print $3}' || echo "000")
+          if [ "$HTTP_CODE" = "000" ]; then
+            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          fi
+          
+          echo "HTTP Code: $HTTP_CODE"
+          echo ""
+          
+          # Show full response
+          echo "📋 Full Response:"
+          echo "================="
+          echo "$RESPONSE"
+          echo ""
+          
+          # Verdict
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+            echo "✅ SUCCESS: ADO Work Item #$WORK_ITEM_ID updated successfully!"
+            echo "View: https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_workitems/edit/${WORK_ITEM_ID}"
+            exit 0
+          else
+            echo "❌ FAILED: HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🧪 ADO API Update Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Work Item:** #${{ github.event.inputs.work_item_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Message:** ${{ github.event.inputs.test_message }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the logs above for detailed connection and API response information." >> $GITHUB_STEP_SUMMARY
