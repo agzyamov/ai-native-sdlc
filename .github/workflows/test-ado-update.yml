@@ -54,23 +54,26 @@ jobs:
           SPEC_CONTENT="# Test from GitHub Actions
 
 Workflow Run: ${{ github.run_id }}
-Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+Timestamp: $(date -u +\"%Y-%m-%d %H:%M:%S UTC\")
 Message: $TEST_MESSAGE"
           
           SPEC_JSON=$(jq -Rs . <<< "$SPEC_CONTENT")
           echo "Spec JSON created: ${#SPEC_JSON} chars"
           echo ""
           
-          PAYLOAD=$(cat <<EOF
+          PAYLOAD=$(cat <<'PAYLOADEOF'
 [
   {
     "op": "replace",
     "path": "/fields/System.Description",
-    "value": $SPEC_JSON
+    "value": SPEC_JSON_PLACEHOLDER
   }
 ]
-EOF
+PAYLOADEOF
 )
+          
+          # Replace placeholder with actual JSON
+          PAYLOAD="${PAYLOAD//SPEC_JSON_PLACEHOLDER/$SPEC_JSON}"
           
           echo "Payload size: ${#PAYLOAD} chars"
           echo ""
