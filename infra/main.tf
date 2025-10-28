@@ -190,7 +190,7 @@ resource "azurerm_linux_function_app" "main" {
 
   site_config {
     vnet_route_all_enabled            = true
-    ip_restriction_default_action     = "Allow"  # TEMPORARY: Allow all for ADO webhook testing
+    ip_restriction_default_action     = "Deny"   # Block all except explicitly allowed
     scm_ip_restriction_default_action = "Deny"
 
     # Allow Azure DevOps Service Hooks
