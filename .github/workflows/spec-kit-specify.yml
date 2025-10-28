@@ -300,11 +300,14 @@ jobs:
       # Implements JSON Patch REPLACE operation with exponential backoff retry
       - name: Overwrite ADO Work Item Description
         if: github.event.inputs.work_item_id != ''
+        shell: bash
         env:
           ADO_WORKITEM_RW_PAT: ${{ secrets.ADO_WORKITEM_RW_PAT }}
           ADO_ORG: ${{ vars.ADO_ORG || 'your-org' }}
           ADO_PROJECT: ${{ vars.ADO_PROJECT || 'your-project' }}
         run: |
+          set +e  # Disable exit on error, handle errors manually
+          
           WORK_ITEM_ID="${{ github.event.inputs.work_item_id }}"
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
 
