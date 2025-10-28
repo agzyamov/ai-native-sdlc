@@ -355,10 +355,11 @@ jobs:
             echo "DEBUG: Payload size: ${#PAYLOAD} chars"
             
             RESPONSE=$(curl -v -s -w "\n%{http_code}" -X PATCH \
+              --http1.1 \
               --max-time 30 \
               --connect-timeout 10 \
               -H "Content-Type: application/json-patch+json" \
-              -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64)" \
+              -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64 | tr -d '\n')" \
               -d "$PAYLOAD" \
               "$ENDPOINT" 2>&1)
             
