@@ -351,11 +351,16 @@ jobs:
           
           for ATTEMPT in 1 2 3; do
             echo "Attempt $ATTEMPT..."
-            RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            echo "DEBUG: Endpoint: $ENDPOINT"
+            echo "DEBUG: Payload size: ${#PAYLOAD} chars"
+            
+            RESPONSE=$(curl -v -s -w "\n%{http_code}" -X PATCH \
+              --max-time 30 \
+              --connect-timeout 10 \
               -H "Content-Type: application/json-patch+json" \
               -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64)" \
               -d "$PAYLOAD" \
-              "$ENDPOINT")
+              "$ENDPOINT" 2>&1)
             
             HTTP_CODE=$(echo "$RESPONSE" | tail -1)
             BODY=$(echo "$RESPONSE" | sed '$d')
