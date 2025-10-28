@@ -26,13 +26,41 @@ locals {
   resource_group_location = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.spec_automation[0].location
 }
 
+# Data source for existing VNet
+data "azurerm_virtual_network" "existing" {
+  name                = var.vnet_name
+  resource_group_name = var.vnet_resource_group
+}
+
+data "azurerm_subnet" "function_subnet" {
+  name                 = var.function_subnet_name
+  virtual_network_name = var.vnet_name
+  resource_group_name  = var.vnet_resource_group
+}
+
+data "azurerm_subnet" "private_endpoint_subnet" {
+  name                 = var.private_endpoint_subnet_name
+  virtual_network_name = var.vnet_name
+  resource_group_name  = var.vnet_resource_group
+}
+
 # Storage Account (required for Azure Functions)
+# SECURITY: Public access disabled, private endpoint required
 resource "azurerm_storage_account" "function_storage" {
   name                     = var.storage_account_name
   resource_group_name      = local.resource_group_name
   location                 = local.resource_group_location
   account_tier             = "Standard"
   account_replication_type = "LRS"
+
+  # CRITICAL: Disable public access
+  public_network_access_enabled = var.enable_public_access
+
+  # Network ACLs - deny by default, allow Azure services
+  network_rules {
+    default_action = "Deny"
+    bypass         = ["AzureServices"]
+  }
 
   tags = {
     Environment = var.environment
@@ -41,13 +69,13 @@ resource "azurerm_storage_account" "function_storage" {
   }
 }
 
-# Service Plan (Consumption tier for cost efficiency)
+# Service Plan (Elastic Premium for VNet integration and network isolation)
 resource "azurerm_service_plan" "function_plan" {
   name                = var.service_plan_name
   resource_group_name = local.resource_group_name
   location            = local.resource_group_location
   os_type             = "Linux"
-  sku_name            = "Y1" # Consumption plan
+  sku_name            = var.service_plan_sku # Controlled by variable with validation
 
   tags = {
     Environment = var.environment
@@ -56,6 +84,7 @@ resource "azurerm_service_plan" "function_plan" {
 }
 
 # Linux Function App
+# SECURITY: VNet integrated, public access DISABLED (VPN-only)
 resource "azurerm_linux_function_app" "spec_dispatcher" {
   name                       = var.function_app_name
   resource_group_name        = local.resource_group_name
@@ -64,7 +93,16 @@ resource "azurerm_linux_function_app" "spec_dispatcher" {
   storage_account_name       = azurerm_storage_account.function_storage.name
   storage_account_access_key = azurerm_storage_account.function_storage.primary_access_key
 
+  # CRITICAL: Disable public access (VPN-only)
+  public_network_access_enabled = var.enable_public_access
+
+  # VNet integration for outbound and inbound traffic
+  virtual_network_subnet_id = data.azurerm_subnet.function_subnet.id
+
   site_config {
+    # Route all traffic through VNet
+    vnet_route_all_enabled = true
+
     application_stack {
       python_version = "3.11"
     }
@@ -94,5 +132,94 @@ resource "azurerm_linux_function_app" "spec_dispatcher" {
     Environment = var.environment
     ManagedBy   = "Terraform"
     Purpose     = "SpecAutomation"
+  }
+}
+
+# Private Endpoint for Storage Account (blob)
+# Allows Function to access storage via private network
+resource "azurerm_private_endpoint" "storage_blob" {
+  name                = "${var.storage_account_name}-blob-pe"
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
+  subnet_id           = data.azurerm_subnet.private_endpoint_subnet.id
+
+  private_service_connection {
+    name                           = "${var.storage_account_name}-blob-psc"
+    private_connection_resource_id = azurerm_storage_account.function_storage.id
+    subresource_names              = ["blob"]
+    is_manual_connection           = false
+  }
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private Endpoint for Storage Account (file)
+resource "azurerm_private_endpoint" "storage_file" {
+  name                = "${var.storage_account_name}-file-pe"
+  resource_group_name = local.resource_group_name
+  location            = local.resource_group_location
+  subnet_id           = data.azurerm_subnet.private_endpoint_subnet.id
+
+  private_service_connection {
+    name                           = "${var.storage_account_name}-file-psc"
+    private_connection_resource_id = azurerm_storage_account.function_storage.id
+    subresource_names              = ["file"]
+    is_manual_connection           = false
+  }
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private DNS Zone for Storage Blob
+resource "azurerm_private_dns_zone" "blob" {
+  name                = "privatelink.blob.core.windows.net"
+  resource_group_name = local.resource_group_name
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private DNS Zone VNet Link
+resource "azurerm_private_dns_zone_virtual_network_link" "blob" {
+  name                  = "${var.vnet_name}-blob-link"
+  resource_group_name   = local.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.blob.name
+  virtual_network_id    = data.azurerm_virtual_network.existing.id
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private DNS Zone for Storage File
+resource "azurerm_private_dns_zone" "file" {
+  name                = "privatelink.file.core.windows.net"
+  resource_group_name = local.resource_group_name
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}
+
+# Private DNS Zone VNet Link for File
+resource "azurerm_private_dns_zone_virtual_network_link" "file" {
+  name                  = "${var.vnet_name}-file-link"
+  resource_group_name   = local.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.file.name
+  virtual_network_id    = data.azurerm_virtual_network.existing.id
+
+  tags = {
+    Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }

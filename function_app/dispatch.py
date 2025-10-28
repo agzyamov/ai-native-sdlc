@@ -35,6 +35,7 @@ def dispatch_workflow(
     github_owner = os.getenv("GITHUB_OWNER")
     github_repo = os.getenv("GITHUB_REPO")
     workflow_filename = os.getenv("GITHUB_WORKFLOW_FILENAME", "spec-kit-specify.yml")
+    workflow_ref = os.getenv("GITHUB_WORKFLOW_REF", "001-ado-github-spec")  # Branch/tag to dispatch on
     pat = os.getenv("GH_WORKFLOW_DISPATCH_PAT")
     
     if not all([github_owner, github_repo, pat]):
@@ -47,12 +48,12 @@ def dispatch_workflow(
         "X-GitHub-Api-Version": "2022-11-28"
     }
     payload = {
-        "ref": "main",
+        "ref": workflow_ref,  # Use configured branch
         "inputs": {
-            "work_item_id": str(work_item_id),
-            "branch_hint": branch_hint,
             "feature_description": description_placeholder or f"ADO Work Item #{work_item_id}",
-            "create_branch": "true"
+            "create_branch": "true",
+            "work_item_id": str(work_item_id),
+            "branch_hint": branch_hint
         }
     }
     

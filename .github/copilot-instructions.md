@@ -180,6 +180,77 @@ go install github.com/rhysd/actionlint/cmd/actionlint@latest
 
 **Never commit broken GitHub Actions workflows!**
 
+## Azure Infrastructure Security Requirements
+
+**CRITICAL: All Azure resources MUST be network-isolated and NOT exposed to the public internet.**
+
+**IMPORTANT: Azure Functions Consumption Plan Limitation**
+- Consumption plan (Y1 SKU) does NOT support VNet integration or `public_network_access_enabled`
+- For network isolation, use **Premium plan (EP1/EP2/EP3)** or **Dedicated plan**
+- Document this limitation and cost trade-off when using Consumption plans
+
+When creating or modifying Azure infrastructure:
+
+1. **Network Security**:
+   - ✅ Use existing VPN gateway for secure access
+   - ✅ Configure Private Endpoints for all services (Storage, Key Vault, etc.)
+   - ✅ Disable public network access on Storage Accounts
+   - ❌ NEVER expose resources directly to the internet (0.0.0.0/0)
+   - ✅ Use Network Security Groups (NSGs) with least-privilege rules
+   - ✅ Enable VNet integration for Azure Functions **Premium/Dedicated plans only**
+
+2. **Terraform/IaC Requirements**:
+   ```hcl
+   # Required patterns for Azure resources:
+   
+   # Storage Account - disable public access (ALL plans)
+   public_network_access_enabled = false
+   network_rules {
+     default_action = "Deny"
+     bypass         = ["AzureServices"]
+   }
+   
+   # Function App - VNet integration (Premium/Dedicated ONLY, not Consumption)
+   # For Premium plan (EP1/EP2/EP3):
+   virtual_network_subnet_id = var.function_subnet_id
+   public_network_access_enabled = false
+   site_config {
+     vnet_route_all_enabled = true
+   }
+   
+   # Key Vault - use private endpoint
+   public_network_access_enabled = false
+   network_acls {
+     default_action = "Deny"
+     bypass         = "AzureServices"
+   }
+   ```
+
+3. **Access Patterns**:
+   - Use VPN gateway for administrative access
+   - Use Private Endpoints for service-to-service communication
+   - Use Managed Identity instead of connection strings where possible
+   - Store secrets in Key Vault with network restrictions
+
+4. **Validation Checklist**:
+   - ✅ Storage accounts have `public_network_access_enabled = false`
+   - ✅ Function plan is Premium/Dedicated (not Consumption Y1) for VNet integration
+   - ✅ All resources have `network_acls` or NSG configuration
+   - ✅ VNet integration configured for compute resources (Premium+ only)
+   - ✅ Private DNS zones configured for private endpoints
+   - ✅ Firewall rules documented and justified
+   - ⚠️ Document if Consumption plan used (cannot enforce full network isolation)
+
+**Before committing infrastructure code:**
+- ✅ Verify Storage accounts have no public endpoints
+- ✅ Confirm plan SKU supports required network features
+- ✅ Confirm VPN/Private Endpoint access path documented
+- ✅ Security review checklist completed
+- ✅ Run `terraform plan` and review network configuration
+- ✅ Document any limitations (e.g., Consumption plan public access)
+
+**Never deploy publicly accessible Azure Storage without explicit security exception!**
+
 ## Active Technologies
 - GitHub Actions composite environment (YAML) + Bash; Spec Kit CLI (Python runtime 3.11 in workflow). (001-ado-github-spec)
 - None (stateless; spec stored in Git + ADO work item Description). (001-ado-github-spec)

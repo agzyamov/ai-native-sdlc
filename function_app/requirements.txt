@@ -1,0 +1,5 @@
+# Azure Functions runtime
+azure-functions>=1.17.0,<2.0.0
+
+# HTTP client for GitHub/ADO API calls
+requests>=2.31.0,<3.0.0

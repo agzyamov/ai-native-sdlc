@@ -24,9 +24,32 @@ This directory contains Terraform configuration for provisioning the Azure Funct
    terraform version
    ```
 
-3. **Required secrets** (set after deployment):
+3. **VPN Access**: Required for managing and accessing resources (all resources are network-isolated)
+
+4. **Required secrets** (set after deployment):
    - `GH_WORKFLOW_DISPATCH_PAT` - GitHub fine-grained PAT (Actions: RW, Contents: R)
    - `ADO_WORK_ITEM_PAT` - Azure DevOps PAT (Work Items: Read)
+
+## Security Architecture
+
+**CRITICAL: All resources are network-isolated and NOT publicly accessible.**
+
+**Premium Plan (EP1) - Full Network Isolation:**
+- ✅ **Function App**: VNet integrated, public access DISABLED
+- ✅ **Storage Account**: Private endpoints only, no public access
+- ✅ **Access Method**: VPN gateway required for all access
+- ✅ **Inbound Traffic**: Only via VPN (public_network_access_enabled = false)
+- ✅ **Outbound Traffic**: Routed through VNet (vnet_route_all_enabled = true)
+
+**Network Security Controls:**
+- **Private Endpoints**: Storage blob + file accessible only within VNet
+- **Private DNS**: Automatic resolution within VNet
+- **VNet Integration**: Function integrated with existing VNet subnet
+- **Default Deny**: All public access blocked by default
+
+**Cost:**
+- Premium (EP1): ~$150/month (always-on, required for network isolation)
+- See [Azure Functions pricing](https://azure.microsoft.com/pricing/details/functions/) for details.
 
 ## Usage
 
@@ -46,15 +69,28 @@ Create `terraform.tfvars`:
 github_owner = "agzyamov"
 github_repo  = "ai-native-sdlc"
 
+# Network Configuration (use existing VPN-connected VNet)
+vnet_name                    = "vnet-ai-agents-infra-dev"
+vnet_resource_group          = "rg-ai-agents-infra-dev"
+function_subnet_name         = "subnet-ai-dev"
+private_endpoint_subnet_name = "subnet-ai-dev"
+
+# SECURITY: Keep public access disabled for production
+enable_public_access = false
+
 # Optional (override defaults)
 resource_group_name          = "rg-spec-automation"
 use_existing_resource_group  = false
 location                     = "eastus"
-storage_account_name         = "stspecauto001"  # Must be globally unique
-function_app_name            = "func-spec-dispatch-001"  # Must be globally unique
+storage_account_name         = "stspecautorustem001"  # Must be globally unique
+function_app_name            = "func-spec-rustem-001" # Must be globally unique
 environment                  = "dev"
 log_level                    = "INFO"
 ```
+
+**Important Security Settings:**
+- `enable_public_access = false` - Resources only accessible via VPN (REQUIRED for production)
+- `enable_public_access = true` - Temporary flag for initial testing only (NOT recommended)
 
 ### 3. Plan deployment
 
@@ -214,13 +250,22 @@ terraform {
 
 ## Security Notes
 
+- **Network Isolation**: All resources deployed with `public_network_access_enabled = false` by default
+- **VPN Required**: Access function and storage only via existing VPN gateway connection
+- **Private Endpoints**: Storage accessible via private endpoints within VNet
+- **VNet Integration**: Function App routes all traffic through VNet
 - **Never commit** `terraform.tfvars` or `.tfstate` files containing secrets
-- Use **Key Vault references** for production secrets:
+- **Key Vault**: Production secrets should use Key Vault references:
   ```hcl
   "@Microsoft.KeyVault(SecretUri=https://vault.vault.azure.net/secrets/secret-name)"
   ```
-- Rotate PATs every 90 days (policy)
-- Review function app settings periodically for unused variables
+- **PAT Rotation**: Rotate PATs every 90 days (policy)
+- **Access Control**: Review function app settings periodically for unused variables
+
+**To access deployed function:**
+1. Connect to VPN
+2. Use private function URL (not publicly routable)
+3. Configure ADO Service Hook from VPN-accessible endpoint
 
 ## Troubleshooting
 
