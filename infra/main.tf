@@ -276,6 +276,11 @@ resource "azurerm_private_endpoint" "storage_blob" {
     is_manual_connection           = false
   }
 
+  private_dns_zone_group {
+    name                 = "blob-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.blob.id]
+  }
+
   tags = local.common_tags
 }
 
@@ -291,6 +296,11 @@ resource "azurerm_private_endpoint" "storage_file" {
     private_connection_resource_id = azurerm_storage_account.main.id
     subresource_names              = ["file"]
     is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "file-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.file.id]
   }
 
   tags = local.common_tags
