@@ -51,16 +51,20 @@ jobs:
           
           # Prepare JSON payload
           echo "📝 Preparing JSON payload..."
+          RUN_ID="${{ github.run_id }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
           SPEC_CONTENT="# Test from GitHub Actions
 
-Workflow Run: ${{ github.run_id }}
-Timestamp: $(date -u +\"%Y-%m-%d %H:%M:%S UTC\")
+Workflow Run: $RUN_ID
+Timestamp: $TIMESTAMP
 Message: $TEST_MESSAGE"
-          
+
           SPEC_JSON=$(jq -Rs . <<< "$SPEC_CONTENT")
-          echo "Spec JSON created: ${#SPEC_JSON} chars"
+          SPEC_LEN="${#SPEC_JSON}"
+          echo "Spec JSON created: $SPEC_LEN chars"
           echo ""
-          
+
           PAYLOAD=$(cat <<'PAYLOADEOF'
 [
   {
@@ -71,7 +75,7 @@ Message: $TEST_MESSAGE"
 ]
 PAYLOADEOF
 )
-          
+
           # Replace placeholder with actual JSON
           PAYLOAD="${PAYLOAD//SPEC_JSON_PLACEHOLDER/$SPEC_JSON}"
           
