@@ -140,12 +140,13 @@ resource "azurerm_key_vault" "main" {
   purge_protection_enabled   = false # Dev environment
   enable_rbac_authorization  = true  # Use RBAC instead of access policies (CAF requirement)
 
-  public_network_access_enabled = false # Network isolated (CAF security rule)
+  public_network_access_enabled = true # Enabled for secret management from allowed IPs
 
   network_acls {
     default_action             = "Deny"
     bypass                     = "AzureServices"
     virtual_network_subnet_ids = [azurerm_subnet.function.id]
+    ip_rules                   = [var.deployment_allowed_ip] # Allow deployment IP
   }
 
   tags = local.common_tags
@@ -240,6 +241,8 @@ resource "azurerm_linux_function_app" "main" {
     GITHUB_WORKFLOW_FILENAME = "spec-kit-specify.yml"
 
     # Azure DevOps configuration
+    ADO_ORG_URL      = var.ado_org_url
+    ADO_PROJECT      = var.ado_project
     SPEC_COLUMN_NAME = var.spec_column_name
     AI_USER_MATCH    = var.ai_user_match
 
@@ -251,8 +254,8 @@ resource "azurerm_linux_function_app" "main" {
     FUNCTION_TIMEOUT_SECONDS    = "30"
 
     # Secrets - Use Key Vault references (CAF security requirement)
-    # GH_WORKFLOW_DISPATCH_PAT = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault.main.vault_uri}secrets/gh-pat)"
-    # ADO_WORK_ITEM_PAT        = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault.main.vault_uri}secrets/ado-pat)"
+    GH_WORKFLOW_DISPATCH_PAT = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault.main.vault_uri}secrets/gh-pat)"
+    ADO_WORK_ITEM_PAT        = "@Microsoft.KeyVault(SecretUri=${azurerm_key_vault.main.vault_uri}secrets/ado-pat)"
   }
 
   tags = local.common_tags
@@ -334,6 +337,44 @@ resource "azurerm_private_dns_zone_virtual_network_link" "file" {
   name                  = "vnet-link-file"
   resource_group_name   = azurerm_resource_group.main.name
   private_dns_zone_name = azurerm_private_dns_zone.file.name
+  virtual_network_id    = azurerm_virtual_network.main.id
+  tags                  = local.common_tags
+}
+
+# Private Endpoint for Key Vault
+resource "azurerm_private_endpoint" "keyvault" {
+  name                = "kv-func-dev-pe"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  subnet_id           = azurerm_subnet.private_endpoint.id
+
+  private_service_connection {
+    name                           = "kv-func-dev-psc"
+    private_connection_resource_id = azurerm_key_vault.main.id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "vault-dns-zone-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.keyvault.id]
+  }
+
+  tags = local.common_tags
+}
+
+# Private DNS Zone for Key Vault
+resource "azurerm_private_dns_zone" "keyvault" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
+}
+
+# Private DNS Zone VNet Link (Key Vault)
+resource "azurerm_private_dns_zone_virtual_network_link" "keyvault" {
+  name                  = "vnet-link-keyvault"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = azurerm_private_dns_zone.keyvault.name
   virtual_network_id    = azurerm_virtual_network.main.id
   tags                  = local.common_tags
 }

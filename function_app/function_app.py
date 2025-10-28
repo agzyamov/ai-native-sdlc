@@ -118,6 +118,10 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         # Fetch full work item details from ADO
         try:
             work_item = ado_client.get_work_item(work_item_id)
+            
+            if work_item is None:
+                raise ValueError("ADO API returned None - check credentials and work item ID")
+            
             description = work_item.get("fields", {}).get("System.Description", "")
             title = work_item.get("fields", {}).get("System.Title", f"Work Item #{work_item_id}")
             
