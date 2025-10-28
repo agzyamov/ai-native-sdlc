@@ -25,6 +25,7 @@ jobs:
           URL="https://dev.azure.com/$ORG/$PROJECT/_apis/wit/workitems/$WI?api-version=7.0"
           
           curl -X PATCH "$URL" \
+            --http1.1 \
             -H "Content-Type: application/json-patch+json" \
             -H "Authorization: Basic $(echo -n ":$PAT" | base64)" \
             -d "$PAYLOAD" \
