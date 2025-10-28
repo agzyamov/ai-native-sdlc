@@ -4,7 +4,7 @@
 set -e
 
 FUNCTION_URL="http://localhost:7071/api/spec-dispatch"
-WORK_ITEM_ID="444"
+WORK_ITEM_ID="${1:-444}"
 
 echo "=== Testing with Real ADO Work Item ==="
 echo ""
@@ -60,46 +60,55 @@ echo "  ✓ Assignee: $ASSIGNEE (expecting: AI Teammate)"
 echo "  ✓ Board Column: $BOARD_COLUMN (expecting: Specification – Doing)"
 echo ""
 
-# Create realistic ADO Service Hook payload
-PAYLOAD=$(cat <<EOF
-{
-  "subscriptionId": "test-subscription-id",
-  "notificationId": 1,
-  "id": "test-event-id",
-  "eventType": "workitem.updated",
-  "publisherId": "tfs",
-  "message": {
-    "text": "$WORK_ITEM_TYPE #$WORK_ITEM_ID updated",
-    "html": "$WORK_ITEM_TYPE <a href=\\\"$ADO_ORG_URL/$ADO_PROJECT/_workitems/edit/$WORK_ITEM_ID\\\">$WORK_ITEM_ID</a> updated"
-  },
-  "detailedMessage": {
-    "text": "$WORK_ITEM_TYPE #$WORK_ITEM_ID ($TITLE) updated\\r\\n($ADO_ORG_URL/$ADO_PROJECT/_workitems/edit/$WORK_ITEM_ID)"
-  },
-  "resource": {
-    "id": $WORK_ITEM_ID,
-    "workItemId": $WORK_ITEM_ID,
-    "rev": 1,
-    "fields": {
-      "System.WorkItemType": "$WORK_ITEM_TYPE",
-      "System.Title": "$TITLE",
-      "System.AssignedTo": {
-        "displayName": "$ASSIGNEE"
-      },
-      "System.BoardColumn": "$BOARD_COLUMN",
-      "System.State": "Active"
+# Create realistic ADO Service Hook payload using jq for proper escaping
+PAYLOAD=$(jq -n \
+  --arg workItemId "$WORK_ITEM_ID" \
+  --arg workItemType "$WORK_ITEM_TYPE" \
+  --arg title "$TITLE" \
+  --arg assignee "$ASSIGNEE" \
+  --arg boardColumn "$BOARD_COLUMN" \
+  --arg orgUrl "$ADO_ORG_URL" \
+  --arg project "$ADO_PROJECT" \
+  '{
+    subscriptionId: "test-subscription-id",
+    notificationId: 1,
+    id: "test-event-id",
+    eventType: "workitem.updated",
+    publisherId: "tfs",
+    message: {
+      text: "\($workItemType) #\($workItemId) updated",
+      html: "\($workItemType) <a href=\"\($orgUrl)/\($project)/_workitems/edit/\($workItemId)\">\($workItemId)</a> updated"
     },
-    "_links": {
-      "html": {
-        "href": "$ADO_ORG_URL/$ADO_PROJECT/_workitems/edit/$WORK_ITEM_ID"
+    detailedMessage: {
+      text: "\($workItemType) #\($workItemId) (\($title)) updated\r\n(\($orgUrl)/\($project)/_workitems/edit/\($workItemId))"
+    },
+    resource: {
+      id: ($workItemId | tonumber),
+      workItemId: ($workItemId | tonumber),
+      rev: 1,
+      fields: {
+        "System.WorkItemType": $workItemType,
+        "System.Title": $title,
+        "System.AssignedTo": {
+          displayName: $assignee
+        },
+        "System.BoardColumn": $boardColumn,
+        "System.State": "Active"
+      },
+      _links: {
+        html: {
+          href: "\($orgUrl)/\($project)/_workitems/edit/\($workItemId)"
+        }
       }
-    }
-  },
-  "createdDate": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-}
-EOF
+    },
+    createdDate: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+  }'
 )
 
 echo "📤 Sending payload to function..."
+echo ""
+echo "DEBUG - Payload:"
+echo "$PAYLOAD" | jq '.'
 echo ""
 
 RESPONSE=$(curl -s -w "\n---STATS---\nHTTP_CODE: %{http_code}\nTIME: %{time_total}s\n" \

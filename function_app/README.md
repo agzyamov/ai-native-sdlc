@@ -42,12 +42,26 @@ pip install -r requirements.txt
 func start
 ```
 
-### Test with curl
+### Test with sample payload
 ```bash
+# Using sample ADO hook JSON
 curl -X POST http://localhost:7071/api/spec-dispatch \
   -H "Content-Type: application/json" \
   -d @../specs/001-ado-github-spec/contracts/sample-ado-hook.json
+
+# Or use the test script
+cd tests
+./test-local.sh
 ```
+
+### Test with real work item
+```bash
+# Test with real Azure DevOps work item
+cd tests
+./test-real-workitem.sh 448  # Replace 448 with your work item ID
+```
+
+See `tests/LOCAL_TESTING.md` for detailed testing documentation.
 
 ## Deployment
 
@@ -71,6 +85,8 @@ See `infra/README.md` for infrastructure provisioning.
 
 ## Testing
 
+Unit tests are located in `/tests` directory (workspace root).
+
 ```bash
 # Run unit tests
 pytest tests/
@@ -78,6 +94,12 @@ pytest tests/
 # Run with coverage
 pytest --cov=function_app tests/
 ```
+
+Local integration testing scripts are in `function_app/tests/`:
+- `test-local.sh` - Test with sample ADO hook JSON
+- `test-real-workitem.sh` - Test with real work item from Azure DevOps
+- `debug-test.sh` - Debug mode test with verbose output
+- `LOCAL_TESTING.md` - Comprehensive local testing guide
 
 ## Logging
 
