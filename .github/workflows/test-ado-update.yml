@@ -45,15 +45,18 @@ jobs:
             -w "\n###HTTP_CODE###%{http_code}" \
             -s)
           
-          HTTP_CODE=$(echo "$RESPONSE" | grep "###HTTP_CODE###" | cut -d# -f4)
+          HTTP_CODE=$(echo "$RESPONSE" | grep "###HTTP_CODE###" | sed 's/.*###HTTP_CODE###//')
           BODY=$(echo "$RESPONSE" | sed '/###HTTP_CODE###/d')
           
           echo "HTTP Status: $HTTP_CODE"
           echo "Response Body:"
           echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
           
-          if [ "$HTTP_CODE" != "200" ]; then
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
             echo ""
             echo "ERROR: Update failed with HTTP $HTTP_CODE"
             exit 1
           fi
+          
+          echo ""
+          echo "✅ Work item #$WI updated successfully!"
