@@ -35,7 +35,7 @@ def dispatch_workflow(
     github_owner = os.getenv("GITHUB_OWNER")
     github_repo = os.getenv("GITHUB_REPO")
     workflow_filename = os.getenv("GITHUB_WORKFLOW_FILENAME", "spec-kit-specify.yml")
-    workflow_ref = os.getenv("GITHUB_WORKFLOW_REF", "001-ado-github-spec")  # Branch/tag to dispatch on
+    workflow_ref = os.getenv("GITHUB_WORKFLOW_REF", "main")  # Branch/tag to dispatch on
     pat = os.getenv("GH_WORKFLOW_DISPATCH_PAT")
     
     if not all([github_owner, github_repo, pat]):
