@@ -33,33 +33,53 @@ echo "📄 Loading prompt: $PROMPT_NAME"
 echo "📂 From: $PROMPT_FILE"
 echo ""
 
-# Load prompt content
-PROMPT_CONTENT=$(cat "$PROMPT_FILE")
-
-# Replace placeholders with provided variables
+# Parse arguments and export as environment variables for Python
 for arg in "$@"; do
   if [[ "$arg" =~ ^([A-Z_]+)=(.*)$ ]]; then
     KEY="${BASH_REMATCH[1]}"
     VALUE="${BASH_REMATCH[2]}"
-    echo "🔄 Replacing \$$KEY with: $VALUE"
-    # Escape special characters for sed
-    ESCAPED_VALUE=$(printf '%s\n' "$VALUE" | sed 's/[\/&]/\\&/g')
-    PROMPT_CONTENT=$(echo "$PROMPT_CONTENT" | sed "s/\\\$$KEY/$ESCAPED_VALUE/g")
+    echo "🔄 Replacing \$$KEY"
+    export "REPLACE_$KEY=$VALUE"
   else
     echo "⚠️  WARNING: Invalid argument format: $arg (expected KEY=value)"
   fi
 done
 
 echo ""
-echo "🤖 Running Copilot CLI with prepared prompt..."
+echo "🤖 Preparing prompt with Python (handles all special characters)..."
 echo ""
 
-# Save prepared prompt to temp file
+# Use Python for safe string substitution - handles newlines, quotes, parens, everything
 TEMP_PROMPT=$(mktemp)
-echo "$PROMPT_CONTENT" > "$TEMP_PROMPT"
+python3 << 'PYEOF' > "$TEMP_PROMPT"
+import os
+import sys
+
+# Read prompt file
+with open(os.environ['PROMPT_FILE'], 'r') as f:
+    content = f.read()
+
+# Get all REPLACE_* environment variables
+replacements = {
+    key[8:]: value  # Remove 'REPLACE_' prefix
+    for key, value in os.environ.items()
+    if key.startswith('REPLACE_')
+}
+
+# Perform replacements
+for key, value in replacements.items():
+    content = content.replace(f'${key}', value)
+
+# Output result
+print(content, end='')
+PYEOF
+
+echo "🤖 Running Copilot CLI with prepared prompt..."
+echo ""
 
 # Run Copilot CLI
 npx @github/copilot --allow-all-tools --allow-all-paths -p "$(cat "$TEMP_PROMPT")"
 
 # Cleanup
 rm -f "$TEMP_PROMPT"
+
