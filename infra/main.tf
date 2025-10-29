@@ -194,12 +194,14 @@ resource "azurerm_linux_function_app" "main" {
     ip_restriction_default_action     = "Deny" # Block all except explicitly allowed
     scm_ip_restriction_default_action = "Deny"
 
-    # Allow Azure DevOps Service Hooks
+    # Allow Azure DevOps Service Hooks (Inbound connections for webhooks)
+    # See: https://learn.microsoft.com/en-us/azure/devops/organizations/security/allow-list-ip-url?view=azure-devops#inbound-connections
+    # Western Europe inbound IP range: 40.74.28.0/23
     ip_restriction {
-      name        = "AllowAzureDevOps"
+      name        = "AllowAzureDevOpsWebhooks"
       priority    = 100
       action      = "Allow"
-      service_tag = "AzureDevOps"
+      ip_address  = "40.74.28.0/23"
     }
 
     # Allow deployment from current IP
