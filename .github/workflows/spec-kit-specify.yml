@@ -22,10 +22,6 @@ on:
         description: 'Azure DevOps Work Item ID (for Description overwrite)'
         required: false
         type: string
-      branch_hint:
-        description: 'Suggested branch name (from ADO pipeline)'
-        required: false
-        type: string
 
 jobs:
   specify-feature:
