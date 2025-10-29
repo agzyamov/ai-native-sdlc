@@ -4,17 +4,15 @@ description: Create or update the feature specification from a natural language 
 
 ## User Input
 
-```text
-$ARGUMENTS
-```
+The feature description is provided in the file: `$FEATURE_DESC_FILE`
 
-You **MUST** consider the user input before proceeding (if not empty).
+Read the contents of this file to get the feature description. This file is created in the newly checked out feature branch and contains the raw feature description text.
+
+You **MUST** read and consider this file before proceeding.
 
 ## Outline
 
-The text the user typed after `/speckit.specify` in the triggering message **is** the feature description. Assume you always have it available in this conversation even if `$ARGUMENTS` appears literally below. Do not ask the user to repeat it unless they provided an empty command.
-
-Given that feature description, do this:
+The feature description file contains the complete feature description. Read it first, then:
 
 1. **Generate a concise short name** (2-4 words) for the branch:
    - Analyze the feature description and extract the most meaningful keywords
@@ -28,13 +26,14 @@ Given that feature description, do this:
      - "Create a dashboard for analytics" → "analytics-dashboard"
      - "Fix payment processing timeout bug" → "fix-payment-timeout"
 
-2. Run the script `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` from repo root **with the short-name argument** and parse its JSON output for BRANCH_NAME and SPEC_FILE. All file paths must be absolute.
+2. Run the script `.specify/scripts/bash/create-new-feature.sh --json "$FEATURE_DESCRIPTION"` from repo root **with the short-name argument** and parse its JSON output for BRANCH_NAME and SPEC_FILE. All file paths must be absolute.
 
    **IMPORTANT**:
 
-   - Append the short-name argument to the `.specify/scripts/bash/create-new-feature.sh --json "$ARGUMENTS"` command with the 2-4 word short name you created in step 1. Keep the feature description as the final argument.
-   - Bash example: `--short-name "your-generated-short-name" "Feature description here"`
-   - PowerShell example: `-ShortName "your-generated-short-name" "Feature description here"`
+   - Read the feature description from `$FEATURE_DESC_FILE` file
+   - Append the short-name argument to the `.specify/scripts/bash/create-new-feature.sh --json` command with the 2-4 word short name you created in step 1. Pass the feature description as the final argument (read from the file).
+   - Bash example: `.specify/scripts/bash/create-new-feature.sh --json --short-name "your-generated-short-name" "Feature description from file"`
+   - PowerShell example: `.specify/scripts/bash/create-new-feature.sh --json -ShortName "your-generated-short-name" "Feature description from file"`
    - For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot")
    - You must only ever run this script once
    - The JSON is provided in the terminal as output - always refer to it to get the actual content you're looking for
@@ -43,8 +42,8 @@ Given that feature description, do this:
 
 4. Follow this execution flow:
 
-    1. Parse user description from Input
-       If empty: ERROR "No feature description provided"
+    1. **Read feature description from file** at `$FEATURE_DESC_FILE`
+       If file is empty or cannot be read: ERROR "No feature description provided"
     2. Extract key concepts from description
        Identify: actors, actions, data, constraints
     3. For unclear aspects:
@@ -67,7 +66,7 @@ Given that feature description, do this:
     7. Identify Key Entities (if data involved)
     8. Return: SUCCESS (spec ready for planning)
 
-5. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
+5. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (read from `$FEATURE_DESC_FILE`) while preserving section order and headings.
 
 6. **Specification Quality Validation**: After writing the initial spec, validate it against quality criteria:
 
