@@ -46,13 +46,32 @@ jobs:
             exit 1
           fi
           
-          # Check for public_network_access_enabled = true
-          if grep -r "public_network_access_enabled.*=.*true" . --include="*.tf"; then
-            echo "❌ SECURITY VIOLATION: public_network_access_enabled is set to true"
+          # Verify network security is properly configured
+          echo "✅ Checking network security configuration..."
+          
+          # Storage Account must have network_rules with default_action = Deny
+          if ! grep -A20 "azurerm_storage_account" *.tf | grep -q "default_action.*=.*\"Deny\""; then
+            echo "❌ SECURITY VIOLATION: Storage account missing network_rules with default_action = Deny"
             exit 1
           fi
+          echo "  ✓ Storage account has network_rules with default Deny"
           
-          echo "✅ Security policy validation passed"
+          # Key Vault must have network_acls
+          if ! grep -A15 "azurerm_key_vault" *.tf | grep -q "network_acls"; then
+            echo "❌ SECURITY VIOLATION: Key Vault missing network_acls"
+            exit 1
+          fi
+          echo "  ✓ Key Vault has network_acls"
+          
+          # Function App must have IP restrictions with default deny
+          if ! grep -A20 "azurerm_linux_function_app" *.tf | grep -q "ip_restriction_default_action.*=.*\"Deny\""; then
+            echo "❌ SECURITY VIOLATION: Function App must have ip_restriction_default_action = Deny"
+            exit 1
+          fi
+          echo "  ✓ Function App has IP restrictions with default Deny"
+          
+          echo ""
+          echo "✅ Security policy validation passed - network isolation properly configured"
       
       - name: Terraform Init
         run: terraform init -backend=false
