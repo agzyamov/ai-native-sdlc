@@ -1,6 +1,7 @@
 # Azure Functions Infrastructure - CAF Compliant
 # Following Microsoft Cloud Adoption Framework best practices
 # Region: West Europe (proximity to Europe/Türkiye)
+# Security: Network isolation enforced with IP restrictions
 
 terraform {
   required_version = ">= 1.6.0"
