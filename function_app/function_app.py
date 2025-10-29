@@ -105,15 +105,13 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
             logger.info(json.dumps({
                 "correlation_id": correlation_id,
                 "work_item_id": work_item_id,
-                "event": "validation_failed",
+                "event": "validation_filtered",
                 "error_classification": "validation",
                 "reason": reason
             }))
-            return func.HttpResponse(
-                json.dumps({"status": "rejected", "reason": reason}),
-                status_code=403,
-                mimetype="application/json"
-            )
+            # Return 204 (No Content) instead of 403 to prevent "Failed" status in Azure DevOps
+            # The function is working correctly - it's just filtering out events that don't match criteria
+            return func.HttpResponse(status_code=204)
         
         # Fetch full work item details from ADO
         try:
