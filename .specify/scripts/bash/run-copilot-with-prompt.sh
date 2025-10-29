@@ -14,7 +14,7 @@ if [ $# -lt 1 ]; then
   echo "Usage: $0 <prompt-name> [key=value...]"
   echo ""
   echo "Examples:"
-  echo "  $0 speckit.specify ARGUMENTS='create calculator' BRANCH_NAME='001-calculator'"
+  echo "  $0 speckit.specify FEATURE_DESC_FILE='path/to/desc.txt' BRANCH_NAME='001-calculator'"
   echo "  $0 speckit.clarify SPEC_FILE='/path/to/spec.md'"
   exit 1
 fi
@@ -33,53 +33,29 @@ echo "📄 Loading prompt: $PROMPT_NAME"
 echo "📂 From: $PROMPT_FILE"
 echo ""
 
-# Parse arguments and export as environment variables for Python
+# Parse arguments and export as environment variables
+# These will be available in the prompt template (e.g., $FEATURE_DESC_FILE)
 for arg in "$@"; do
   if [[ "$arg" =~ ^([A-Z_]+)=(.*)$ ]]; then
     KEY="${BASH_REMATCH[1]}"
     VALUE="${BASH_REMATCH[2]}"
-    echo "🔄 Replacing \$$KEY"
-    export "REPLACE_$KEY=$VALUE"
+    echo "� Setting \$$KEY (value: ${VALUE:0:50}...)"
+    export "$KEY=$VALUE"
   else
     echo "⚠️  WARNING: Invalid argument format: $arg (expected KEY=value)"
   fi
 done
 
 echo ""
-echo "🤖 Preparing prompt with Python (handles all special characters)..."
+echo "🤖 Running Copilot CLI with prompt..."
+echo "   Copilot can access environment variables and read files directly"
 echo ""
 
-# Use Python for safe string substitution - handles newlines, quotes, parens, everything
-TEMP_PROMPT=$(mktemp)
-python3 << 'PYEOF' > "$TEMP_PROMPT"
-import os
-import sys
+# Run Copilot CLI with the prompt template
+# Copilot can access environment variables like $FEATURE_DESC_FILE
+# and read files directly using file operations
+npx @github/copilot --allow-all-tools --allow-all-paths -p "$(cat "$PROMPT_FILE")"
 
-# Read prompt file
-with open(os.environ['PROMPT_FILE'], 'r') as f:
-    content = f.read()
-
-# Get all REPLACE_* environment variables
-replacements = {
-    key[8:]: value  # Remove 'REPLACE_' prefix
-    for key, value in os.environ.items()
-    if key.startswith('REPLACE_')
-}
-
-# Perform replacements
-for key, value in replacements.items():
-    content = content.replace(f'${key}', value)
-
-# Output result
-print(content, end='')
-PYEOF
-
-echo "🤖 Running Copilot CLI with prepared prompt..."
 echo ""
-
-# Run Copilot CLI
-npx @github/copilot --allow-all-tools --allow-all-paths -p "$(cat "$TEMP_PROMPT")"
-
-# Cleanup
-rm -f "$TEMP_PROMPT"
+echo "✅ Copilot CLI execution completed"
 
