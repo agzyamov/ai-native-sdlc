@@ -22,10 +22,6 @@ on:
         description: 'Azure DevOps Work Item ID (for Description overwrite)'
         required: false
         type: string
-      branch_hint:
-        description: 'Suggested branch name (from ADO pipeline)'
-        required: false
-        type: string
 
 jobs:
   specify-feature:
@@ -208,9 +204,15 @@ jobs:
           echo "📝 Step 3-6: Generating specification with Copilot..."
           echo ""
 
+          # Save feature description to temp file to avoid special character issues
+          FEATURE_DESC_FILE="$FEATURE_DIR/feature_description.txt"
+          echo "$FEATURE_DESC" > "$FEATURE_DESC_FILE"
+          echo "💾 Saved feature description to: $FEATURE_DESC_FILE"
+          echo ""
+
           # Generate spec with Copilot - using run-copilot-with-prompt.sh script
           .specify/scripts/bash/run-copilot-with-prompt.sh speckit.specify \
-            ARGUMENTS="$FEATURE_DESC" \
+            FEATURE_DESC_FILE="$FEATURE_DESC_FILE" \
             BRANCH_NAME="$BRANCH_NAME" \
             SPEC_FILE="$SPEC_FILE" \
             FEATURE_DIR="$FEATURE_DIR" \
