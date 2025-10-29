@@ -109,7 +109,7 @@ variable "log_level" {
 variable "deployment_allowed_ip" {
   description = "Your current public IP address for deployment access (CIDR format, e.g., 176.233.31.83/32). Run scripts/update-deployment-ip.sh to update."
   type        = string
-  default     = "0.0.0.0/32"  # Placeholder - run update script
+  default     = "0.0.0.0/32" # Placeholder - run update script
 }
 
 variable "environment" {

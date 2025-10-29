@@ -20,7 +20,7 @@ terraform {
 provider "azurerm" {
   features {
     key_vault {
-      purge_soft_delete_on_destroy = true
+      purge_soft_delete_on_destroy    = true
       recover_soft_deleted_key_vaults = true
     }
   }
@@ -171,11 +171,11 @@ resource "azurerm_service_plan" "main" {
 
 # Linux Function App
 resource "azurerm_linux_function_app" "main" {
-  name                       = var.function_app_name
-  resource_group_name        = azurerm_resource_group.main.name
-  location                   = azurerm_resource_group.main.location
-  service_plan_id            = azurerm_service_plan.main.id
-  storage_account_name       = azurerm_storage_account.main.name
+  name                          = var.function_app_name
+  resource_group_name           = azurerm_resource_group.main.name
+  location                      = azurerm_resource_group.main.location
+  service_plan_id               = azurerm_service_plan.main.id
+  storage_account_name          = azurerm_storage_account.main.name
   storage_uses_managed_identity = true
 
   # HTTPS only (CAF security requirement)
@@ -190,7 +190,7 @@ resource "azurerm_linux_function_app" "main" {
 
   site_config {
     vnet_route_all_enabled            = true
-    ip_restriction_default_action     = "Deny"   # Block all except explicitly allowed
+    ip_restriction_default_action     = "Deny" # Block all except explicitly allowed
     scm_ip_restriction_default_action = "Deny"
 
     # Allow Azure DevOps Service Hooks
@@ -249,11 +249,11 @@ resource "azurerm_linux_function_app" "main" {
     AI_USER_MATCH    = var.ai_user_match
 
     # Application configuration
-    FUNCTIONS_WORKER_RUNTIME      = "python"
-    FUNCTIONS_EXTENSION_VERSION   = "~4"
-    LOG_LEVEL                     = var.log_level
-    FUNCTION_TIMEOUT_SECONDS      = "30"
-    
+    FUNCTIONS_WORKER_RUNTIME    = "python"
+    FUNCTIONS_EXTENSION_VERSION = "~4"
+    LOG_LEVEL                   = var.log_level
+    FUNCTION_TIMEOUT_SECONDS    = "30"
+
     # Remote build configuration (required for Python on Linux)
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
     # ENABLE_ORYX_BUILD is true by default for Linux Python apps per Microsoft docs
