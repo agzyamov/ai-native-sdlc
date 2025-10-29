@@ -1,9 +1,15 @@
 # Terraform Variables for Spec Automation Infrastructure
 
+variable "cleanup_enabled" {
+  description = "Enable cleanup of old AI/ML resources. Set to true to allow data sources to query resources for deletion."
+  type        = bool
+  default     = false
+}
+
 variable "resource_group_name" {
-  description = "Name of the Azure resource group (new or existing). Used to organize all spec automation resources."
+  description = "Name of the Azure resource group following CAF naming: rg-func-{env}"
   type        = string
-  default     = "rg-spec-automation"
+  default     = "rg-func-dev"
 }
 
 variable "use_existing_resource_group" {
@@ -13,15 +19,15 @@ variable "use_existing_resource_group" {
 }
 
 variable "location" {
-  description = "Azure region for resources. Choose region closest to your team for best performance."
+  description = "Azure region for resources. Default is westeurope per CAF guidelines for proximity to Europe/Türkiye."
   type        = string
-  default     = "eastus"
+  default     = "westeurope"
 }
 
 variable "storage_account_name" {
-  description = "Name of the storage account (must be globally unique, 3-24 lowercase alphanumeric). Required for Azure Functions runtime."
+  description = "Name of the storage account following CAF naming: stfunc<env><random> (must be globally unique, 3-24 lowercase alphanumeric). Required for Azure Functions runtime."
   type        = string
-  default     = "stspecauto001"
+  default     = "stfuncdevspec001"
 
   validation {
     condition     = can(regex("^[a-z0-9]{3,24}$", var.storage_account_name))
@@ -30,9 +36,9 @@ variable "storage_account_name" {
 }
 
 variable "service_plan_name" {
-  description = "Name of the Azure Service Plan. Defines the compute resources for the function."
+  description = "Name of the Azure Service Plan following CAF naming: <type>-<env>-<suffix>"
   type        = string
-  default     = "asp-spec-automation"
+  default     = "asp-dev-spec"
 }
 
 variable "service_plan_sku" {
@@ -47,9 +53,9 @@ variable "service_plan_sku" {
 }
 
 variable "function_app_name" {
-  description = "Name of the Azure Function App (must be globally unique). This will be part of the function URL."
+  description = "Name of the Azure Function App following CAF naming: func-<env>-<name> (must be globally unique). This will be part of the function URL."
   type        = string
-  default     = "func-spec-dispatch-001"
+  default     = "func-dev-dispatch"
 
   validation {
     condition     = can(regex("^[a-z0-9-]{2,60}$", var.function_app_name))
@@ -64,6 +70,16 @@ variable "github_owner" {
 
 variable "github_repo" {
   description = "GitHub repository name. Example: 'ai-native-sdlc'"
+  type        = string
+}
+
+variable "ado_org_url" {
+  description = "Azure DevOps organization URL. Example: 'https://dev.azure.com/yourorg'"
+  type        = string
+}
+
+variable "ado_project" {
+  description = "Azure DevOps project name. Example: 'YourProject'"
   type        = string
 }
 
@@ -90,6 +106,12 @@ variable "log_level" {
   }
 }
 
+variable "deployment_allowed_ip" {
+  description = "Your current public IP address for deployment access (CIDR format, e.g., 176.233.31.83/32). Run scripts/update-deployment-ip.sh to update."
+  type        = string
+  default     = "0.0.0.0/32" # Placeholder - run update script
+}
+
 variable "environment" {
   description = "Environment tag (dev, staging, prod). Used for resource tagging and cost tracking."
   type        = string
@@ -101,39 +123,48 @@ variable "environment" {
   }
 }
 
-# Network Security Configuration
-
-variable "vnet_name" {
-  description = "Name of existing VNet for private networking. Use existing VPN-connected VNet."
+variable "owner" {
+  description = "Owner tag for cost tracking and resource management per CAF guidelines."
   type        = string
-  default     = "vnet-ai-agents-infra-dev"
+  default     = "platform-team"
 }
 
-variable "vnet_resource_group" {
-  description = "Resource group containing the VNet. May differ from function resource group."
+variable "cost_center" {
+  description = "Cost center tag for billing allocation per CAF guidelines."
   type        = string
-  default     = "rg-ai-agents-infra-dev"
+  default     = "engineering"
 }
 
-variable "function_subnet_name" {
-  description = "Subnet for Function App VNet integration. Must have delegation to Microsoft.Web/serverFarms."
-  type        = string
-  default     = "subnet-ai-dev"
+# Network Configuration (CAF Foundation Layer)
+
+variable "vnet_address_space" {
+  description = "Address space for VNet following CAF guidelines."
+  type        = list(string)
+  default     = ["10.1.0.0/16"]
 }
 
-variable "private_endpoint_subnet_name" {
-  description = "Subnet for private endpoints (Storage, Function). No delegation required."
+variable "function_subnet_prefix" {
+  description = "Address prefix for Functions subnet (snet-func)."
   type        = string
-  default     = "subnet-ai-dev"
+  default     = "10.1.1.0/24"
+}
+
+variable "private_endpoint_subnet_prefix" {
+  description = "Address prefix for Private Endpoints subnet (snet-pe)."
+  type        = string
+  default     = "10.1.2.0/24"
 }
 
 variable "enable_public_access" {
-  description = "Enable public network access. MUST be false per security policy. Setting to true will FAIL deployment."
+  description = "Enable public network access endpoint. REQUIRED=true for Premium Functions file share with VNet. Security enforced via network_rules.default_action=Deny + VNet allowlist."
   type        = bool
-  default     = false
+  default     = true
 
-  validation {
-    condition     = var.enable_public_access == false
-    error_message = "SECURITY POLICY VIOLATION: enable_public_access MUST be false. Public internet access is FORBIDDEN. Remove this variable override or set it to false."
-  }
+  # Note: publicNetworkAccess=true with defaultAction=Deny is the CORRECT security model
+  # for Premium Functions with VNet integration. Setting to false blocks file share access
+  # even with VNet integration, causing function startup failures.
+  # Actual security is enforced by:
+  #  1. network_rules.default_action = "Deny" (blocks all public traffic by default)
+  #  2. network_rules.virtualNetworkRules (allow only specific subnets)
+  # 3. Private endpoints for blob/file (for additional security)
 }

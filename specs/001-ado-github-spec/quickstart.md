@@ -107,15 +107,80 @@ The Azure Function directly handles Service Hook events and dispatches GitHub wo
 
 ### Configure Service Hook
 
+#### Get Azure Function URL with Key
+
+**Option 1: Via Terraform Output**
+```bash
+cd infra
+terraform output function_url
+# Output: https://func-dev-dispatch.azurewebsites.net/api/spec-dispatch?code=<function_key>
+```
+
+**Option 2: Via Azure Portal**
+1. Navigate to **Function App** → `func-dev-dispatch`
+2. Go to **Functions** → `spec-dispatch`
+3. Click **Get Function Url** (top bar)
+4. Copy URL (includes function key): `https://func-dev-dispatch.azurewebsites.net/api/spec-dispatch?code=Ux20Ejn...`
+
+**Option 3: Via Azure CLI**
+```bash
+az functionapp function keys list \
+  --name func-dev-dispatch \
+  --resource-group rg-func-dev \
+  --function-name spec-dispatch \
+  --query "default" -o tsv
+# Returns: <function_key>
+
+# Construct URL manually:
+# https://func-dev-dispatch.azurewebsites.net/api/spec-dispatch?code=<function_key>
+```
+
+#### Create Service Hook Subscription in Azure DevOps
+
 1. Navigate to Azure DevOps: **Project Settings** → **Service Hooks**
 2. Click **Create Subscription** → **Web Hooks**
-3. Configure trigger:
-   - Event Type: **Work item updated**
-   - Filters: (Optional) Work Item Type = Feature
-4. Configure action:
-   - URL: `<function_url>/api/spec-dispatch?code=<function_key>`
-   - HTTP Headers: (none required)
-5. Test and finish
+
+3. **Trigger configuration**:
+   - Trigger on this type of event: **Work item updated**
+   - Filters:
+     - **Work item type**: `Feature` (optional - filters at ADO level)
+     - **Area path**: `[Any]` (or specific area)
+     - **Field**: `Board Column` (optional - can validate in function instead)
+
+4. **Action configuration** (Settings):
+   - **URL**: `https://func-dev-dispatch.azurewebsites.net/api/spec-dispatch?code=<function_key>`
+     - ⚠️ **CRITICAL**: Include the `?code=` parameter with function key
+     - Example: `https://func-dev-dispatch.azurewebsites.net/api/spec-dispatch?code=Ux20Ejnfh1LmDdgusoB3Gc_iRy06cw8KxwOn1M4ZFK6VAzFuM-Wxsg==`
+   - **Accept untrusted SSL certificates**: ❌ Unchecked (Azure uses valid certs)
+   - **HTTP headers**: (none required)
+   - **Basic authentication username**: (leave empty)
+   - **Basic authentication password**: (leave empty)
+   - **Resource details to send**: `All`
+   - **Messages to send**: `All`
+   - **Detailed messages to send**: `All`
+   - **Resource version**: `1.0`
+
+5. **Test the subscription**:
+   - Click **Test** button
+   - Should return HTTP 204 (success) or 403 (validation failed - expected if test payload doesn't match filters)
+   - Check function logs if test fails:
+     ```bash
+     az webapp log tail --name func-dev-dispatch --resource-group rg-func-dev --provider application
+     ```
+
+6. Click **Finish** to save the subscription
+
+#### Verify Webhook Configuration
+
+After creating the subscription, verify it appears in the list:
+- Navigate to **Project Settings** → **Service Hooks**
+- You should see subscription with:
+  - Publisher: `Azure DevOps`
+  - Event: `Work item updated`
+  - Action: `Post via HTTP`
+  - Status: ✅ Enabled
+
+**Security Note**: The function URL with `?code=` parameter is visible in Azure DevOps webhook configuration. Treat this as a secret - anyone with this URL can trigger your function (though validation logic will reject invalid payloads).
 
 ### Manual Test
 
