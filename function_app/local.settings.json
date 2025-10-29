@@ -6,7 +6,7 @@
     "GITHUB_OWNER": "agzyamov",
     "GITHUB_REPO": "ai-native-sdlc",
     "GITHUB_WORKFLOW_FILENAME": "spec-kit-specify.yml",
-    "GITHUB_WORKFLOW_REF": "001-ado-github-spec",
+    "GITHUB_WORKFLOW_REF": "main",
     "ADO_ORG_URL": "https://dev.azure.com/RustemAgziamov",
     "ADO_PROJECT": "ai-native-sdlc-blueprint",
     "SPEC_COLUMN_NAME": "Specification",
