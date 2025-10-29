@@ -33,6 +33,9 @@ echo "📄 Loading prompt: $PROMPT_NAME"
 echo "📂 From: $PROMPT_FILE"
 echo ""
 
+# Export PROMPT_FILE for Python script
+export PROMPT_FILE
+
 # Parse arguments and export as environment variables for Python
 for arg in "$@"; do
   if [[ "$arg" =~ ^([A-Z_]+)=(.*)$ ]]; then
