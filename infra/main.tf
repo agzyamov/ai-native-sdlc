@@ -11,6 +11,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.0"
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.0"
+    }
   }
 
   backend "local" {
@@ -26,6 +30,9 @@ provider "azurerm" {
     }
   }
 }
+
+# Azure AD provider for App Registration (used by permission validation script)
+provider "azuread" {}
 
 # Local variables for consistent tagging
 locals {
@@ -421,6 +428,65 @@ resource "azurerm_role_assignment" "function_keyvault_secrets" {
   scope                = azurerm_key_vault.main.id
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_linux_function_app.main.identity[0].principal_id
+}
+
+#=============================================================================
+# IDENTITY - Azure AD Application Registration for Teams Chat Agent
+#=============================================================================
+
+# NOTE: Delegated permissions (scopes) still require user/admin consent after creation.
+# This app registration supplies the Client ID consumed by the permission check script
+# and SSO flow. Replace placeholder GUIDs with actual Microsoft Graph delegated scope IDs
+# if automatic required_resource_access configuration is desired.
+
+data "azuread_client_config" "current" {}
+
+resource "azuread_application" "teams_agent" {
+  display_name               = var.app_display_name
+  sign_in_audience           = "AzureADMyOrg"
+  fallback_public_client_enabled = true
+
+  web {
+    redirect_uris = var.app_redirect_urls
+  }
+
+  # Placeholder required resource access block demonstrating structure.
+  # Actual delegated permission IDs must be inserted (Microsoft Graph applicationId
+  # is fixed: 00000003-0000-0000-c000-000000000000). Leaving commented to avoid
+  # plan failures due to invalid IDs.
+  # required_resource_access {
+  #   resource_app_id = "00000003-0000-0000-c000-000000000000" # Microsoft Graph
+  #   resource_access {
+  #     id   = "<Chat.Read delegated permission ID>"
+  #     type = "Scope"
+  #   }
+  #   resource_access {
+  #     id   = "<ChatMessage.Read delegated permission ID>"
+  #     type = "Scope"
+  #   }
+  #   resource_access {
+  #     id   = "<OnlineMeetings.Read delegated permission ID>"
+  #     type = "Scope"
+  #   }
+  #   resource_access {
+  #     id   = "<OnlineMeetingRecording.Read.All delegated permission ID>"
+  #     type = "Scope"
+  #   }
+  #   resource_access {
+  #     id   = "<OnlineMeetingTranscript.Read.All delegated permission ID>"
+  #     type = "Scope"
+  #   }
+  #   resource_access {
+  #     id   = "<Files.Read.All delegated permission ID>"
+  #     type = "Scope"
+  #   }
+  # }
+
+  owners = [data.azuread_client_config.current.object_id]
+}
+
+resource "azuread_service_principal" "teams_agent_sp" {
+  application_id = azuread_application.teams_agent.application_id
 }
 
 #=============================================================================

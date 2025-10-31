@@ -61,3 +61,18 @@ output "vnet_id" {
   description = "ID of the Virtual Network"
   value       = azurerm_virtual_network.main.id
 }
+
+output "app_registration_client_id" {
+  description = "Client ID of the Azure AD application for Teams Chat Agent"
+  value       = azuread_application.teams_agent.client_id
+}
+
+output "app_registration_object_id" {
+  description = "Object ID of the Azure AD application"
+  value       = azuread_application.teams_agent.object_id
+}
+
+output "app_service_principal_object_id" {
+  description = "Object ID of the service principal for the application"
+  value       = azuread_service_principal.teams_agent_sp.object_id
+}

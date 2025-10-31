@@ -168,3 +168,16 @@ variable "enable_public_access" {
   #  2. network_rules.virtualNetworkRules (allow only specific subnets)
   # 3. Private endpoints for blob/file (for additional security)
 }
+
+# Application Registration Variables
+variable "app_display_name" {
+  description = "Display name for Azure AD application registration used by Teams Chat Agent"
+  type        = string
+  default     = "teams-chat-agent"
+}
+
+variable "app_redirect_urls" {
+  description = "List of redirect URIs for public client / web auth flows (add http://localhost for dev)"
+  type        = list(string)
+  default     = ["http://localhost"]
+}
