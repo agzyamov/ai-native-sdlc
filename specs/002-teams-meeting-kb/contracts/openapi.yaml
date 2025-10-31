@@ -1,0 +1,205 @@
+openapi: 3.1.0
+info:
+  title: Teams Meeting Knowledge Base Agent API
+  version: 0.1.0
+  description: Internal API for harvest orchestration, search, status, purge, and health.
+servers:
+  - url: https://{host}/api
+    variables:
+      host:
+        default: localhost
+paths:
+  /harvest/trigger:
+    post:
+      summary: Trigger harvest for a meeting occurrence
+      operationId: triggerHarvest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [seriesId, startTime, endTime]
+              properties:
+                seriesId:
+                  type: string
+                startTime:
+                  type: string
+                  format: date-time
+                endTime:
+                  type: string
+                  format: date-time
+                force:
+                  type: boolean
+                  description: Force re-harvest even if already completed
+      responses:
+        '202':
+          description: Harvest accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occurrenceId:
+                    type: string
+                  orchestrationInstanceId:
+                    type: string
+        '400':
+          description: Validation error
+        '409':
+          description: Harvest already running
+  /harvest/status/{occurrenceId}:
+    get:
+      summary: Get harvest status
+      operationId: getHarvestStatus
+      parameters:
+        - name: occurrenceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Harvest status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  occurrenceId: { type: string }
+                  status: { type: string, enum: [RUNNING, SUCCEEDED, PARTIAL, FAILED] }
+                  transcriptStatus: { type: string, enum: [PENDING, AVAILABLE, TIMEOUT, DISABLED] }
+                  recordingStatus: { type: string, enum: [NOT_REQUESTED, METADATA_ONLY, DISABLED] }
+                  retries: { type: integer }
+                  artifactCounts:
+                    type: object
+                    properties:
+                      chat: { type: integer }
+                      files: { type: integer }
+                      transcriptSegments: { type: integer }
+                  disabledArtifacts:
+                    type: array
+                    items:
+                      type: string
+        '404':
+          description: Unknown occurrenceId
+  /search/query:
+    post:
+      summary: Perform KB search (hybrid)
+      operationId: searchQuery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string }
+                top: { type: integer, default: 10 }
+                filter:
+                  type: object
+                  properties:
+                    meetingSeriesId: { type: string }
+                    dateFrom: { type: string, format: date-time }
+                    dateTo: { type: string, format: date-time }
+                    artifactTypes:
+                      type: array
+                      items: { type: string }
+                vectorWeight:
+                  type: number
+                  default: 0.5
+                semantic:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        meetingSeriesId: { type: string }
+                        meetingDate: { type: string, format: date-time }
+                        artifactType: { type: string }
+                        speaker: { type: string }
+                        author: { type: string }
+                        content: { type: string }
+                        sourceRef: { type: string }
+                        sensitivityFlags:
+                          type: array
+                          items: { type: string }
+                        score: { type: number }
+                        vectorScore: { type: number }
+                  total: { type: integer }
+        '400':
+          description: Validation error
+  /admin/purge/{seriesId}:
+    delete:
+      summary: Force retention purge dry-run or execution
+      operationId: purgeSeries
+      parameters:
+        - name: seriesId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: execute
+          in: query
+          required: false
+          schema: { type: boolean }
+          description: If true perform actual deletions; otherwise dry-run
+      responses:
+        '200':
+          description: Purge summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: object
+                    properties:
+                      chunks: { type: integer }
+                      artifacts: { type: integer }
+                  dryRun: { type: boolean }
+        '404':
+          description: Unknown seriesId
+  /health:
+    get:
+      summary: Health & dependency readiness
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [OK, DEGRADED, FAIL] }
+                  dependencies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        status: { type: string }
+                        latencyMs: { type: integer }
+                        error: { type: string }
+        '503':
+          description: Service unhealthy
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas: {}
+security:
+  - bearerAuth: []
