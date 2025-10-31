@@ -17,12 +17,18 @@ import config
 import util
 import ado_client
 
-# Configure structured logging
+# Configure structured logging with explicit handlers
+log_level = os.getenv("LOG_LEVEL", "INFO")
 logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
-    format='{"time": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}'
+    level=log_level,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
+logger.setLevel(log_level)
+
+# Log startup
+logger.info("Azure Function starting up - spec-dispatch endpoint initialized")
 
 app = func.FunctionApp()
 
@@ -42,23 +48,17 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
     correlation_id = str(uuid.uuid4())
     start_time = datetime.utcnow()
     
-    logger.info(json.dumps({
-        "correlation_id": correlation_id,
-        "event": "request_received",
-        "method": req.method
-    }))
+    # Log at multiple levels to ensure visibility
+    logger.info(f"[{correlation_id}] Request received - method={req.method}")
+    print(f"STDOUT: Request received - correlation_id={correlation_id}")  # Force stdout logging
     
     try:
         # Parse request body
         try:
             body = req.get_json()
+            logger.info(f"[{correlation_id}] Parsed JSON body - eventType={body.get('eventType', 'unknown')}")
         except ValueError as e:
-            logger.error(json.dumps({
-                "correlation_id": correlation_id,
-                "error": "invalid_json",
-                "error_classification": "validation",
-                "details": str(e)
-            }))
+            logger.error(f"[{correlation_id}] Invalid JSON: {str(e)}")
             return func.HttpResponse(
                 json.dumps({"error": "Invalid JSON payload"}),
                 status_code=400,
@@ -71,28 +71,20 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
             work_item_id = body["resource"]["workItemId"]
         
         if not work_item_id:
-            logger.warning(json.dumps({
-                "correlation_id": correlation_id,
-                "error": "missing_work_item_id",
-                "error_classification": "validation",
-                "body_keys": list(body.keys())
-            }))
+            logger.warning(f"[{correlation_id}] Missing work item ID - body_keys={list(body.keys())}")
             return func.HttpResponse(
                 json.dumps({"error": "Missing resource.workItemId in payload"}),
                 status_code=400,
                 mimetype="application/json"
             )
         
+        logger.info(f"[{correlation_id}] Work item ID: {work_item_id}")
+        
         # Validate configuration
         cfg = config.get_config()
         config_valid, missing_vars = cfg.validate()
         if not config_valid:
-            logger.error(json.dumps({
-                "correlation_id": correlation_id,
-                "error": "missing_configuration",
-                "error_classification": "validation",
-                "missing_vars": missing_vars
-            }))
+            logger.error(f"[{correlation_id}] Missing configuration: {missing_vars}")
             return func.HttpResponse(
                 json.dumps({"error": "Missing required configuration", "missing": missing_vars}),
                 status_code=500,
@@ -102,13 +94,8 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         # Validate event (uses environment variables directly)
         is_valid, reason = validation.validate_event(body)
         if not is_valid:
-            logger.info(json.dumps({
-                "correlation_id": correlation_id,
-                "work_item_id": work_item_id,
-                "event": "validation_filtered",
-                "error_classification": "validation",
-                "reason": reason
-            }))
+            logger.info(f"[{correlation_id}] Validation filtered: {reason}")
+            print(f"STDOUT: Validation filtered - work_item_id={work_item_id}, reason={reason}")
             # Return 204 (No Content) instead of 403 to prevent "Failed" status in Azure DevOps
             # The function is working correctly - it's just filtering out events that don't match criteria
             return func.HttpResponse(status_code=204)
@@ -126,34 +113,19 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
             # Use Description if available, fallback to Title
             feature_description = description if description else title
             
-            logger.info(json.dumps({
-                "correlation_id": correlation_id,
-                "work_item_id": work_item_id,
-                "event": "fetched_work_item",
-                "has_description": bool(description),
-                "title": title[:100]  # Log first 100 chars
-            }))
+            logger.info(f"[{correlation_id}] Fetched work item {work_item_id} - has_description={bool(description)}, title={title[:50]}...")
         except Exception as e:
-            logger.error(json.dumps({
-                "correlation_id": correlation_id,
-                "work_item_id": work_item_id,
-                "error": "failed_to_fetch_work_item",
-                "error_classification": "transport",
-                "details": str(e)
-            }))
+            logger.error(f"[{correlation_id}] Failed to fetch work item {work_item_id}: {str(e)}")
+            print(f"STDOUT ERROR: Failed to fetch work item - {str(e)}")
             return func.HttpResponse(
                 json.dumps({"error": "Failed to fetch work item from ADO", "details": str(e)}),
                 status_code=500,
                 mimetype="application/json"
             )
         
-        # Derive branch hint
-        branch_hint = f"feature/wi-{work_item_id}"
-        
         # Dispatch workflow (uses environment variables directly)
         success, message = dispatch.dispatch_workflow(
             work_item_id=work_item_id,
-            branch_hint=branch_hint,
             description_placeholder=feature_description
         )
         
@@ -161,22 +133,12 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
         
         if success:
-            logger.info(json.dumps({
-                "correlation_id": correlation_id,
-                "work_item_id": work_item_id,
-                "event": "dispatch_success",
-                "latency_ms": latency_ms
-            }))
+            logger.info(f"[{correlation_id}] Workflow dispatched successfully for work item {work_item_id} - latency={latency_ms}ms")
+            print(f"STDOUT SUCCESS: Dispatched workflow for work item {work_item_id}")
             return func.HttpResponse(status_code=204)
         else:
-            logger.error(json.dumps({
-                "correlation_id": correlation_id,
-                "work_item_id": work_item_id,
-                "event": "dispatch_failed",
-                "error_classification": "transport",
-                "message": message,
-                "latency_ms": latency_ms
-            }))
+            logger.error(f"[{correlation_id}] Failed to dispatch workflow for work item {work_item_id}: {message} - latency={latency_ms}ms")
+            print(f"STDOUT ERROR: Dispatch failed - {message}")
             return func.HttpResponse(
                 json.dumps({"error": message}),
                 status_code=500,
@@ -185,13 +147,8 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         
     except Exception as e:
         latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
-        logger.exception(json.dumps({
-            "correlation_id": correlation_id,
-            "error": "unexpected_exception",
-            "error_classification": "transport",
-            "exception_type": type(e).__name__,
-            "latency_ms": latency_ms
-        }))
+        logger.exception(f"[{correlation_id}] Unexpected exception: {type(e).__name__} - {str(e)} - latency={latency_ms}ms")
+        print(f"STDOUT EXCEPTION: {type(e).__name__} - {str(e)}")
         return func.HttpResponse(
             json.dumps({"error": "Internal server error", "correlation_id": correlation_id}),
             status_code=500,
