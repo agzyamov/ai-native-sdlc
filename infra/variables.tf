@@ -86,7 +86,7 @@ variable "ado_project" {
 variable "spec_column_name" {
   description = "Azure DevOps board column name that triggers spec generation. Must match board configuration exactly."
   type        = string
-  default     = "Specification – Doing"
+  default     = "Specification"
 }
 
 variable "ai_user_match" {

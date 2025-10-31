@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 def dispatch_workflow(
     work_item_id: int,
-    branch_hint: str,
     description_placeholder: str = ""
 ) -> tuple[bool, str]:
     """
@@ -20,7 +19,6 @@ def dispatch_workflow(
     
     Args:
         work_item_id: Azure DevOps work item ID
-        branch_hint: Suggested branch name (e.g., "feature/wi-123")
         description_placeholder: Optional description text
     
     Returns:
@@ -52,8 +50,7 @@ def dispatch_workflow(
         "inputs": {
             "feature_description": description_placeholder or f"ADO Work Item #{work_item_id}",
             "create_branch": "true",
-            "work_item_id": str(work_item_id),
-            "branch_hint": branch_hint
+            "work_item_id": str(work_item_id)
         }
     }
     

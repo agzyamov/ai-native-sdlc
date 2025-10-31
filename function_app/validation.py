@@ -3,6 +3,9 @@ Validation logic for Azure DevOps Service Hook events.
 Determines if a work item event should trigger spec generation.
 """
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def validate_event(event: dict) -> tuple[bool, str]:
@@ -26,7 +29,10 @@ def validate_event(event: dict) -> tuple[bool, str]:
     """
     # Check event type
     event_type = event.get("eventType", "")
+    logger.info(f"Validating event - eventType={event_type}")
+    
     if event_type != "workitem.updated":
+        logger.info(f"Rejected: Invalid event type '{event_type}'")
         return False, f"Invalid event type: {event_type}"
     
     # Extract resource fields - check revision.fields for full work item state
@@ -36,7 +42,10 @@ def validate_event(event: dict) -> tuple[bool, str]:
     
     # Validate work item type
     work_item_type = fields.get("System.WorkItemType", "")
+    logger.info(f"Work item type: {work_item_type}")
+    
     if work_item_type != "Feature":
+        logger.info(f"Rejected: Invalid work item type '{work_item_type}'")
         return False, f"Invalid work item type: {work_item_type} (expected Feature)"
     
     # Validate assignee
@@ -51,7 +60,10 @@ def validate_event(event: dict) -> tuple[bool, str]:
         # Extract display name from "DisplayName <email>" format
         assignee_name = assignee_raw.split("<")[0].strip()
     
+    logger.info(f"Assignee check - raw='{assignee_raw}', parsed='{assignee_name}', expected='{ai_user_match}'")
+    
     if assignee_name.lower() != ai_user_match.lower():
+        logger.info(f"Rejected: Assignee mismatch '{assignee_name}' != '{ai_user_match}'")
         return False, f"Assignee mismatch: '{assignee_name}' (expected '{ai_user_match}')"
     
     # Validate board column and "Doing" state (not Done)
@@ -64,11 +76,16 @@ def validate_event(event: dict) -> tuple[bool, str]:
     # Strip " – Doing" or " – Done" suffix from expected column name for comparison
     spec_column_base = spec_column.split(" – ")[0].strip()
     
+    logger.info(f"Column check - board_column='{board_column}', expected_base='{spec_column_base}', board_column_done={board_column_done}")
+    
     if board_column != spec_column_base:
+        logger.info(f"Rejected: Column mismatch '{board_column}' != '{spec_column_base}'")
         return False, f"Column mismatch: '{board_column}' (expected '{spec_column_base}')"
     
     if board_column_done:
+        logger.info(f"Rejected: Column is in 'Done' state (BoardColumnDone=True)")
         return False, f"Column state is 'Done' (expected 'Doing' - BoardColumnDone should be false)"
     
+    logger.info("Validation passed - all checks OK")
     return True, "ok"
 
