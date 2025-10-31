@@ -1,0 +1,20 @@
+Create an AI agent that:
+1. Authenticates using my user credentials (delegated permissions)
+2. Reads Teams meeting series chat including:
+   - Meeting recordings
+   - Meeting transcripts
+   - Regular chat messages
+   - File attachments
+3. Processes and analyzes this data
+
+Requirements:
+- Use Microsoft Graph API with delegated permissions
+- Agent runs on behalf of my user account
+- Must handle authentication flow
+- Should respect rate limits and best practices
+
+Please provide:
+- Required Microsoft Graph API permissions
+- Authentication implementation
+- API endpoints and usage examples
+- Error handling strategy
