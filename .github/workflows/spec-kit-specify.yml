@@ -262,7 +262,16 @@ jobs:
           # Use LLM to detect questions (robust to format variations)
           echo "🤖 Using LLM to detect if Copilot output contains clarification questions..."
           
-          .github/scripts/detect-questions-llm.sh > question_detection.json
+          if ! .github/scripts/detect-questions-llm.sh > question_detection.json 2>&1; then
+            echo "❌ ERROR: LLM detection failed"
+            echo "Detection output:"
+            cat question_detection.json || echo "(no output file)"
+            exit 1
+          fi
+          
+          echo "✅ LLM detection completed"
+          echo "Detection result:"
+          cat question_detection.json
           
           HAS_QUESTIONS=$(python3 -c "import json; print(json.load(open('question_detection.json'))['has_questions'])")
           DETECTION_REASON=$(python3 -c "import json; print(json.load(open('question_detection.json'))['reason'])")
