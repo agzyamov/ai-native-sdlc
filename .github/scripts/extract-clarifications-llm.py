@@ -12,10 +12,10 @@ from openai import OpenAI
 def extract_markers_with_llm(spec_content: str) -> list[dict]:
     """Extract all clarification questions using GitHub Models LLM"""
     
-    # Initialize GitHub Models client
-    github_token = os.getenv("GITHUB_TOKEN")
+    # Initialize GitHub Models client (prefer GH_WORKFLOW_DISPATCH_PAT for GitHub Models API)
+    github_token = os.getenv("GH_WORKFLOW_DISPATCH_PAT") or os.getenv("GITHUB_TOKEN")
     if not github_token:
-        print("❌ Error: GITHUB_TOKEN environment variable not set", file=sys.stderr)
+        print("❌ Error: No GitHub token available (GH_WORKFLOW_DISPATCH_PAT or GITHUB_TOKEN)", file=sys.stderr)
         sys.exit(1)
     
     client = OpenAI(

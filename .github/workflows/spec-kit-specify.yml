@@ -190,6 +190,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_WORKFLOW_DISPATCH_PAT: ${{ secrets.GH_WORKFLOW_DISPATCH_PAT }}
         run: |
           export GITHUB_TOKEN="${GITHUB_TOKEN}"
           export GH_TOKEN="${GH_TOKEN}"
@@ -338,6 +339,7 @@ jobs:
       - name: Extract Clarifications
         if: steps.detect_markers.outputs.markers_found == 'true'
         env:
+          GH_WORKFLOW_DISPATCH_PAT: ${{ secrets.GH_WORKFLOW_DISPATCH_PAT }}
           GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"

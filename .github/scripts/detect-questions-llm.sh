@@ -19,10 +19,10 @@ import json
 from pathlib import Path
 from openai import OpenAI
 
-# Get GitHub token from environment
-token = os.getenv('GITHUB_TOKEN') or os.getenv('COPILOT_TOKEN')
+# Get GitHub token from environment (prefer GH_WORKFLOW_DISPATCH_PAT for GitHub Models API)
+token = os.getenv('GH_WORKFLOW_DISPATCH_PAT') or os.getenv('GITHUB_TOKEN') or os.getenv('COPILOT_TOKEN')
 if not token:
-    sys.stderr.write('Error: No GitHub token available (GITHUB_TOKEN or COPILOT_TOKEN)\n')
+    sys.stderr.write('Error: No GitHub token available (GH_WORKFLOW_DISPATCH_PAT, GITHUB_TOKEN, or COPILOT_TOKEN)\n')
     sys.exit(1)
 
 # Initialize GitHub Models client
