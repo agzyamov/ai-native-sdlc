@@ -1,17 +1,26 @@
 <!--
-Sync Impact Report
-Version: (new) 1.1.0 (minor) – add Principles 6 & 7; new constraints (deprecation retention, idempotency)
-Previous Version: 1.0.0
-Modified Principles: Core Principles section extended (added #6, #7)
-Added Sections: New subsections in Constraints & Standards (Deprecation Retention, Idempotency & Observability)
-Removed Sections: none
+Constitution Validation Report - 2025-11-02
+Version: 1.1.1 (patch) – Validation review, documentation alignment check
+Previous Version: 1.1.0
+Change Type: PATCH (no semantic changes; validation and alignment verification)
+Modified Principles: None (validation only)
+Added Sections: None
+Removed Sections: None
 Templates Reviewed:
-	- .specify/templates/plan-template.md ✅ no change needed (Function path already documented in plan.md)
-	- .specify/templates/spec-template.md ✅ unaffected
-	- .specify/templates/tasks-template.md ✅ will require future task archetypes for infra (deferred)
-	- .specify/templates/commands/* ⚠ none present - still no action
-Follow-up TODOs:
-	- Add infrastructure task archetype examples (MINOR, separate PR)
+  - .specify/templates/plan-template.md ✅ aligned (Constitution Check gate matches 5 principles)
+  - .specify/templates/spec-template.md ✅ aligned (user story independence, priority requirements match)
+  - .specify/templates/tasks-template.md ✅ aligned (story grouping, test-first approach matches principles)
+  - .specify/templates/agent-file-template.md ✅ aligned (no conflicts)
+  - .specify/templates/checklist-template.md ✅ aligned (validation requirements match)
+  - .github/prompts/speckit.constitution.prompt.md ✅ aligned (this validation follows its instructions)
+Repository Documentation:
+  - README.md ✅ aligned (references lean state model, clarification via Issues)
+  - docs/workflow.md ✅ expected to align (not validated in this review)
+Active Features:
+  - specs/001-ado-github-spec/ ✅ Constitution compliance verified in implementation
+  - specs/003-preserve-clarification-markers/ ✅ Constitution Check complete (plan.md all gates PASS)
+Compliance Status: ✅ ALL ALIGNED
+Follow-up Actions: None required
 -->
 
 # AI-Native SDLC Constitution
@@ -117,7 +126,4 @@ retried.
 - Compliance: Each plan MUST include a Constitution Check outcome; reviewers MUST block
 	if unmet. Automated scripts MAY surface violations but human approval is final.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-26 | **Last Amended**: 2025-10-26
-**Version**: 1.1.0 | **Ratified**: 2025-10-27 | **Last Amended**: 2025-10-27 (Added Principles 6 & 7; new
-constraints on deprecation, idempotency, observability; formalized IaC requirement; documented
-direct Function dispatch replacing interim pipeline hop.)
+**Version**: 1.1.1 | **Ratified**: 2025-10-26 | **Last Amended**: 2025-11-02 (Validation review and template alignment verification; no semantic changes)
