@@ -329,7 +329,7 @@ jobs:
       - name: Extract Clarifications
         if: steps.detect_markers.outputs.markers_found == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           
