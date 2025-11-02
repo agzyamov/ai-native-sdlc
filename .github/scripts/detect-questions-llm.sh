@@ -27,7 +27,7 @@ if not token:
 
 # Initialize GitHub Models client
 client = OpenAI(
-    base_url='https://models.inference.ai.azure.com',
+    base_url='https://models.github.ai/inference',
     api_key=token
 )
 

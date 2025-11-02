@@ -19,11 +19,9 @@ def extract_markers_with_llm(spec_content: str) -> list[dict]:
         sys.exit(1)
     
     client = OpenAI(
-        base_url="https://models.inference.ai.azure.com",
+        base_url="https://models.github.ai/inference",
         api_key=github_token
-    )
-    
-    # Load prompts from dedicated files
+    )    # Load prompts from dedicated files
     script_dir = Path(__file__).parent
     prompts_dir = script_dir.parent / "prompts" / "custom"
     
