@@ -330,6 +330,7 @@ When creating or modifying Azure infrastructure:
 ## Active Technologies
 - GitHub Actions composite environment (YAML) + Bash; Spec Kit CLI (Python runtime 3.11 in workflow). (001-ado-github-spec)
 - None (stateless; spec stored in Git + ADO work item Description). (001-ado-github-spec)
+- Bash (shell scripts), Python 3.11 (for marker extraction script), YAML (GitHub Actions workflow) (003-preserve-clarification-markers)
 
 ## Recent Changes
 - 001-ado-github-spec: Added GitHub Actions composite environment (YAML) + Bash; Spec Kit CLI (Python runtime 3.11 in workflow).

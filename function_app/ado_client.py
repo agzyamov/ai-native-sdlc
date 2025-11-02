@@ -119,3 +119,118 @@ def update_work_item_description(work_item_id: int, description: str) -> bool:
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating work item {work_item_id}: {str(e)}")
         return False
+
+
+def create_issue_workitem(
+    parent_feature_id: int,
+    title: str,
+    description: str,
+    tags: str,
+    idempotency_key: str,
+    assigned_to: Optional[str] = None
+) -> Optional[dict]:
+    """
+    Create ADO Issue work item with Parent-Child link to Feature.
+    
+    Args:
+        parent_feature_id: Parent Feature work item ID
+        title: Issue title
+        description: Issue description (HTML)
+        tags: Semicolon-separated tags
+        idempotency_key: Unique key to prevent duplicates
+        assigned_to: Optional assignee email/UPN
+    
+    Returns:
+        Issue dict if created, None if duplicate detected or error
+    
+    Uses environment variables:
+        - ADO_ORG_URL: Azure DevOps organization URL
+        - ADO_PROJECT: Project name  
+        - ADO_WORK_ITEM_PAT: Personal Access Token (Work Items: Read & Write)
+    """
+    org_url = os.getenv("ADO_ORG_URL")
+    project = os.getenv("ADO_PROJECT")
+    pat = os.getenv("ADO_WORK_ITEM_PAT")
+    
+    if not all([org_url, project, pat]):
+        logger.error("Missing required ADO environment variables")
+        return None
+    
+    import base64
+    auth_header = base64.b64encode(f":{pat}".encode()).decode()
+    
+    # Check for existing Issue (idempotency)
+    query_url = f"{org_url}/{project}/_apis/wit/wiql?api-version=7.0"
+    query_payload = {
+        "query": f"""
+            SELECT [System.Id] 
+            FROM WorkItems 
+            WHERE [System.WorkItemType] = 'Issue' 
+            AND [System.Parent] = {parent_feature_id}
+            AND [System.Description] CONTAINS '{idempotency_key}'
+        """
+    }
+    
+    try:
+        query_response = requests.post(
+            query_url,
+            json=query_payload,
+            headers={
+                "Authorization": f"Basic {auth_header}",
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+        
+        if query_response.ok and query_response.json().get('workItems'):
+            logger.info(f"Issue already exists for idempotency key {idempotency_key}")
+            return None  # Duplicate, skip
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Idempotency check failed: {str(e)} - proceeding with creation")
+    
+    # Create Issue (JSON Patch format)
+    create_url = f"{org_url}/{project}/_apis/wit/workitems/$Issue?api-version=7.0"
+    
+    payload = [
+        {"op": "add", "path": "/fields/System.Title", "value": title},
+        {"op": "add", "path": "/fields/System.Description", "value": description},
+        {"op": "add", "path": "/fields/System.Tags", "value": tags},
+        {
+            "op": "add",
+            "path": "/relations/-",
+            "value": {
+                "rel": "System.LinkTypes.Hierarchy-Reverse",
+                "url": f"{org_url}/{project}/_apis/wit/workitems/{parent_feature_id}",
+                "attributes": {"comment": "Auto-generated clarification"}
+            }
+        }
+    ]
+    
+    if assigned_to:
+        payload.append({"op": "add", "path": "/fields/System.AssignedTo", "value": assigned_to})
+    
+    try:
+        response = requests.post(
+            create_url,
+            json=payload,
+            headers={
+                "Authorization": f"Basic {auth_header}",
+                "Content-Type": "application/json-patch+json"
+            },
+            timeout=30
+        )
+        
+        if response.ok:
+            issue = response.json()
+            logger.info(f"Created Issue {issue['id']}: {title}")
+            return issue
+        else:
+            logger.error(f"Failed to create Issue: {response.status_code} {response.text}")
+            return None
+            
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout creating Issue for Feature {parent_feature_id}")
+        return None
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating Issue: {str(e)}")
+        return None
