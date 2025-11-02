@@ -1,17 +1,47 @@
 <!--
-Sync Impact Report
-Version: (new) 1.1.0 (minor) – add Principles 6 & 7; new constraints (deprecation retention, idempotency)
-Previous Version: 1.0.0
-Modified Principles: Core Principles section extended (added #6, #7)
-Added Sections: New subsections in Constraints & Standards (Deprecation Retention, Idempotency & Observability)
-Removed Sections: none
-Templates Reviewed:
-	- .specify/templates/plan-template.md ✅ no change needed (Function path already documented in plan.md)
-	- .specify/templates/spec-template.md ✅ unaffected
-	- .specify/templates/tasks-template.md ✅ will require future task archetypes for infra (deferred)
-	- .specify/templates/commands/* ⚠ none present - still no action
-Follow-up TODOs:
-	- Add infrastructure task archetype examples (MINOR, separate PR)
+Constitution Sync Impact Report - 2025-11-02
+Version: 1.2.0 (MINOR) – Added Principle 8: LLM Prompt Externalization
+Previous Version: 1.1.1
+Change Type: MINOR (new normative constraint added)
+
+Modified Principles:
+  - None (no existing principles changed)
+
+Added Sections:
+  - Principle 8: LLM Prompt Externalization
+    Rationale: Enforce separation of prompts from code to enable version control,
+    prevent conflicts during Spec Kit updates, and improve maintainability.
+
+Removed Sections: None
+
+Templates Requiring Updates:
+  - .specify/templates/plan-template.md ✅ UPDATED - added Principle 8 gate to Constitution Check
+  - .specify/templates/spec-template.md ✅ aligned (no prompt management in specs)
+  - .specify/templates/tasks-template.md ✅ aligned (no prompt management in tasks)
+  - .specify/templates/agent-file-template.md ✅ aligned (no conflicts)
+  - .specify/templates/checklist-template.md ✅ aligned (no prompt management in checklists)
+  - .github/prompts/speckit.constitution.prompt.md ✅ aligned (follows own instructions)
+
+Code Artifacts Requiring Updates:
+  - .github/scripts/extract-clarifications-llm.py ✅ UPDATED - now loads prompts from files
+  - .github/scripts/detect-questions-llm.sh ✅ UPDATED - now loads prompts from files
+  - .github/prompts/custom/*.md ✅ CREATED - dedicated prompt files
+
+Repository Documentation:
+  - README.md ✅ aligned (no prompt management documentation needed)
+  - docs/workflow.md ✅ expected to align (not affected by prompt management)
+  - .github/prompts/custom/README.md ✅ CREATED - documents custom prompt governance
+
+Active Features:
+  - specs/001-ado-github-spec/ ✅ no prompt management in this feature
+  - specs/003-preserve-clarification-markers/ ⚠️ implements LLM detection - now compliant
+
+Compliance Status: ✅ COMPLIANT (all prompts externalized)
+
+Follow-up Actions:
+  1. Update plan-template.md to include Principle 8 gate in Constitution Check section
+  2. Validate all future LLM integrations follow prompt externalization pattern
+  3. Review existing workflows for any missed embedded prompts (none found in audit)
 -->
 
 # AI-Native SDLC Constitution
@@ -68,6 +98,15 @@ portal or ad-hoc creation is permissible only for exploratory spikes and MUST NO
 past the spike branch lifecycle. All IaC changes SHOULD remain reviewable with plan output
 attached or summarized.
 
+### 8. LLM Prompt Externalization
+LLM prompts (system and user prompts) MUST be stored in dedicated markdown files, never
+embedded directly in workflow YAML files, shell scripts, or Python/JavaScript code. Each
+prompt MUST be stored as a separate file following the pattern `{task-name}.{role}.md`
+where role is `system` or `user`. Custom prompts MUST be isolated from Spec Kit prompts
+(stored in `.github/prompts/custom/`) to prevent conflicts during Spec Kit updates.
+Scripts MUST load prompts from files at runtime. Inline prompt strings are PROHIBITED
+except for exploratory spikes and MUST be extracted before merge to main.
+
 ## Constraints & Standards
 
 - Line length guidance: target ≤100 characters for authored Markdown and code (non-binding
@@ -117,7 +156,4 @@ retried.
 - Compliance: Each plan MUST include a Constitution Check outcome; reviewers MUST block
 	if unmet. Automated scripts MAY surface violations but human approval is final.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-26 | **Last Amended**: 2025-10-26
-**Version**: 1.1.0 | **Ratified**: 2025-10-27 | **Last Amended**: 2025-10-27 (Added Principles 6 & 7; new
-constraints on deprecation, idempotency, observability; formalized IaC requirement; documented
-direct Function dispatch replacing interim pipeline hop.)
+**Version**: 1.2.0 | **Ratified**: 2025-10-26 | **Last Amended**: 2025-11-02 (Added Principle 8: LLM Prompt Externalization)

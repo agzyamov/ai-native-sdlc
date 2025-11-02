@@ -40,6 +40,9 @@ The plan MUST explicitly confirm each gate below (FAIL any → plan not approvab
 | Minimal State Model | No added workflow states; only New→Specification→Planning→Validation→Ready referenced | [OK/FAIL] |
 | Quality Automation | Diagram + workflow validation steps documented (mermaid-cli, actionlint) | [OK/FAIL] |
 | Complexity Justification | Any structural deviations justified in Complexity Tracking section | [OK/FAIL] |
+| Direct Event Path | No unnecessary intermediaries; transformations occur in minimal viable component | [OK/FAIL] |
+| Infrastructure as Code | Durable cloud resources declared via IaC (Terraform); manual creation only for spikes | [OK/FAIL] |
+| LLM Prompt Externalization | All LLM prompts stored in dedicated .md files; no embedded prompts in code/workflows | [OK/FAIL] |
 
 Add a brief note if any gate is FAIL with remediation path and responsible owner.
 
