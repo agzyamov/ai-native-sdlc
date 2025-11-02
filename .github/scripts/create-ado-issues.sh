@@ -96,7 +96,7 @@ description = ''.join(description_parts)
 # Create Issue with clean title (topic only, no truncated question text)
 result = create_issue_workitem(
     parent_feature_id=int("${FEATURE_ID}"),
-    title=f"Q{i}: {topic}",
+    title=f"Q${i}: {topic}",
     description=description,
     tags="clarification; auto-generated",
     idempotency_key=idempotency_key
