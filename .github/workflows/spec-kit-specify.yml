@@ -252,37 +252,60 @@ jobs:
             fi
           fi
 
-          # Validate spec file was created and has content
-          if [ ! -f "$SPEC_FILE" ]; then
-            echo "❌ ERROR: Spec file was not created: $SPEC_FILE"
-            echo "Copilot output:"
-            cat spec_output.txt
-            exit 1
-          fi
-
-          SPEC_SIZE=$(wc -c < "$SPEC_FILE")
-          if [ "$SPEC_SIZE" -lt 100 ]; then
-            echo "❌ ERROR: Spec file is too small ($SPEC_SIZE bytes), generation likely failed"
-            echo "Spec file content:"
-            cat "$SPEC_FILE"
+          # Check if Copilot asked clarification questions instead of generating spec
+          # This is the expected behavior when feature description is ambiguous
+          if grep -q "## Question [0-9]" spec_output.txt; then
+            echo "ℹ️  Copilot asked clarification questions (as expected for ambiguous features)"
+            echo "📝 Extracting questions to spec file for marker detection..."
+            
+            # Extract questions section from output (from first ## Question to end, excluding usage stats)
+            # Add [NEEDS CLARIFICATION] markers so extract-clarifications.py can process them
+            {
+              echo "# Feature Specification: ${BRANCH_NAME}"
+              echo ""
+              echo "This feature requires clarification before implementation."
+              echo ""
+              sed -n '/^## Question [0-9]/,/^Total usage/p' spec_output.txt | sed '/^Total usage/d' | \
+                sed 's/^## Question \([0-9]\+\):/\n[NEEDS CLARIFICATION: Question \1]\n\n&/'
+            } > "$SPEC_FILE"
+            
+            echo "✅ Clarification questions saved to: $SPEC_FILE"
             echo ""
-            echo "Copilot output:"
-            cat spec_output.txt
-            exit 1
-          fi
+            echo "Preview:"
+            head -50 "$SPEC_FILE"
+          else
+            # Normal spec generation path - validate spec file
+            if [ ! -f "$SPEC_FILE" ]; then
+              echo "❌ ERROR: Spec file was not created: $SPEC_FILE"
+              echo "Copilot output:"
+              cat spec_output.txt
+              exit 1
+            fi
 
-          if ! grep -q "^# " "$SPEC_FILE"; then
-            echo "❌ ERROR: Spec file doesn't contain markdown headers"
-            echo "Spec file content:"
-            cat "$SPEC_FILE"
-            exit 1
-          fi
+            SPEC_SIZE=$(wc -c < "$SPEC_FILE")
+            if [ "$SPEC_SIZE" -lt 100 ]; then
+              echo "❌ ERROR: Spec file is too small ($SPEC_SIZE bytes), generation likely failed"
+              echo "Spec file content:"
+              cat "$SPEC_FILE"
+              echo ""
+              echo "Copilot output:"
+              cat spec_output.txt
+              exit 1
+            fi
 
-          echo ""
-          echo "✅ Specification saved to: $SPEC_FILE"
-          echo ""
-          echo "Preview (first 30 lines):"
-          head -30 "$SPEC_FILE"
+            if ! grep -q "^# " "$SPEC_FILE"; then
+              echo "❌ ERROR: Spec file doesn't contain markdown headers"
+              echo "Spec file content:"
+              cat "$SPEC_FILE"
+              exit 1
+            fi
+
+            echo ""
+            echo "✅ Specification saved to: $SPEC_FILE"
+            echo ""
+            echo "Preview (first 30 lines):"
+            head -30 "$SPEC_FILE"
+          fi
 
       # T004-T006: Foundational - Marker Detection
       - name: Detect Clarification Markers
@@ -404,8 +427,9 @@ jobs:
       # ADO Description Overwrite (T007, T008, T009)
       # Contract reference: specs/001-ado-github-spec/contracts/README.md
       # Implements JSON Patch REPLACE operation with exponential backoff retry
+      # Skip if clarification markers found - no spec generated yet, only questions
       - name: Overwrite ADO Work Item Description
-        if: github.event.inputs.work_item_id != ''
+        if: github.event.inputs.work_item_id != '' && steps.detect_markers.outputs.markers_found != 'true'
         shell: bash
         env:
           ADO_WORKITEM_RW_PAT: ${{ secrets.ADO_WORKITEM_RW_PAT }}
