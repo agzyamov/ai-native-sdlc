@@ -31,9 +31,9 @@ Project uses CI/CD workflow extension pattern:
 
 **Purpose**: Create directory structure for new scripts
 
-- [ ] T001 Create `.github/scripts/` directory if it doesn't exist
-- [ ] T002 Verify Python 3.11 is available in GitHub Actions environment (ubuntu-latest)
-- [ ] T003 Verify existing workflow `.github/workflows/spec-kit-specify.yml` structure
+- [x] T001 Create `.github/scripts/` directory if it doesn't exist
+- [x] T002 Verify Python 3.11 is available in GitHub Actions environment (ubuntu-latest)
+- [x] T003 Verify existing workflow `.github/workflows/spec-kit-specify.yml` structure
 
 ---
 
@@ -43,9 +43,9 @@ Project uses CI/CD workflow extension pattern:
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Add marker detection step to `.github/workflows/spec-kit-specify.yml` after spec generation step
-- [ ] T005 Implement detection logic using `grep -q '\[NEEDS CLARIFICATION:'` pattern from research.md
-- [ ] T006 Set GitHub Actions output variables: `markers_found` (true/false) and `marker_count` (0-3)
+- [x] T004 Add marker detection step to `.github/workflows/spec-kit-specify.yml` after spec generation step
+- [x] T005 Implement detection logic using `grep -q '\[NEEDS CLARIFICATION:'` pattern from research.md
+- [x] T006 Set GitHub Actions output variables: `markers_found` (true/false) and `marker_count` (0-3)
 
 **Checkpoint**: Foundation ready - conditional workflow paths now work, user story implementation can proceed
 
@@ -59,10 +59,10 @@ Project uses CI/CD workflow extension pattern:
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Add environment variable `PRESERVE_CLARIFICATION_MARKERS=true` to workflow YAML in spec generation step
-- [ ] T008 [US1] Update workflow step "Update ADO Feature Description" to use spec.md with markers (verify it reads from correct file path)
-- [ ] T009 [US1] Add conditional check: only update ADO Description if workflow completed successfully (existing behavior validation)
-- [ ] T010 [US1] Add workflow logging to output whether markers were preserved or not (echo statement in workflow)
+- [x] T007 [US1] Add environment variable `PRESERVE_CLARIFICATION_MARKERS=true` to workflow YAML in spec generation step
+- [x] T008 [US1] Update workflow step "Update ADO Feature Description" to use spec.md with markers (verify it reads from correct file path)
+- [x] T009 [US1] Add conditional check: only update ADO Description if workflow completed successfully (existing behavior validation)
+- [x] T010 [US1] Add workflow logging to output whether markers were preserved or not (echo statement in workflow)
 
 **Checkpoint**: User Story 1 complete - spec.md preserves markers, ADO Description updated with marked version
 
@@ -76,15 +76,15 @@ Project uses CI/CD workflow extension pattern:
 
 ### Implementation for User Story 2
 
-- [ ] T011 [P] [US2] Create Python script `.github/scripts/extract-clarifications.py` using code from quickstart.md Step 2
-- [ ] T012 [P] [US2] Implement `extract_markers()` function with regex pattern `\[NEEDS CLARIFICATION:\s*([^\]]+)\]` from research.md
-- [ ] T013 [US2] Implement `generate_clarifications_md()` function to create structured output per contracts/clarifications-format.md
-- [ ] T014 [US2] Add context extraction logic (200 char window before/after marker, sentence boundary heuristic from research.md)
-- [ ] T015 [US2] Add section header detection (search backwards for `##` pattern) to populate "Spec Section" field
-- [ ] T016 [US2] Add command-line argument parsing: `--spec-file`, `--output`, `--feature-name`
-- [ ] T017 [US2] Make script executable with `chmod +x .github/scripts/extract-clarifications.py`
-- [ ] T018 [US2] Add workflow step "Extract Clarifications" conditional on `markers_found == 'true'` in `.github/workflows/spec-kit-specify.yml`
-- [ ] T019 [US2] Configure workflow step to call Python script with correct file paths from `steps.create_feature.outputs`
+- [x] T011 [P] [US2] Create Python script `.github/scripts/extract-clarifications.py` using code from quickstart.md Step 2
+- [x] T012 [P] [US2] Implement `extract_markers()` function with regex pattern `\[NEEDS CLARIFICATION:\s*([^\]]+)\]` from research.md
+- [x] T013 [US2] Implement `generate_clarifications_md()` function to create structured output per contracts/clarifications-format.md
+- [x] T014 [US2] Add context extraction logic (200 char window before/after marker, sentence boundary heuristic from research.md)
+- [x] T015 [US2] Add section header detection (search backwards for `##` pattern) to populate "Spec Section" field
+- [x] T016 [US2] Add command-line argument parsing: `--spec-file`, `--output`, `--feature-name`
+- [x] T017 [US2] Make script executable with `chmod +x .github/scripts/extract-clarifications.py`
+- [x] T018 [US2] Add workflow step "Extract Clarifications" conditional on `markers_found == 'true'` in `.github/workflows/spec-kit-specify.yml`
+- [x] T019 [US2] Configure workflow step to call Python script with correct file paths from `steps.create_feature.outputs`
 
 **Checkpoint**: User Story 2 complete - clarifications.md auto-generated when markers present
 
@@ -98,19 +98,19 @@ Project uses CI/CD workflow extension pattern:
 
 ### Implementation for User Story 3
 
-- [ ] T020 [P] [US3] Extend `function_app/ado_client.py` with `create_issue_workitem()` function using code from quickstart.md Step 4
-- [ ] T021 [US3] Implement idempotency check using WIQL query searching for existing Issues with matching idempotency key
-- [ ] T022 [US3] Implement Issue creation using ADO REST API 7.0 with JSON Patch format per contracts/ado-issue-creation.md
-- [ ] T023 [US3] Add Parent-Child relationship creation using `System.LinkTypes.Hierarchy-Reverse` relation type
-- [ ] T024 [US3] Add error handling and logging for Issue creation failures (partial success scenario from edge cases)
-- [ ] T025 [P] [US3] Create Bash orchestrator script `.github/scripts/create-ado-issues.sh` using code from quickstart.md Step 3
-- [ ] T026 [US3] Implement argument parsing in Bash script: `--clarifications-file`, `--feature-id`, `--branch`, `--org`, `--project`
-- [ ] T027 [US3] Add markdown parsing logic to extract questions from clarifications.md (use grep/awk or embedded Python)
-- [ ] T028 [US3] Implement loop to create one Issue per question, calling `create_issue_workitem()` for each
-- [ ] T029 [US3] Add idempotency key generation: `${FEATURE_ID}-${sha256_hash[:8]}` pattern from research.md
-- [ ] T030 [US3] Make Bash script executable with `chmod +x .github/scripts/create-ado-issues.sh`
-- [ ] T031 [US3] Add workflow step "Create ADO Issues for Clarifications" conditional on `markers_found == 'true'` in `.github/workflows/spec-kit-specify.yml`
-- [ ] T032 [US3] Configure workflow environment variables: `ADO_WORKITEM_RW_PAT`, `ADO_ORG`, `ADO_PROJECT`, `FEATURE_ID`
+- [x] T020 [P] [US3] Extend `function_app/ado_client.py` with `create_issue_workitem()` function using code from quickstart.md Step 4
+- [x] T021 [US3] Implement idempotency check using WIQL query searching for existing Issues with matching idempotency key
+- [x] T022 [US3] Implement Issue creation using ADO REST API 7.0 with JSON Patch format per contracts/ado-issue-creation.md
+- [x] T023 [US3] Add Parent-Child relationship creation using `System.LinkTypes.Hierarchy-Reverse` relation type
+- [x] T024 [US3] Add error handling and logging for Issue creation failures (partial success scenario from edge cases)
+- [x] T025 [P] [US3] Create Bash orchestrator script `.github/scripts/create-ado-issues.sh` using code from quickstart.md Step 3
+- [x] T026 [US3] Implement argument parsing in Bash script: `--clarifications-file`, `--feature-id`, `--branch`, `--org`, `--project`
+- [x] T027 [US3] Add markdown parsing logic to extract questions from clarifications.md (use grep/awk or embedded Python)
+- [x] T028 [US3] Implement loop to create one Issue per question, calling `create_issue_workitem()` for each
+- [x] T029 [US3] Add idempotency key generation: `${FEATURE_ID}-${sha256_hash[:8]}` pattern from research.md
+- [x] T030 [US3] Make Bash script executable with `chmod +x .github/scripts/create-ado-issues.sh`
+- [x] T031 [US3] Add workflow step "Create ADO Issues for Clarifications" conditional on `markers_found == 'true'` in `.github/workflows/spec-kit-specify.yml`
+- [x] T032 [US3] Configure workflow environment variables: `ADO_WORKITEM_RW_PAT`, `ADO_ORG`, `ADO_PROJECT`, `FEATURE_ID`
 
 **Checkpoint**: User Story 3 complete - ADO Issues auto-created with proper links and idempotency
 
@@ -124,10 +124,10 @@ Project uses CI/CD workflow extension pattern:
 
 ### Implementation for User Story 4
 
-- [ ] T033 [US4] Verify existing workflow step "Update ADO Feature Description" reads from correct spec.md path (not cached version)
-- [ ] T034 [US4] Add validation that PATCH request payload contains raw spec content with markers intact
-- [ ] T035 [US4] Add retry logic with exponential backoff for transient ADO API failures per research.md decisions
-- [ ] T036 [US4] Add logging to confirm Description field was updated successfully with marker preservation
+- [x] T033 [US4] Verify existing workflow step "Update ADO Feature Description" reads from correct spec.md path (not cached version)
+- [x] T034 [US4] Add validation that PATCH request payload contains raw spec content with markers intact
+- [x] T035 [US4] Add retry logic with exponential backoff for transient ADO API failures per research.md decisions
+- [x] T036 [US4] Add logging to confirm Description field was updated successfully with marker preservation
 
 **Checkpoint**: User Story 4 complete - ADO Description always reflects spec.md content including markers
 
@@ -137,9 +137,9 @@ Project uses CI/CD workflow extension pattern:
 
 **Purpose**: Validation, documentation, and workflow improvements
 
-- [ ] T037 [P] Run `actionlint .github/workflows/spec-kit-specify.yml` to validate workflow YAML syntax
-- [ ] T038 [P] Add workflow execution summary comment showing: markers found (Y/N), clarifications created (Y/N), Issues created count
-- [ ] T039 [P] Update quickstart.md testing instructions if any implementation details differ from design
+- [x] T037 [P] Run `actionlint .github/workflows/spec-kit-specify.yml` to validate workflow YAML syntax
+- [x] T038 [P] Add workflow execution summary comment showing: markers found (Y/N), clarifications created (Y/N), Issues created count
+- [x] T039 [P] Update quickstart.md testing instructions if any implementation details differ from design
 - [ ] T040 Test end-to-end workflow per quickstart.md Step 5.1 (ambiguous Feature - markers expected)
 - [ ] T041 Test happy path workflow per quickstart.md Step 5.3 (clear Feature - no markers expected)
 - [ ] T042 Verify idempotency by re-running workflow on same Feature (no duplicate Issues created)

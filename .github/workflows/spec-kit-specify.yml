@@ -284,6 +284,65 @@ jobs:
           echo "Preview (first 30 lines):"
           head -30 "$SPEC_FILE"
 
+      # T004-T006: Foundational - Marker Detection
+      - name: Detect Clarification Markers
+        id: detect_markers
+        run: |
+          SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
+          
+          if grep -q '\[NEEDS CLARIFICATION:' "$SPEC_FILE"; then
+            echo "markers_found=true" >> $GITHUB_OUTPUT
+            MARKER_COUNT=$(grep -c '\[NEEDS CLARIFICATION:' "$SPEC_FILE" || echo "0")
+            echo "marker_count=$MARKER_COUNT" >> $GITHUB_OUTPUT
+            echo "✅ Found $MARKER_COUNT clarification markers"
+          else
+            echo "markers_found=false" >> $GITHUB_OUTPUT
+            echo "marker_count=0" >> $GITHUB_OUTPUT
+            echo "ℹ️  No clarification markers found - clear requirements"
+          fi
+
+      # T007-T010: User Story 1 - Preserve markers (already preserved by default, add logging)
+      # T018-T019: User Story 2 - Extract Clarifications
+      - name: Extract Clarifications
+        if: steps.detect_markers.outputs.markers_found == 'true'
+        run: |
+          export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+          
+          SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
+          FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
+          BRANCH_NAME="${{ steps.create_feature.outputs.branch_name }}"
+          
+          echo "📝 Extracting clarification questions..."
+          python3 .github/scripts/extract-clarifications.py \
+            --spec-file "$SPEC_FILE" \
+            --output "$FEATURE_DIR/clarifications.md" \
+            --feature-name "$BRANCH_NAME"
+
+      # T031-T032: User Story 3 - Create ADO Issues for Clarifications
+      - name: Create ADO Issues for Clarifications
+        if: steps.detect_markers.outputs.markers_found == 'true' && github.event.inputs.work_item_id != ''
+        env:
+          ADO_WORK_ITEM_PAT: ${{ secrets.ADO_WORKITEM_RW_PAT }}
+          ADO_ORG_URL: https://dev.azure.com/${{ vars.ADO_ORG || 'your-org' }}
+          ADO_PROJECT: ${{ vars.ADO_PROJECT || 'your-project' }}
+          FEATURE_ID: ${{ github.event.inputs.work_item_id }}
+          BRANCH_NAME: ${{ steps.create_feature.outputs.branch_name }}
+        run: |
+          CLARIFICATIONS_FILE="${{ steps.create_feature.outputs.feature_dir }}/clarifications.md"
+          
+          if [ ! -f "$CLARIFICATIONS_FILE" ]; then
+            echo "⚠️ Clarifications file not found, skipping Issue creation"
+            exit 0
+          fi
+          
+          echo "🎫 Creating ADO Issues for clarification questions..."
+          .github/scripts/create-ado-issues.sh \
+            --clarifications-file "$CLARIFICATIONS_FILE" \
+            --feature-id "$FEATURE_ID" \
+            --branch "$BRANCH_NAME" \
+            --org-url "$ADO_ORG_URL" \
+            --project "$ADO_PROJECT"
+
       - name: Step 7 - Commit and Push Specification
         if: github.event.inputs.create_branch == 'true'
         run: |
@@ -441,6 +500,8 @@ jobs:
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
           FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
           SHORT_NAME="${{ steps.generate_name.outputs.short_name }}"
+          MARKERS_FOUND="${{ steps.detect_markers.outputs.markers_found }}"
+          MARKER_COUNT="${{ steps.detect_markers.outputs.marker_count }}"
 
           echo "## 📋 Spec Kit - Specify Feature" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -452,6 +513,24 @@ jobs:
           echo "- **Branch:** \`$BRANCH_NAME\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Spec File:** \`$SPEC_FILE\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Feature Directory:** \`$FEATURE_DIR\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔍 Clarification Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$MARKERS_FOUND" = "true" ]; then
+            echo "- **Markers Found:** ✅ Yes ($MARKER_COUNT markers)" >> $GITHUB_STEP_SUMMARY
+            if [ -f "$FEATURE_DIR/clarifications.md" ]; then
+              echo "- **Clarifications File:** ✅ Created at \`$FEATURE_DIR/clarifications.md\`" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **Clarifications File:** ❌ Not created" >> $GITHUB_STEP_SUMMARY
+            fi
+            if [ -n "${{ github.event.inputs.work_item_id }}" ]; then
+              echo "- **ADO Issues:** ✅ Created for Feature #${{ github.event.inputs.work_item_id }}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- **ADO Issues:** ⏭️ Skipped (no work_item_id provided)" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- **Markers Found:** ✅ No - Clear requirements, no clarifications needed" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### ✅ Completed Steps" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

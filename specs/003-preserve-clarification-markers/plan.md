@@ -14,7 +14,7 @@ Extend the existing GitHub Actions workflow (`spec-kit-specify.yml`) to conditio
 **Language/Version**: Bash (shell scripts), Python 3.11 (for marker extraction script), YAML (GitHub Actions workflow)
 **Primary Dependencies**: 
 - Existing: GitHub Actions workflow (`spec-kit-specify.yml`), GitHub Copilot CLI, Spec Kit CLI
-- New: Python regex library (built-in), jq (JSON processing), Azure DevOps REST API 7.0
+- New: Python regex library (built-in), Azure DevOps REST API 7.0
 - ADO Client: Existing `ado_client.py` from 001-ado-github-spec (will be extended)
 
 **Storage**: 
