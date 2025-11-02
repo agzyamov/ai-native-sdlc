@@ -66,7 +66,9 @@ try:
     print(json.dumps(result))
     
 except Exception as e:
-    sys.stderr.write(f'Error calling GitHub Models API: {e}\n')
+    import traceback
+    sys.stderr.write(f'Error calling GitHub Models API: {type(e).__name__}: {e}\n')
+    sys.stderr.write(f'Full traceback:\n{traceback.format_exc()}\n')
     result = {'has_questions': False, 'reason': f'ERROR: API call failed - {str(e)}'}
     print(json.dumps(result))
     sys.exit(1)
