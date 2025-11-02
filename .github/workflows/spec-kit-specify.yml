@@ -256,46 +256,7 @@ jobs:
           # Use LLM to detect questions (robust to format variations)
           echo "🤖 Using LLM to detect if Copilot output contains clarification questions..."
           
-          python3 -c "
-import sys
-import os
-import json
-from openai import OpenAI
-
-github_token = os.getenv('GITHUB_TOKEN') or os.getenv('COPILOT_TOKEN')
-if not github_token:
-    print('❌ Error: No GitHub token available', file=sys.stderr)
-    sys.exit(1)
-
-client = OpenAI(
-    base_url='https://models.inference.ai.azure.com',
-    api_key=github_token
-)
-
-with open('spec_output.txt', 'r') as f:
-    copilot_output = f.read()
-
-response = client.chat.completions.create(
-    model='gpt-4o',
-    messages=[
-        {
-            'role': 'system',
-            'content': 'You are a question detector. Analyze text and determine if it contains clarification questions that need answers before proceeding. Answer YES or NO, then briefly explain why in 1-2 sentences.'
-        },
-        {
-            'role': 'user',
-            'content': f'Does this output contain clarification questions that need answers?\n\n{copilot_output}'
-        }
-    ],
-    temperature=0.0,
-    max_tokens=100
-)
-
-answer = response.choices[0].message.content.strip()
-has_questions = answer.upper().startswith('YES')
-result = {'has_questions': has_questions, 'reason': answer}
-print(json.dumps(result))
-" > question_detection.json
+          .github/scripts/detect-questions-llm.sh > question_detection.json
           
           HAS_QUESTIONS=$(python3 -c "import json; print(json.load(open('question_detection.json'))['has_questions'])")
           DETECTION_REASON=$(python3 -c "import json; print(json.load(open('question_detection.json'))['reason'])")
