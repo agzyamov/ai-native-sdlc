@@ -7,7 +7,7 @@ Modified Principles: None (validation only)
 Added Sections: None
 Removed Sections: None
 Templates Reviewed:
-  - .specify/templates/plan-template.md ✅ aligned (Constitution Check gate matches 5 principles)
+  - .specify/templates/plan-template.md ✅ updated (added Principles 6 & 7 to Constitution Check gates)
   - .specify/templates/spec-template.md ✅ aligned (user story independence, priority requirements match)
   - .specify/templates/tasks-template.md ✅ aligned (story grouping, test-first approach matches principles)
   - .specify/templates/agent-file-template.md ✅ aligned (no conflicts)
