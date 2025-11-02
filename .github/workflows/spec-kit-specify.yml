@@ -45,6 +45,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Python dependencies
+        run: |
+          echo "📦 Installing Python dependencies (openai for LLM scripts)..."
+          pip install -q openai
+
       - name: Cache uv and Specify CLI
         uses: actions/cache@v4
         with:
@@ -346,10 +351,6 @@ jobs:
             FEATURE_DIR="$(dirname "$SPEC_FILE")"
             echo "ℹ️  FEATURE_DIR was null, derived from SPEC_FILE: $FEATURE_DIR"
           fi
-          
-          # Install openai package for GitHub Models API
-          echo "📦 Installing dependencies..."
-          pip install -q openai
           
           echo "📝 Extracting clarification questions using LLM..."
           python3 .github/scripts/extract-clarifications-llm.py \
