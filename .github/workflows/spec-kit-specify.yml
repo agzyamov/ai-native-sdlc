@@ -325,9 +325,11 @@ jobs:
           fi
 
       # T007-T010: User Story 1 - Preserve markers (already preserved by default, add logging)
-      # T018-T019: User Story 2 - Extract Clarifications
+      # T018-T019: User Story 2 - Extract Clarifications (using LLM for robust parsing)
       - name: Extract Clarifications
         if: steps.detect_markers.outputs.markers_found == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           
@@ -341,8 +343,12 @@ jobs:
             echo "ℹ️  FEATURE_DIR was null, derived from SPEC_FILE: $FEATURE_DIR"
           fi
           
-          echo "📝 Extracting clarification questions..."
-          python3 .github/scripts/extract-clarifications.py \
+          # Install openai package for GitHub Models API
+          echo "📦 Installing dependencies..."
+          pip install -q openai
+          
+          echo "📝 Extracting clarification questions using LLM..."
+          python3 .github/scripts/extract-clarifications-llm.py \
             --spec-file "$SPEC_FILE" \
             --output "$FEATURE_DIR/clarifications.md" \
             --feature-name "$BRANCH_NAME"
