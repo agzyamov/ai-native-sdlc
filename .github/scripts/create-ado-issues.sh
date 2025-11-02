@@ -35,9 +35,15 @@ echo "📋 Found $QUESTION_COUNT questions to create Issues for"
 for i in $(seq 1 "$QUESTION_COUNT"); do
   echo "Creating Issue for Question $i..."
   
-  # Extract question text and topic from clarifications.md
-  QUESTION_TEXT=$(sed -n "/^## Question $i:/,/^## Question $((i+1)):/p" "$CLARIFICATIONS_FILE" | grep "^\*\*Question\*\*:" | sed 's/^\*\*Question\*\*: //')
-  QUESTION_TOPIC=$(sed -n "/^## Question $i:/p" "$CLARIFICATIONS_FILE" | sed 's/^## Question [0-9]*: //')
+  # Extract question block from clarifications.md (from Question X to next Question or end)
+  QUESTION_BLOCK=$(sed -n "/^## Question $i:/,/^## Question $((i+1)):/p" "$CLARIFICATIONS_FILE")
+  
+  # Extract components
+  QUESTION_TEXT=$(echo "$QUESTION_BLOCK" | grep "^\*\*Question\*\*:" | sed 's/^\*\*Question\*\*: //')
+  QUESTION_TOPIC=$(echo "$QUESTION_BLOCK" | head -1 | sed 's/^## Question [0-9]*: //')
+  
+  # Extract answer options (everything between **Answer Options**: and **Answer**:)
+  ANSWER_OPTIONS=$(echo "$QUESTION_BLOCK" | sed -n '/^\*\*Answer Options\*\*:/,/^\*\*Answer\*\*:/p' | sed '1d;$d' | sed '/^$/d')
   
   # Call Python function to create Issue (extend ado_client.py)
   python3 <<EOF
@@ -52,19 +58,46 @@ os.environ['ADO_ORG_URL'] = '${ADO_ORG_URL}'
 os.environ['ADO_PROJECT'] = '${ADO_PROJECT}'
 os.environ['ADO_WORK_ITEM_PAT'] = '${ADO_WORK_ITEM_PAT}'
 
-# Extract question from clarifications.md
+# Extract question and answer options from clarifications.md
 question = """${QUESTION_TEXT}"""
 topic = """${QUESTION_TOPIC}"""
+answer_options = """${ANSWER_OPTIONS}"""
 
 # Generate idempotency key
 question_hash = hashlib.sha256(question.encode()).hexdigest()[:8]
 idempotency_key = f"${FEATURE_ID}-{question_hash}"
 
+# Build description with answer options (convert markdown table to HTML)
+description_parts = [
+    f"<p><strong>Question:</strong> {question}</p>",
+]
+
+if answer_options.strip():
+    # Convert markdown table to HTML (simple conversion for ADO)
+    html_table = "<table border='1' cellpadding='5'>"
+    for line in answer_options.split('\n'):
+        if line.strip().startswith('|'):
+            cells = [cell.strip() for cell in line.split('|')[1:-1]]
+            if cells and not all(c.replace('-', '').strip() == '' for c in cells):
+                html_table += "<tr>"
+                for cell in cells:
+                    html_table += f"<td>{cell}</td>"
+                html_table += "</tr>"
+    html_table += "</table>"
+    description_parts.append(f"<p><strong>Answer Options:</strong></p>{html_table}")
+
+description_parts.extend([
+    f"<p><strong>Branch:</strong> ${BRANCH_NAME}</p>",
+    f"<p><strong>Idempotency Key:</strong> <code>{idempotency_key}</code></p>"
+])
+
+description = ''.join(description_parts)
+
 # Create Issue
 result = create_issue_workitem(
     parent_feature_id=int("${FEATURE_ID}"),
     title=f"Clarification Q$i: {topic}",
-    description=f"<p><strong>Question:</strong> {question}</p><p><strong>Branch:</strong> ${BRANCH_NAME}</p><p><strong>Idempotency Key:</strong> <code>{idempotency_key}</code></p>",
+    description=description,
     tags="clarification; auto-generated",
     idempotency_key=idempotency_key
 )

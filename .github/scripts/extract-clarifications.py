@@ -10,17 +10,46 @@ from datetime import datetime
 MARKER_PATTERN = r'\[NEEDS CLARIFICATION:\s*([^\]]+)\]'
 
 def extract_markers(spec_content: str) -> list[dict]:
-    """Extract all clarification markers with context"""
+    """Extract all clarification markers with context and answer options"""
     markers = []
     
     for match in re.finditer(MARKER_PATTERN, spec_content):
         question = match.group(1).strip()
         pos = match.start()
         
-        # Extract context (200 chars before/after)
+        # Extract context (200 chars before marker)
         start = max(0, pos - 200)
-        end = min(len(spec_content), pos + 200)
-        context = spec_content[start:end].strip()
+        context_before = spec_content[start:pos].strip()
+        
+        # Extract extended context AFTER marker to capture answer options
+        # Look for content until next section header (##) or end of paragraph
+        after_marker = spec_content[pos:]
+        
+        # Find end of question block (next ## header, ---, or blank line + ##)
+        end_patterns = [
+            r'\n\s*#{1,6}\s+',  # Next section header
+            r'\n\s*---\s*\n',   # Horizontal rule
+            r'\n\s*\n\s*#{1,6}\s+',  # Blank line then header
+        ]
+        
+        end_pos = len(after_marker)
+        for pattern in end_patterns:
+            end_match = re.search(pattern, after_marker)
+            if end_match:
+                end_pos = min(end_pos, end_match.start())
+        
+        # Extract full question block (marker + everything after until boundary)
+        full_question_block = after_marker[:end_pos].strip()
+        
+        # Extract just the answer options table if present
+        answer_options = ""
+        table_match = re.search(
+            r'\*\*Suggested Answers\*\*:?\s*\n\n(.+?)(?=\n\n\*\*Your choice\*\*|\n\n---|\Z)',
+            full_question_block,
+            re.DOTALL
+        )
+        if table_match:
+            answer_options = table_match.group(1).strip()
         
         # Find section header (search backwards for ##)
         before_marker = spec_content[:pos]
@@ -32,15 +61,17 @@ def extract_markers(spec_content: str) -> list[dict]:
         
         markers.append({
             'question': question,
-            'context': context,
+            'answer_options': answer_options,
+            'context': context_before,
             'section': section,
-            'topic': topic
+            'topic': topic,
+            'full_block': full_question_block
         })
     
     return markers
 
 def generate_clarifications_md(markers: list[dict], feature_name: str, spec_link: str = "./spec.md") -> str:
-    """Generate clarifications.md content"""
+    """Generate clarifications.md content with answer options"""
     created_date = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     
     content = f"""# Clarification Questions: {feature_name}
@@ -63,7 +94,16 @@ def generate_clarifications_md(markers: list[dict], feature_name: str, spec_link
 
 **Question**: {marker['question']}
 
-**Answer**: _Pending_
+"""
+        # Include answer options if present
+        if marker.get('answer_options'):
+            content += f"""**Answer Options**:
+
+{marker['answer_options']}
+
+"""
+        
+        content += f"""**Answer**: _Pending_
 
 **ADO Issue**: _To be created_
 
