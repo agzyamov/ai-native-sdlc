@@ -23,14 +23,34 @@ Extends the data model from `001-ado-github-spec/data-model.md` with new entitie
   - Complete → Archived (merged into spec.md in future enhancement)
 
 ### Clarification Marker
-- **Format**: `[NEEDS CLARIFICATION: <question text>]`
+- **Format**: `[NEEDS CLARIFICATION: <marker_label>]`
 - **Location**: Inline within spec.md sections
+- **Marker Label**: Short identifier (e.g., "Question 1", "Question 2") - NOT the full question text
 - **Attributes**:
-  - Question text (string, max ~200 chars recommended)
+  - Marker label (string from marker content, e.g., "Question 1")
   - Position (spec section header where it appears)
-  - Topic (auto-extracted from first few words)
+  - Topic (extracted from `## Question N: Topic` heading after marker)
+  - Question text (extracted from `**What we need to know**: <text>` section)
+  - Answer options (extracted from `**Suggested Answers**:` table if present)
+  - Context (200 chars before marker for background)
   - Priority (implicit: order in spec = descending priority)
 - **Extraction Pattern**: `\[NEEDS CLARIFICATION:\s*([^\]]+)\]`
+- **Content Structure After Marker**:
+  ```
+  [NEEDS CLARIFICATION: Question 1]
+  
+  ## Question 1: Topic Name
+  
+  **Context**: Background information
+  
+  **What we need to know**: Actual question text?
+  
+  **Suggested Answers**:
+  | Option | Answer | Implications |
+  | ... | ... | ... |
+  
+  **Your choice**: _[Waiting for response]_
+  ```
 - **Lifecycle**: Created by Copilot during spec generation → Extracted to clarifications.md → Replaced with answer when resolved
 
 ### Issue Work Item (Clarification Type)

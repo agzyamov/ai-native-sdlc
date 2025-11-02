@@ -66,8 +66,20 @@ def extract_markers(spec_content: str) -> list[dict]:
             clean_question = question.replace('?', '').strip()
             topic = clean_question[:50] + ("..." if len(clean_question) > 50 else "")
         
+        # Extract actual question text from "What we need to know:" section
+        question_text_match = re.search(
+            r'\*\*What we need to know\*\*:?\s+(.+?)(?=\n\n\*\*Suggested Answers\*\*|\n\n---|\Z)',
+            full_question_block,
+            re.DOTALL
+        )
+        if question_text_match:
+            question_text = question_text_match.group(1).strip()
+        else:
+            # Fallback: use marker content
+            question_text = question
+        
         markers.append({
-            'question': question,
+            'question': question_text,
             'answer_options': answer_options,
             'context': context_before,
             'section': section,
