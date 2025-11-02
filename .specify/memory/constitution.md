@@ -1,26 +1,47 @@
 <!--
-Constitution Validation Report - 2025-11-02
-Version: 1.1.1 (patch) – Validation review, documentation alignment check
-Previous Version: 1.1.0
-Change Type: PATCH (no semantic changes; validation and alignment verification)
-Modified Principles: None (validation only)
-Added Sections: None
+Constitution Sync Impact Report - 2025-11-02
+Version: 1.2.0 (MINOR) – Added Principle 8: LLM Prompt Externalization
+Previous Version: 1.1.1
+Change Type: MINOR (new normative constraint added)
+
+Modified Principles:
+  - None (no existing principles changed)
+
+Added Sections:
+  - Principle 8: LLM Prompt Externalization
+    Rationale: Enforce separation of prompts from code to enable version control,
+    prevent conflicts during Spec Kit updates, and improve maintainability.
+
 Removed Sections: None
-Templates Reviewed:
-  - .specify/templates/plan-template.md ✅ updated (added Principles 6 & 7 to Constitution Check gates)
-  - .specify/templates/spec-template.md ✅ aligned (user story independence, priority requirements match)
-  - .specify/templates/tasks-template.md ✅ aligned (story grouping, test-first approach matches principles)
+
+Templates Requiring Updates:
+  - .specify/templates/plan-template.md ✅ UPDATED - added Principle 8 gate to Constitution Check
+  - .specify/templates/spec-template.md ✅ aligned (no prompt management in specs)
+  - .specify/templates/tasks-template.md ✅ aligned (no prompt management in tasks)
   - .specify/templates/agent-file-template.md ✅ aligned (no conflicts)
-  - .specify/templates/checklist-template.md ✅ aligned (validation requirements match)
-  - .github/prompts/speckit.constitution.prompt.md ✅ aligned (this validation follows its instructions)
+  - .specify/templates/checklist-template.md ✅ aligned (no prompt management in checklists)
+  - .github/prompts/speckit.constitution.prompt.md ✅ aligned (follows own instructions)
+
+Code Artifacts Requiring Updates:
+  - .github/scripts/extract-clarifications-llm.py ✅ UPDATED - now loads prompts from files
+  - .github/scripts/detect-questions-llm.sh ✅ UPDATED - now loads prompts from files
+  - .github/prompts/custom/*.md ✅ CREATED - dedicated prompt files
+
 Repository Documentation:
-  - README.md ✅ aligned (references lean state model, clarification via Issues)
-  - docs/workflow.md ✅ expected to align (not validated in this review)
+  - README.md ✅ aligned (no prompt management documentation needed)
+  - docs/workflow.md ✅ expected to align (not affected by prompt management)
+  - .github/prompts/custom/README.md ✅ CREATED - documents custom prompt governance
+
 Active Features:
-  - specs/001-ado-github-spec/ ✅ Constitution compliance verified in implementation
-  - specs/003-preserve-clarification-markers/ ✅ Constitution Check complete (plan.md all gates PASS)
-Compliance Status: ✅ ALL ALIGNED
-Follow-up Actions: None required
+  - specs/001-ado-github-spec/ ✅ no prompt management in this feature
+  - specs/003-preserve-clarification-markers/ ⚠️ implements LLM detection - now compliant
+
+Compliance Status: ✅ COMPLIANT (all prompts externalized)
+
+Follow-up Actions:
+  1. Update plan-template.md to include Principle 8 gate in Constitution Check section
+  2. Validate all future LLM integrations follow prompt externalization pattern
+  3. Review existing workflows for any missed embedded prompts (none found in audit)
 -->
 
 # AI-Native SDLC Constitution
@@ -77,6 +98,15 @@ portal or ad-hoc creation is permissible only for exploratory spikes and MUST NO
 past the spike branch lifecycle. All IaC changes SHOULD remain reviewable with plan output
 attached or summarized.
 
+### 8. LLM Prompt Externalization
+LLM prompts (system and user prompts) MUST be stored in dedicated markdown files, never
+embedded directly in workflow YAML files, shell scripts, or Python/JavaScript code. Each
+prompt MUST be stored as a separate file following the pattern `{task-name}.{role}.md`
+where role is `system` or `user`. Custom prompts MUST be isolated from Spec Kit prompts
+(stored in `.github/prompts/custom/`) to prevent conflicts during Spec Kit updates.
+Scripts MUST load prompts from files at runtime. Inline prompt strings are PROHIBITED
+except for exploratory spikes and MUST be extracted before merge to main.
+
 ## Constraints & Standards
 
 - Line length guidance: target ≤100 characters for authored Markdown and code (non-binding
@@ -126,4 +156,4 @@ retried.
 - Compliance: Each plan MUST include a Constitution Check outcome; reviewers MUST block
 	if unmet. Automated scripts MAY surface violations but human approval is final.
 
-**Version**: 1.1.1 | **Ratified**: 2025-10-26 | **Last Amended**: 2025-11-02 (Validation review and template alignment verification; no semantic changes)
+**Version**: 1.2.0 | **Ratified**: 2025-10-26 | **Last Amended**: 2025-11-02 (Added Principle 8: LLM Prompt Externalization)

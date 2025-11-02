@@ -23,33 +23,15 @@ def extract_markers_with_llm(spec_content: str) -> list[dict]:
         api_key=github_token
     )
     
-    # Create prompt for LLM to extract questions
-    system_prompt = """You are a precise question extractor. Extract clarification questions from markdown documents.
-
-Output ONLY valid JSON array with this exact structure:
-[
-  {
-    "topic": "Brief topic name from ## Question N: Topic heading",
-    "question": "Full question text from **What we need to know**:",
-    "context": "Text from **Context**: section",
-    "answer_options": "Full markdown table from **Suggested Answers**: (if present, empty string if not)"
-  }
-]
-
-Rules:
-- Extract ALL questions that follow [NEEDS CLARIFICATION: ...] markers
-- For topic: use text after "## Question N:" heading
-- For question: use text after "**What we need to know**:"
-- For context: use text after "**Context**:"
-- For answer_options: include the full markdown table from "**Suggested Answers**:" including header and rows
-- If answer options table doesn't exist, use empty string ""
-- Return valid JSON only, no markdown code blocks, no explanation"""
-
-    user_prompt = f"""Extract all clarification questions from this markdown document:
-
-{spec_content}
-
-Return JSON array as specified."""
+    # Load prompts from dedicated files
+    script_dir = Path(__file__).parent
+    prompts_dir = script_dir.parent / "prompts" / "custom"
+    
+    system_prompt = (prompts_dir / "extract-questions.system.md").read_text().strip()
+    user_template = (prompts_dir / "extract-questions.user.md").read_text().strip()
+    
+    # Replace placeholder in user prompt
+    user_prompt = user_template.replace("{spec_content}", spec_content)
 
     try:
         response = client.chat.completions.create(
