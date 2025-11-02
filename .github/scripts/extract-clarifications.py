@@ -56,8 +56,15 @@ def extract_markers(spec_content: str) -> list[dict]:
         section_match = re.findall(r'^#{1,6}\s+(.+)$', before_marker, re.MULTILINE)
         section = section_match[-1] if section_match else "Unknown Section"
         
-        # Generate topic (first 50 chars of question)
-        topic = question[:50] + ("..." if len(question) > 50 else "")
+        # Extract clean topic from full_question_block if Copilot generated heading
+        # Pattern: ## Question N: Topic Name
+        topic_match = re.search(r'^##\s+Question\s+\d+:\s+(.+)$', full_question_block, re.MULTILINE)
+        if topic_match:
+            topic = topic_match.group(1).strip()
+        else:
+            # Fallback: first 50 chars of question (remove question markers)
+            clean_question = question.replace('?', '').strip()
+            topic = clean_question[:50] + ("..." if len(clean_question) > 50 else "")
         
         markers.append({
             'question': question,
