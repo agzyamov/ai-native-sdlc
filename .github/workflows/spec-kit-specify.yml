@@ -312,6 +312,12 @@ jobs:
           FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
           BRANCH_NAME="${{ steps.create_feature.outputs.branch_name }}"
           
+          # Fallback: Derive FEATURE_DIR from SPEC_FILE if null
+          if [ -z "$FEATURE_DIR" ] || [ "$FEATURE_DIR" = "null" ]; then
+            FEATURE_DIR="$(dirname "$SPEC_FILE")"
+            echo "ℹ️  FEATURE_DIR was null, derived from SPEC_FILE: $FEATURE_DIR"
+          fi
+          
           echo "📝 Extracting clarification questions..."
           python3 .github/scripts/extract-clarifications.py \
             --spec-file "$SPEC_FILE" \
@@ -328,12 +334,25 @@ jobs:
           FEATURE_ID: ${{ github.event.inputs.work_item_id }}
           BRANCH_NAME: ${{ steps.create_feature.outputs.branch_name }}
         run: |
-          CLARIFICATIONS_FILE="${{ steps.create_feature.outputs.feature_dir }}/clarifications.md"
+          SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
+          FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
+          
+          # Fallback: Derive FEATURE_DIR from SPEC_FILE if null
+          if [ -z "$FEATURE_DIR" ] || [ "$FEATURE_DIR" = "null" ]; then
+            FEATURE_DIR="$(dirname "$SPEC_FILE")"
+            echo "ℹ️  FEATURE_DIR was null, derived from SPEC_FILE: $FEATURE_DIR"
+          fi
+          
+          CLARIFICATIONS_FILE="$FEATURE_DIR/clarifications.md"
           
           if [ ! -f "$CLARIFICATIONS_FILE" ]; then
             echo "⚠️ Clarifications file not found, skipping Issue creation"
             exit 0
           fi
+          
+          # Install Python dependencies for ado_client.py
+          echo "📦 Installing Python dependencies..."
+          pip install -q requests
           
           echo "🎫 Creating ADO Issues for clarification questions..."
           .github/scripts/create-ado-issues.sh \
