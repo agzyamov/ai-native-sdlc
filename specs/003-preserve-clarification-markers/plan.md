@@ -63,10 +63,8 @@ The plan MUST explicitly confirm each gate below (FAIL any → plan not approvab
 | Minimal State Model | No added workflow states; only New→Specification→Planning→Validation→Ready referenced | ✅ OK | No state changes; feature modifies behavior within existing Specification state |
 | Quality Automation | Diagram + workflow validation steps documented (mermaid-cli, actionlint) | ✅ OK | Will use actionlint for workflow YAML validation (already in CI), no new diagrams |
 | Complexity Justification | Any structural deviations justified in Complexity Tracking section | ✅ OK | No violations; extends existing workflow in-place |
-
-**Principle 6 (Direct Event Path)**: Feature preserves direct Azure Function → GitHub Actions path from 001-ado-github-spec. No intermediaries added.
-
-**Principle 7 (Infrastructure as Code)**: No new cloud resources required; extends existing GitHub Actions workflow and reuses ADO client code.
+| Direct Event Path | No unnecessary intermediaries; transformations occur in minimal viable component | ✅ OK | Preserves direct Azure Function → GitHub Actions path from 001-ado-github-spec; no intermediaries added |
+| Infrastructure as Code | Durable cloud resources declared via IaC (Terraform); manual creation only for spikes | ✅ OK | No new cloud resources required; extends existing GitHub Actions workflow and reuses ADO client code |
 
 **Gate Status**: ✅ ALL PASS - Proceed to Phase 0 research
 
