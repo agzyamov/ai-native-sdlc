@@ -88,32 +88,62 @@ _This section is populated when questions are answered (manual or automated)._
 
 ## Extraction Rules
 
-### Topic Extraction Algorithm
+### LLM-Based Extraction (Primary Method)
 
-1. Take full question text from marker
-2. Remove leading/trailing whitespace
-3. Take first 50 characters (or until punctuation: `?`, `.`, `;`)
-4. Convert to Title Case
-5. Remove articles (a, an, the) from beginning
-6. Example: `[NEEDS CLARIFICATION: what authentication method should we use?]` → `Authentication Method Should We Use`
+**Implementation**: GitHub Models API (GPT-4o) via OpenAI client
+- **Endpoint**: `https://models.inference.ai.azure.com`
+- **Authentication**: `GITHUB_TOKEN` environment variable
+- **Model**: `gpt-4o` (free tier in GitHub Actions)
+- **Temperature**: 0.0 (deterministic extraction)
+- **Max Tokens**: 4000
 
-### Context Extraction Algorithm
+**Extraction Process**:
+1. Detect `[NEEDS CLARIFICATION:` markers in spec.md (simple string match)
+2. Send full spec content to LLM with structured prompt
+3. LLM extracts JSON array with fields: `topic`, `question`, `context`, `answer_options`
+4. Validate JSON structure and required fields
+5. Generate clarifications.md from structured data
 
-1. Locate marker position in spec.md (line number)
-2. Extract surrounding context:
-   - If paragraph before marker exists: include last 1-2 sentences
-   - If paragraph after marker exists: include first 1-2 sentences
-   - Total context length: 100-300 characters recommended
-3. Truncate with `...` if exceeding 300 chars
-4. Preserve markdown formatting (bold, inline code, links)
+**Benefits Over Regex**:
+- Robust to format variations in Copilot output
+- Understands semantic structure even with spacing/formatting differences
+- Can handle missing or reordered sections
+- No regex maintenance needed when Copilot changes output format
 
-### Spec Section Detection
+### Topic Extraction (LLM)
 
-1. Search backwards from marker position to find last markdown header (`##`, `###`, etc.)
-2. Build hierarchy path from top-level (`#`) to immediate parent
-3. Format: `L1 Header > L2 Header > L3 Header`
-4. Example: If marker is under `### Functional Requirements` which is under `## Requirements`:
-   - Output: `Requirements > Functional Requirements`
+LLM extracts topic from `## Question N: Topic Name` heading structure:
+- Locates heading after `[NEEDS CLARIFICATION:]` marker
+- Extracts text after colon
+- Handles variations: missing colon, different heading levels, extra whitespace
+- Fallback: Uses first few words of question if no heading found
+- Example: `## Question 1: Authentication Method` → `Authentication Method`
+
+### Context Extraction (LLM)
+
+LLM extracts context from `**Context**:` section:
+- Locates section between marker and question
+- Extracts full paragraph (not truncated)
+- Preserves markdown formatting (bold, inline code, links)
+- Handles multi-paragraph context
+- Example: `**Context**: Creating a snake game for 4-year-old...` → full text extracted
+
+### Question Extraction (LLM)
+
+LLM extracts question from `**What we need to know**:` section:
+- Locates section after context
+- Extracts full question text
+- Handles multi-line questions
+- Preserves formatting
+
+### Answer Options Extraction (LLM)
+
+LLM extracts answer options table from `**Suggested Answers**:` section:
+- Locates markdown table after question
+- Extracts full table including header and all rows
+- Preserves markdown table format for clarifications.md
+- Returns empty string if no table present
+- Handles variations in table structure
 
 ## Validation Schema (Conceptual)
 

@@ -77,10 +77,11 @@ Clarifications File       ADO Issue Work Items      ADO Description Update
 ## Integration Flow
 
 1. **Spec Generation**: Workflow generates spec.md with markers (existing contract modified)
-2. **Marker Extraction**: Workflow parses spec.md using regex `\[NEEDS CLARIFICATION:\s*([^\]]+)\]`
-3. **File Creation**: Workflow writes `clarifications.md` per [clarifications-format.md](./clarifications-format.md)
-4. **Issue Creation**: For each question, workflow POSTs to ADO per [ado-issue-creation.md](./ado-issue-creation.md)
-5. **Description Update**: Workflow PATCHes Feature Description with spec (including markers) per existing contract
+2. **Marker Detection**: Workflow checks for `[NEEDS CLARIFICATION:` string (simple match)
+3. **LLM Extraction**: Workflow calls GitHub Models API (GPT-4o) to extract structured question data
+4. **File Creation**: Workflow writes `clarifications.md` per [clarifications-format.md](./clarifications-format.md)
+5. **Issue Creation**: For each question, workflow POSTs to ADO per [ado-issue-creation.md](./ado-issue-creation.md)
+6. **Description Update**: Workflow PATCHes Feature Description with spec (including markers) per existing contract
 
 ## Validation Checklist
 
@@ -110,9 +111,11 @@ Before implementation, verify:
 
 ### Extraction Failures
 
-- **Malformed Marker**: Log warning, skip extraction, proceed with other markers
-- **No Context Available**: Use question text only, note missing context in clarifications.md
-- **Spec Section Not Found**: Default to "Unknown Section", log warning
+- **LLM API Failure**: Log error, exit workflow (requires GITHUB_TOKEN)
+- **Invalid JSON Response**: Log error with raw response excerpt, exit workflow
+- **Missing Required Fields**: Log warning, include partial data in clarifications.md
+- **No Questions Extracted**: Log info, skip clarifications.md creation
+- **Malformed Marker**: LLM attempts extraction anyway (more robust than regex)
 
 ### Issue Creation Failures
 

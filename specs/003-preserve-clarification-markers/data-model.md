@@ -29,13 +29,19 @@ Extends the data model from `001-ado-github-spec/data-model.md` with new entitie
 - **Attributes**:
   - Marker label (string from marker content, e.g., "Question 1")
   - Position (spec section header where it appears)
-  - Topic (extracted from `## Question N: Topic` heading after marker)
-  - Question text (extracted from `**What we need to know**: <text>` section)
-  - Answer options (extracted from `**Suggested Answers**:` table if present)
-  - Context (200 chars before marker for background)
+  - Topic (extracted by LLM from `## Question N: Topic` heading after marker)
+  - Question text (extracted by LLM from `**What we need to know**: <text>` section)
+  - Answer options (extracted by LLM from `**Suggested Answers**:` table if present)
+  - Context (extracted by LLM from `**Context**: <text>` section)
   - Priority (implicit: order in spec = descending priority)
-- **Extraction Pattern**: `\[NEEDS CLARIFICATION:\s*([^\]]+)\]`
-- **Content Structure After Marker**:
+- **Extraction Method**: LLM-based parsing via GitHub Models API (GPT-4o)
+  - Replaces regex-based extraction for robustness against format variations
+  - Uses `GITHUB_TOKEN` for authentication (free tier in GitHub Actions)
+  - Endpoint: `https://models.inference.ai.azure.com`
+  - Temperature: 0.0 for deterministic output
+  - Returns structured JSON: `{topic, question, context, answer_options}`
+- **Detection Pattern**: `\[NEEDS CLARIFICATION:` (simple string match to trigger LLM extraction)
+- **Content Structure After Marker** (typical Copilot format):
   ```
   [NEEDS CLARIFICATION: Question 1]
   
@@ -51,7 +57,8 @@ Extends the data model from `001-ado-github-spec/data-model.md` with new entitie
   
   **Your choice**: _[Waiting for response]_
   ```
-- **Lifecycle**: Created by Copilot during spec generation → Extracted to clarifications.md → Replaced with answer when resolved
+  Note: LLM extraction is robust to variations in this format
+- **Lifecycle**: Created by Copilot during spec generation → Extracted to clarifications.md via LLM → Replaced with answer when resolved
 
 ### Issue Work Item (Clarification Type)
 - **ADO Work Item Type**: Issue (standard type, tagged for identification)
@@ -135,9 +142,11 @@ stateDiagram-v2
 ## Validation Rules (Extended)
 
 ### Extraction Rules
-- Regex pattern MUST match exactly: `\[NEEDS CLARIFICATION:\s*([^\]]+)\]`
-- Malformed markers (missing colon, unclosed bracket) logged as warnings, not extracted
+- Detection: Simple string match for `[NEEDS CLARIFICATION:` triggers LLM-based extraction
+- LLM extracts structured data from full question blocks (robust to format variations)
+- Malformed markers: LLM attempts to extract anyway; logs warnings if extraction fails
 - Maximum 3 markers enforced; if >3 detected, keep first 3 by appearance order (assumption: earlier = higher priority)
+- LLM validation: Output must be valid JSON array with required fields: `topic`, `question`, `context`, `answer_options`
 
 ### Issue Creation Rules
 - Issue Title length MUST be ≤255 characters (ADO limit)
