@@ -143,7 +143,7 @@ Project uses CI/CD workflow extension pattern:
 - [ ] T040 Test end-to-end workflow per quickstart.md Step 5.1 (ambiguous Feature - markers expected)
 - [ ] T041 Test happy path workflow per quickstart.md Step 5.3 (clear Feature - no markers expected)
 - [ ] T042 Verify idempotency by re-running workflow on same Feature (no duplicate Issues created)
-- [ ] T043 [P] Commit all changes with message format: "feat: preserve clarification markers in workflow mode (US1-4)"
+- [x] T043 [P] Commit all changes with message format: "feat: preserve clarification markers in workflow mode (US1-4)"
 
 ---
 
