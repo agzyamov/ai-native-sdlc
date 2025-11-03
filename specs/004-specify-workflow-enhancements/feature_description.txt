@@ -1,0 +1,8 @@
+I want the following changes to Specify workflow:
+1. Once Spec Kit create a new branch for the feature, immediately link it to Azure DevOps feature with 'GitHub Branch' type of link in 'Development' tab
+2. Once workflow created at least one Issue WI under Feature, put the Feature into 'Blocked' state and on top of the Blocked column, and assign to the user who triggered the workflow in Azure DevOps
+3. When Specify workflow triggered and Feature has unclosed Issues underneath, then: 
+If there is no spec.md file for the current feature, then pass Feature Description and all Issues' descriptions to the workflow
+If there is spec.md file for the current feature, then pass all Issues' descriptions to the workflow
+4. When Specify workflow triggered and Feature does not have Issues underneath or all underneath Issues are closed, then: 
+Pass Feature Description to the workflow

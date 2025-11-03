@@ -1,0 +1,9 @@
+specify-workflow-enhancements
+
+
+Total usage est:       1 Premium request
+Total duration (API):  4.0s
+Total duration (wall): 6.2s
+Total code changes:    0 lines added, 0 lines removed
+Usage by model:
+    claude-sonnet-4.5    12.9k input, 10 output, 0 cache read, 0 cache write (Est. 1 Premium request)
