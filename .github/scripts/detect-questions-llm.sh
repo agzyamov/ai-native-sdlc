@@ -40,6 +40,10 @@ except FileNotFoundError:
     print(json.dumps(result))
     sys.exit(1)
 
+# Clean GitHub Actions timestamps (format: "specify-feature\tStep 3-6 - ...\t2025-11-03T03:41:52.3630529Z ")
+import re
+copilot_output = re.sub(r'^[^\t]+\t[^\t]+\t\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+', '', copilot_output, flags=re.MULTILINE)
+
 # Load prompts from dedicated files
 prompts_dir = Path('.github/prompts/custom')
 system_prompt = (prompts_dir / 'detect-clarification-questions.system.md').read_text().strip()
@@ -51,7 +55,7 @@ user_prompt = user_template.replace('{copilot_output}', copilot_output)
 # Call LLM to detect questions
 try:
     response = client.chat.completions.create(
-        model='gpt-4o',
+        model='gpt-5-mini',
         messages=[
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_prompt}

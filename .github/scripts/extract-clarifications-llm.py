@@ -33,7 +33,7 @@ def extract_markers_with_llm(spec_content: str) -> list[dict]:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -129,6 +129,10 @@ def main():
         sys.exit(1)
     
     spec_content = spec_path.read_text()
+    
+    # Clean GitHub Actions timestamps if present
+    import re
+    spec_content = re.sub(r'^[^\t]+\t[^\t]+\t\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+', '', spec_content, flags=re.MULTILINE)
     
     # Check if markers exist before calling LLM
     if '[NEEDS CLARIFICATION:' not in spec_content:
