@@ -61,8 +61,7 @@ try:
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': user_prompt}
         ],
-        temperature=0.0,
-        max_tokens=100,
+        max_completion_tokens=100,
         extra_query={'api-version': '2025-01-01-preview'}
     )
     

@@ -39,8 +39,7 @@ def extract_markers_with_llm(spec_content: str) -> list[dict]:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.0,  # Deterministic output
-            max_tokens=4000,
+            max_completion_tokens=16000,  # Allow up to 16K tokens for large JSON responses
             extra_query={'api-version': '2025-01-01-preview'}
         )
         
