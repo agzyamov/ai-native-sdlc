@@ -191,6 +191,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
           GH_WORKFLOW_DISPATCH_PAT: ${{ secrets.GH_WORKFLOW_DISPATCH_PAT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
         run: |
           export GITHUB_TOKEN="${GITHUB_TOKEN}"
           export GH_TOKEN="${GH_TOKEN}"
@@ -261,6 +262,9 @@ jobs:
           # Check if Copilot asked clarification questions instead of generating spec
           # Use LLM to detect questions (robust to format variations)
           echo "🤖 Using LLM to detect if Copilot output contains clarification questions..."
+          
+          # Export AZURE_OPENAI_API_KEY to make it available in embedded Python script
+          export AZURE_OPENAI_API_KEY="${AZURE_OPENAI_API_KEY}"
           
           if ! .github/scripts/detect-questions-llm.sh > question_detection.json 2>&1; then
             echo "❌ ERROR: LLM detection failed"
@@ -350,6 +354,7 @@ jobs:
         env:
           GH_WORKFLOW_DISPATCH_PAT: ${{ secrets.GH_WORKFLOW_DISPATCH_PAT }}
           GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
           

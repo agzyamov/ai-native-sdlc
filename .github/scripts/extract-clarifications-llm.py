@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract [NEEDS CLARIFICATION] markers from spec.md using LLM (GitHub Models)"""
+"""Extract [NEEDS CLARIFICATION] markers from spec.md using LLM (Azure OpenAI)"""
 
 import os
 import sys
@@ -10,17 +10,18 @@ from datetime import datetime
 from openai import OpenAI
 
 def extract_markers_with_llm(spec_content: str) -> list[dict]:
-    """Extract all clarification questions using GitHub Models LLM"""
+    """Extract all clarification questions using Azure OpenAI LLM"""
     
-    # Initialize GitHub Models client (prefer GH_WORKFLOW_DISPATCH_PAT for GitHub Models API)
-    github_token = os.getenv("GH_WORKFLOW_DISPATCH_PAT") or os.getenv("GITHUB_TOKEN")
-    if not github_token:
-        print("❌ Error: No GitHub token available (GH_WORKFLOW_DISPATCH_PAT or GITHUB_TOKEN)", file=sys.stderr)
+    # Initialize Azure OpenAI client
+    api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    if not api_key:
+        print("❌ Error: AZURE_OPENAI_API_KEY environment variable not set", file=sys.stderr)
         sys.exit(1)
     
     client = OpenAI(
-        base_url="https://models.github.ai/inference",
-        api_key=github_token
+        base_url="https://ruste-mhinjxi0-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5-nano",
+        api_key=api_key,
+        default_headers={'api-key': api_key}
     )    # Load prompts from dedicated files
     script_dir = Path(__file__).parent
     prompts_dir = script_dir.parent / "prompts" / "custom"
@@ -33,13 +34,13 @@ def extract_markers_with_llm(spec_content: str) -> list[dict]:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5-nano",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.0,  # Deterministic output
-            max_tokens=4000
+            max_completion_tokens=16000,  # Allow up to 16K tokens for large JSON responses
+            extra_query={'api-version': '2025-01-01-preview'}
         )
         
         # Parse JSON response
@@ -65,7 +66,7 @@ def extract_markers_with_llm(spec_content: str) -> list[dict]:
         print(f"Raw response: {json_str[:500]}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error calling GitHub Models API: {e}", file=sys.stderr)
+        print(f"❌ Error calling Azure OpenAI API: {e}", file=sys.stderr)
         sys.exit(1)
 
 def generate_clarifications_md(markers: list[dict], feature_name: str, spec_link: str = "./spec.md") -> str:
@@ -130,12 +131,16 @@ def main():
     
     spec_content = spec_path.read_text()
     
+    # Clean GitHub Actions timestamps if present
+    import re
+    spec_content = re.sub(r'^[^\t]+\t[^\t]+\t\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+', '', spec_content, flags=re.MULTILINE)
+    
     # Check if markers exist before calling LLM
     if '[NEEDS CLARIFICATION:' not in spec_content:
         print("ℹ️  No clarification markers found")
         sys.exit(0)
     
-    print("📡 Calling GitHub Models API to extract questions...")
+    print("📡 Calling Azure OpenAI API to extract questions...")
     markers = extract_markers_with_llm(spec_content)
     
     if not markers:
