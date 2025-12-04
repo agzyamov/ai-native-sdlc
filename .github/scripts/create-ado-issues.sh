@@ -84,6 +84,12 @@ for i, q in enumerate(questions, 1):
     context = q.get('context', '')
     answer_options = q.get('answer_options', '').strip()
     
+    # Clean topic: remove any "Question N:" prefix that might be included
+    import re
+    topic = re.sub(r'^Question\s+\d+:\s*', '', topic, flags=re.IGNORECASE).strip()
+    if not topic:
+        topic = f'Question {i}'
+    
     print(f"\n📝 Creating Issue for Question {i}: {topic}")
     
     # Generate idempotency key
