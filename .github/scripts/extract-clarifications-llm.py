@@ -56,9 +56,13 @@ def extract_markers_with_llm(spec_content: str) -> list[dict]:
         markers = json.loads(json_str)
         
         # Validate structure
+        required_fields = ['topic', 'question', 'context', 'answer_options']
+        optional_fields = ['recommended_option', 'suggested_answer']
         for marker in markers:
-            if not all(k in marker for k in ['topic', 'question', 'context', 'answer_options']):
-                print(f"⚠️  Warning: Marker missing required fields: {marker}", file=sys.stderr)
+            missing_required = [k for k in required_fields if k not in marker]
+            if missing_required:
+                print(f"⚠️  Warning: Marker missing required fields: {missing_required}", file=sys.stderr)
+            # Note: recommended_option and suggested_answer are optional (spec kit format)
         
         return markers
         
