@@ -137,10 +137,20 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         if fields:
             description = fields.get("System.Description", "")
             title = fields.get("System.Title", title)
-            # Try to extract ChangedBy from payload
-            changed_by = fields.get("System.ChangedBy", {})
-            if isinstance(changed_by, dict):
-                changed_by_user_id = changed_by.get("id")
+            
+            # Try to extract ChangedBy user ID from payload
+            # Option 1: Use revisedBy.id (most reliable - always a dict with id)
+            revised_by = resource.get("revisedBy", {})
+            if isinstance(revised_by, dict):
+                changed_by_user_id = revised_by.get("id")
+            
+            # Option 2: If revisedBy not available, try System.ChangedBy (may be string or dict)
+            if not changed_by_user_id:
+                changed_by = fields.get("System.ChangedBy", {})
+                if isinstance(changed_by, dict):
+                    changed_by_user_id = changed_by.get("id")
+                # Note: If ChangedBy is a string, we'll fetch from ADO API below
+            
             logger.info(f"[{correlation_id}] Using payload data - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
         else:
             # Fallback: try to fetch from ADO API (may fail due to expired PAT or network issues)
