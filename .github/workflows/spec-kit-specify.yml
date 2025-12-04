@@ -461,6 +461,137 @@ jobs:
             echo "✅ Specification committed and pushed to $BRANCH_NAME"
           fi
 
+      # Link GitHub Branch to ADO Work Item (Development tab)
+      - name: Link GitHub Branch to ADO Work Item
+        if: github.event.inputs.work_item_id != '' && github.event.inputs.create_branch == 'true'
+        shell: bash
+        env:
+          ADO_WORKITEM_RW_PAT: ${{ secrets.ADO_WORKITEM_RW_PAT }}
+          ADO_ORG: ${{ vars.ADO_ORG || 'your-org' }}
+          ADO_PROJECT: ${{ vars.ADO_PROJECT || 'your-project' }}
+        run: |
+          set +e  # Disable exit on error, handle errors manually
+          
+          WORK_ITEM_ID="${{ github.event.inputs.work_item_id }}"
+          BRANCH_NAME="${{ steps.create_feature.outputs.branch_name }}"
+          GITHUB_REPO="${{ github.repository }}"
+          
+          echo "=== ADO Branch Link Debug Info ==="
+          echo "WORK_ITEM_ID: $WORK_ITEM_ID"
+          echo "BRANCH_NAME: $BRANCH_NAME"
+          echo "GITHUB_REPO: $GITHUB_REPO"
+          echo "ADO_ORG: $ADO_ORG"
+          echo "ADO_PROJECT: $ADO_PROJECT"
+          echo "ADO_WORKITEM_RW_PAT length: ${#ADO_WORKITEM_RW_PAT}"
+          echo ""
+          
+          if [ -z "$ADO_WORKITEM_RW_PAT" ]; then
+            echo "⚠️ ADO_WORKITEM_RW_PAT not set; skipping branch link"
+            exit 0
+          fi
+          
+          if [ "$ADO_ORG" = "your-org" ] || [ "$ADO_PROJECT" = "your-project" ]; then
+            echo "❌ ERROR: ADO_ORG or ADO_PROJECT not configured!"
+            echo "Please set GitHub repository variables:"
+            echo "  - ADO_ORG: Your Azure DevOps organization name"
+            echo "  - ADO_PROJECT: Your Azure DevOps project name"
+            exit 1
+          fi
+          
+          if [ -z "$BRANCH_NAME" ]; then
+            echo "❌ ERROR: Branch name is empty"
+            exit 1
+          fi
+          
+          # Construct GitHub branch URL
+          BRANCH_URL="https://github.com/${GITHUB_REPO}/tree/${BRANCH_NAME}"
+          echo "🔗 Linking GitHub branch to ADO Work Item #$WORK_ITEM_ID..."
+          echo "Branch URL: $BRANCH_URL"
+          
+          # Construct JSON Patch payload for GitHub Branch link
+          # Using Hyperlink relation type for GitHub URLs
+          # Note: For GitHub Branch to appear in Development tab, repository must be connected to Azure Boards
+          PAYLOAD=$(cat <<EOF
+          [
+            {
+              "op": "add",
+              "path": "/relations/-",
+              "value": {
+                "rel": "Hyperlink",
+                "url": "$BRANCH_URL",
+                "attributes": {
+                  "comment": "GitHub Branch: $BRANCH_NAME"
+                }
+              }
+            }
+          ]
+          EOF
+          )
+          
+          # PATCH with retry (exponential backoff)
+          ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0"
+          
+          for ATTEMPT in 1 2 3; do
+            echo ""
+            echo "=== Attempt $ATTEMPT/3 ==="
+            echo "Endpoint: $ENDPOINT"
+            echo "Payload size: ${#PAYLOAD} chars"
+            
+            RESPONSE=$(curl -v -s -w "\n%{http_code}" -X PATCH \
+              --http1.1 \
+              --max-time 30 \
+              --connect-timeout 10 \
+              -H "Content-Type: application/json-patch+json" \
+              -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64 | tr -d '\n')" \
+              -d "$PAYLOAD" \
+              "$ENDPOINT" 2>&1)
+            
+            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            
+            echo "HTTP Status: $HTTP_CODE"
+            
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+              echo "✅ GitHub branch linked successfully (HTTP $HTTP_CODE)"
+              echo "Branch '$BRANCH_NAME' is now linked to Work Item #$WORK_ITEM_ID in the Development tab"
+              exit 0
+            elif [ "$HTTP_CODE" = "401" ]; then
+              echo "❌ Authentication failed (HTTP 401)"
+              echo "Possible causes:"
+              echo "  - Invalid or expired ADO_WORKITEM_RW_PAT"
+              echo "  - PAT doesn't have 'Work Items: Read & Write' scope"
+              echo "Response: $BODY"
+              exit 1
+            elif [ "$HTTP_CODE" = "403" ]; then
+              echo "❌ Authorization failed (HTTP 403)"
+              echo "Possible causes:"
+              echo "  - PAT doesn't have permission to update work items"
+              echo "  - Work item is in a protected area"
+              echo "Response: $BODY"
+              exit 1
+            elif [ "$HTTP_CODE" = "404" ]; then
+              echo "❌ Work item not found (HTTP 404)"
+              echo "Possible causes:"
+              echo "  - Work item ID $WORK_ITEM_ID doesn't exist"
+              echo "  - Wrong ADO_ORG or ADO_PROJECT"
+              echo "Response: $BODY"
+              exit 1
+            elif [[ "$HTTP_CODE" =~ ^4 ]]; then
+              echo "❌ Client error (HTTP $HTTP_CODE); not retrying"
+              echo "Response body:"
+              echo "$BODY" | head -n 50
+              exit 1
+            else
+              echo "⚠️ Server error (HTTP $HTTP_CODE); retrying after backoff..."
+              echo "Response: $BODY" | head -n 20
+              [ $ATTEMPT -lt 3 ] && sleep $((2 ** ATTEMPT))
+            fi
+          done
+          
+          echo ""
+          echo "❌ Failed to link branch after 3 attempts"
+          exit 1
+
       # ADO Description Overwrite (T007, T008, T009)
       # Contract reference: specs/001-ado-github-spec/contracts/README.md
       # Implements JSON Patch REPLACE operation with exponential backoff retry
