@@ -620,6 +620,29 @@ jobs:
           echo "❌ Failed after 3 attempts"
           exit 1
 
+      - name: Debug Work Item Assignment Inputs
+        if: github.event.inputs.work_item_id != ''
+        shell: bash
+        run: |
+          echo "=== Debug: Work Item Assignment Inputs ==="
+          WORK_ITEM_ID="${{ github.event.inputs.work_item_id }}"
+          CHANGED_BY_USER_ID="${{ github.event.inputs.ado_changed_by_user_id }}"
+          echo "work_item_id: '$WORK_ITEM_ID'"
+          echo "ado_changed_by_user_id: '$CHANGED_BY_USER_ID'"
+          echo "ado_changed_by_user_id length: ${#CHANGED_BY_USER_ID}"
+          echo ""
+          if [ -z "$CHANGED_BY_USER_ID" ]; then
+            echo "⚠️ WARNING: ado_changed_by_user_id is empty or not provided"
+            echo "This step will be skipped because the condition requires both work_item_id and ado_changed_by_user_id"
+            echo ""
+            echo "Possible reasons:"
+            echo "  1. Workflow was triggered manually without providing ado_changed_by_user_id"
+            echo "  2. Azure Function did not extract ChangedBy user email from webhook payload"
+            echo "  3. ChangedBy user email was not found in ADO work item"
+          else
+            echo "✅ ado_changed_by_user_id is provided: $CHANGED_BY_USER_ID"
+          fi
+      
       - name: Assign Work Item to Changed By User
         if: github.event.inputs.work_item_id != '' && github.event.inputs.ado_changed_by_user_id != ''
         shell: bash
