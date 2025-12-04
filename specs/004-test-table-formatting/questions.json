@@ -1,0 +1,8 @@
+[
+  {
+    "topic": "Mobile Responsive Behavior",
+    "question": "How should tables adapt when displayed on mobile devices with limited screen width?",
+    "context": "From User Story 4 - Access Tables on Different Devices:\n> \"**Given** a table viewed on a mobile device, **When** the screen width is limited, **Then** the table adapts to maintain readability [NEEDS CLARIFICATION: responsive behavior - horizontal scroll, column stacking, or column hiding?]\"",
+    "answer_options": "| Option | Description |\n|--------|-------------|\n| A | Enable horizontal scrolling | Tables maintain structure but require sideways scrolling; simpler to implement, preserves all data visibility at once |\n| B | Stack columns vertically | Each row becomes a card-like layout; better for very narrow screens, may require more scrolling but no horizontal movement |\n| C | Hide non-essential columns with expand option | Priority columns shown by default with ability to reveal others; requires defining column priority, most complex but best UX for dense tables |\n| Custom | Provide your own answer | Please describe your preferred responsive behavior |"
+  }
+]
