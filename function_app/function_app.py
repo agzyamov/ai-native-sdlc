@@ -137,10 +137,27 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         if fields:
             description = fields.get("System.Description", "")
             title = fields.get("System.Title", title)
-            # Try to extract ChangedBy from payload
-            changed_by = fields.get("System.ChangedBy", {})
-            if isinstance(changed_by, dict):
-                changed_by_user_id = changed_by.get("id")
+            
+            # Try to extract ChangedBy user identifier from payload
+            # Use uniqueName (email) for assignment - REST API requires email, not GUID
+            # Option 1: Use revisedBy.uniqueName (most reliable - always a dict with uniqueName)
+            revised_by = resource.get("revisedBy", {})
+            if isinstance(revised_by, dict):
+                changed_by_user_id = revised_by.get("uniqueName")  # Use email, not GUID
+            
+            # Option 2: If revisedBy not available, try System.ChangedBy (may be string or dict)
+            if not changed_by_user_id:
+                changed_by = fields.get("System.ChangedBy", {})
+                if isinstance(changed_by, dict):
+                    changed_by_user_id = changed_by.get("uniqueName")  # Use email, not GUID
+                elif isinstance(changed_by, str):
+                    # If ChangedBy is a string like "Name <email>", extract email
+                    import re
+                    email_match = re.search(r'<([^>]+)>', changed_by)
+                    if email_match:
+                        changed_by_user_id = email_match.group(1)
+                # Note: If still not found, we'll fetch from ADO API below
+            
             logger.info(f"[{correlation_id}] Using payload data - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
         else:
             # Fallback: try to fetch from ADO API (may fail due to expired PAT or network issues)
@@ -151,10 +168,10 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
                 if work_item is not None:
                     description = work_item.get("fields", {}).get("System.Description", "")
                     title = work_item.get("fields", {}).get("System.Title", title)
-                    # Extract ChangedBy user ID for reassignment
+                    # Extract ChangedBy user email for reassignment (REST API requires email, not GUID)
                     changed_by = work_item.get("fields", {}).get("System.ChangedBy", {})
                     if isinstance(changed_by, dict):
-                        changed_by_user_id = changed_by.get("id")
+                        changed_by_user_id = changed_by.get("uniqueName")  # Use email, not GUID
                     logger.info(f"[{correlation_id}] Fetched work item {work_item_id} from ADO - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
                 else:
                     logger.warning(f"[{correlation_id}] ADO API returned None (may be expired PAT or network issue) - using defaults")
@@ -162,6 +179,24 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
                 # ADO fetch failed (likely expired PAT or network issue) - log but continue with defaults
                 logger.warning(f"[{correlation_id}] ADO API fetch failed (non-fatal): {str(e)} - using defaults")
                 print(f"STDOUT WARNING: ADO fetch failed but continuing - {str(e)}")
+        
+        # If ChangedBy was not found in payload, fetch from ADO API to get it
+        if changed_by_user_id is None:
+            logger.info(f"[{correlation_id}] ChangedBy not found in payload, fetching from ADO API to get user email")
+            try:
+                work_item = ado_client.get_work_item(work_item_id)
+                if work_item is not None:
+                    changed_by = work_item.get("fields", {}).get("System.ChangedBy", {})
+                    if isinstance(changed_by, dict):
+                        changed_by_user_id = changed_by.get("uniqueName")  # Use email, not GUID
+                        logger.info(f"[{correlation_id}] Fetched ChangedBy user email from ADO: {changed_by_user_id}")
+                    else:
+                        logger.warning(f"[{correlation_id}] ChangedBy field not found in ADO work item response")
+                else:
+                    logger.warning(f"[{correlation_id}] ADO API returned None when fetching ChangedBy")
+            except Exception as e:
+                logger.warning(f"[{correlation_id}] Failed to fetch ChangedBy from ADO (non-fatal): {str(e)}")
+                print(f"STDOUT WARNING: Failed to fetch ChangedBy - {str(e)}")
         
         # Use Description if available, fallback to Title
         feature_description = description if description else title
