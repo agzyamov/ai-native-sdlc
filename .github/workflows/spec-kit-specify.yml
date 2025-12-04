@@ -600,7 +600,7 @@ jobs:
           
           # Check if work item already has a GitHub branch link
           echo "🔍 Checking if work item already has a GitHub branch link..."
-          GET_ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0&$expand=relations"
+          GET_ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0&\$expand=relations"
           
           GET_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET \
             --http1.1 \
