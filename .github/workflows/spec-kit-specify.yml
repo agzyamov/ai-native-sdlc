@@ -397,6 +397,7 @@ jobs:
           ADO_PROJECT: ${{ vars.ADO_PROJECT || 'your-project' }}
           FEATURE_ID: ${{ github.event.inputs.work_item_id }}
           BRANCH_NAME: ${{ steps.create_feature.outputs.branch_name }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
         run: |
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
           FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
@@ -407,20 +408,33 @@ jobs:
             echo "ℹ️  FEATURE_DIR was null, derived from SPEC_FILE: $FEATURE_DIR"
           fi
           
-          CLARIFICATIONS_FILE="$FEATURE_DIR/clarifications.md"
+          # Use spec_output.txt from Copilot step (contains full formatted questions)
+          SPEC_OUTPUT_FILE="spec_output.txt"
+          QUESTIONS_JSON="$FEATURE_DIR/questions.json"
           
-          if [ ! -f "$CLARIFICATIONS_FILE" ]; then
-            echo "⚠️ Clarifications file not found, skipping Issue creation"
+          if [ ! -f "$SPEC_OUTPUT_FILE" ]; then
+            echo "⚠️ spec_output.txt not found, skipping Issue creation"
+            exit 0
+          fi
+          
+          # Extract questions using LLM (reuse existing implementation)
+          echo "📡 Extracting questions from Copilot output using LLM..."
+          python3 .github/scripts/extract-clarifications-llm.py \
+            --spec-output-file "$SPEC_OUTPUT_FILE" \
+            --output "$QUESTIONS_JSON"
+          
+          if [ ! -f "$QUESTIONS_JSON" ]; then
+            echo "⚠️ No questions extracted, skipping Issue creation"
             exit 0
           fi
           
           # Install Python dependencies for ado_client.py
           echo "📦 Installing Python dependencies..."
-          pip install -q requests
+          pip install -q requests openai
           
           echo "🎫 Creating ADO Issues for clarification questions..."
           .github/scripts/create-ado-issues.sh \
-            --clarifications-file "$CLARIFICATIONS_FILE" \
+            --questions-json "$QUESTIONS_JSON" \
             --feature-id "$FEATURE_ID" \
             --branch "$BRANCH_NAME" \
             --org-url "$ADO_ORG_URL" \
