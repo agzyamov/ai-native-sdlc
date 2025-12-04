@@ -266,14 +266,24 @@ jobs:
           # Export AZURE_OPENAI_API_KEY to make it available in embedded Python script
           export AZURE_OPENAI_API_KEY="${AZURE_OPENAI_API_KEY}"
           
+          # Try LLM detection, but fallback to simple pattern matching if it fails (e.g., firewall blocking)
           if ! .github/scripts/detect-questions-llm.sh > question_detection.json 2>&1; then
-            echo "❌ ERROR: LLM detection failed"
+            echo "⚠️  LLM detection failed (may be due to firewall/network restrictions)"
             echo "Detection output:"
             cat question_detection.json || echo "(no output file)"
-            exit 1
+            echo ""
+            echo "🔄 Falling back to simple pattern-based detection..."
+            
+            # Fallback: Simple pattern matching for common question patterns
+            if grep -qiE "(what|how|which|when|where|why|can you|do you|is there|are there|would you|could you)" spec_output.txt && \
+               grep -qiE "(\?|question|clarify|clarification|need more|more information|please specify)" spec_output.txt; then
+              echo '{"has_questions": true, "reason": "Fallback: Detected question patterns in Copilot output"}' > question_detection.json
+            else
+              echo '{"has_questions": false, "reason": "Fallback: No question patterns detected"}' > question_detection.json
+            fi
           fi
           
-          echo "✅ LLM detection completed"
+          echo "✅ Question detection completed"
           echo "Detection result:"
           cat question_detection.json
           
@@ -468,9 +478,25 @@ jobs:
           WORK_ITEM_ID="${{ github.event.inputs.work_item_id }}"
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
 
+          echo "=== ADO Description Update Debug Info ==="
+          echo "WORK_ITEM_ID: $WORK_ITEM_ID"
+          echo "SPEC_FILE: $SPEC_FILE"
+          echo "ADO_ORG: $ADO_ORG"
+          echo "ADO_PROJECT: $ADO_PROJECT"
+          echo "ADO_WORKITEM_RW_PAT length: ${#ADO_WORKITEM_RW_PAT}"
+          echo ""
+
           if [ -z "$ADO_WORKITEM_RW_PAT" ]; then
             echo "⚠️ ADO_WORKITEM_RW_PAT not set; skipping Description overwrite"
             exit 0
+          fi
+
+          if [ "$ADO_ORG" = "your-org" ] || [ "$ADO_PROJECT" = "your-project" ]; then
+            echo "❌ ERROR: ADO_ORG or ADO_PROJECT not configured!"
+            echo "Please set GitHub repository variables:"
+            echo "  - ADO_ORG: Your Azure DevOps organization name"
+            echo "  - ADO_PROJECT: Your Azure DevOps project name"
+            exit 1
           fi
 
           echo "🔄 Overwriting ADO Work Item #$WORK_ITEM_ID Description with generated spec..."
@@ -519,9 +545,10 @@ jobs:
           ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0"
           
           for ATTEMPT in 1 2 3; do
-            echo "Attempt $ATTEMPT..."
-            echo "DEBUG: Endpoint: $ENDPOINT"
-            echo "DEBUG: Payload size: ${#PAYLOAD} chars"
+            echo ""
+            echo "=== Attempt $ATTEMPT/3 ==="
+            echo "Endpoint: $ENDPOINT"
+            echo "Payload size: ${#PAYLOAD} chars"
             
             RESPONSE=$(curl -v -s -w "\n%{http_code}" -X PATCH \
               --http1.1 \
@@ -535,19 +562,45 @@ jobs:
             HTTP_CODE=$(echo "$RESPONSE" | tail -1)
             BODY=$(echo "$RESPONSE" | sed '$d')
             
+            echo "HTTP Status: $HTTP_CODE"
+            
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
               echo "✅ ADO Description overwritten successfully (HTTP $HTTP_CODE)"
               exit 0
+            elif [ "$HTTP_CODE" = "401" ]; then
+              echo "❌ Authentication failed (HTTP 401)"
+              echo "Possible causes:"
+              echo "  - Invalid or expired ADO_WORKITEM_RW_PAT"
+              echo "  - PAT doesn't have 'Work Items: Read & Write' scope"
+              echo "Response: $BODY"
+              exit 1
+            elif [ "$HTTP_CODE" = "403" ]; then
+              echo "❌ Authorization failed (HTTP 403)"
+              echo "Possible causes:"
+              echo "  - PAT doesn't have permission to update work items"
+              echo "  - Work item is in a protected area"
+              echo "Response: $BODY"
+              exit 1
+            elif [ "$HTTP_CODE" = "404" ]; then
+              echo "❌ Work item not found (HTTP 404)"
+              echo "Possible causes:"
+              echo "  - Work item ID $WORK_ITEM_ID doesn't exist"
+              echo "  - Wrong ADO_ORG or ADO_PROJECT"
+              echo "Response: $BODY"
+              exit 1
             elif [[ "$HTTP_CODE" =~ ^4 ]]; then
               echo "❌ Client error (HTTP $HTTP_CODE); not retrying"
-              echo "Response: $BODY"
+              echo "Response body:"
+              echo "$BODY" | head -n 50
               exit 1
             else
               echo "⚠️ Server error (HTTP $HTTP_CODE); retrying after backoff..."
+              echo "Response: $BODY" | head -n 20
               [ $ATTEMPT -lt 3 ] && sleep $((2 ** ATTEMPT))
             fi
           done
           
+          echo ""
           echo "❌ Failed after 3 attempts"
           exit 1
 
