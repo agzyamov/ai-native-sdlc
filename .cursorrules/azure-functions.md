@@ -132,6 +132,64 @@ logger = logging.getLogger(__name__)
 logger.info(f"Request started - correlation_id={correlation_id}")
 ```
 
+## Monitoring and Troubleshooting
+
+### Always Check Application Insights First
+
+**CRITICAL: When troubleshooting Azure Functions issues, ALWAYS check Application Insights logs before making code changes.**
+
+1. **Query Log Analytics Workspace** (Application Insights is connected to it):
+   ```bash
+   # Get workspace name
+   WORKSPACE=$(az monitor log-analytics workspace list --resource-group rg-func-dev --query "[0].name" -o tsv)
+   
+   # Query recent errors
+   az rest --method POST \
+     --uri "https://api.loganalytics.io/v1/workspaces/$(az monitor log-analytics workspace show --resource-group rg-func-dev --workspace-name $WORKSPACE --query customerId -o tsv)/query" \
+     --headers "Content-Type=application/json" \
+     --body '{"query":"FunctionAppLogs | where TimeGenerated > ago(30m) | where Message contains \"Exception\" or Message contains \"Error\" or Message contains \"STDOUT\" | project TimeGenerated, Message | order by TimeGenerated desc | take 20"}'
+   ```
+
+2. **Check for specific error patterns**:
+   - HTTP 401/403: Authentication/authorization issues (check PATs, Key Vault access)
+   - HTTP 500: Internal server errors (check exception details)
+   - "STDOUT" messages: Function execution logs
+   - "Dispatch failed": GitHub API or workflow dispatch issues
+
+3. **View logs in Azure Portal**:
+   - Navigate to Application Insights resource
+   - Go to "Logs" section
+   - Query `FunctionAppLogs` table for recent errors
+
+4. **Common log queries**:
+   ```kusto
+   // Recent errors
+   FunctionAppLogs
+   | where TimeGenerated > ago(1h)
+   | where Message contains "Error" or Message contains "Exception"
+   | project TimeGenerated, Message
+   | order by TimeGenerated desc
+   
+   // Function execution logs
+   FunctionAppLogs
+   | where TimeGenerated > ago(1h)
+   | where Message contains "STDOUT"
+   | project TimeGenerated, Message
+   | order by TimeGenerated desc
+   
+   // Exceptions
+   Exceptions
+   | where TimeGenerated > ago(1h)
+   | project TimeGenerated, Type, OuterMessage, InnermostMessage
+   | order by TimeGenerated desc
+   ```
+
+5. **Before making code changes**:
+   - ✅ Check Application Insights logs first
+   - ✅ Identify the exact error message
+   - ✅ Verify if it's a configuration issue (PAT, Key Vault) vs code issue
+   - ✅ Check correlation IDs to trace specific requests
+
 ## Testing
 
 ### Local Testing

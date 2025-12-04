@@ -11,6 +11,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.0"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
   }
 
   backend "local" {
@@ -471,7 +475,7 @@ resource "azurerm_monitor_diagnostic_setting" "function_app" {
     category = "FunctionAppLogs"
   }
 
-  enabled_metric {
+  metric {
     category = "AllMetrics"
   }
 }
@@ -482,7 +486,7 @@ resource "azurerm_monitor_diagnostic_setting" "storage" {
   target_resource_id         = azurerm_storage_account.main.id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
 
-  enabled_metric {
+  metric {
     category = "AllMetrics"
   }
 }
@@ -497,7 +501,7 @@ resource "azurerm_monitor_diagnostic_setting" "keyvault" {
     category = "AuditEvent"
   }
 
-  enabled_metric {
+  metric {
     category = "AllMetrics"
   }
 }

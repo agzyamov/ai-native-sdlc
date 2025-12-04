@@ -49,8 +49,12 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
     start_time = datetime.utcnow()
     
     # Log at multiple levels to ensure visibility
-    logger.info(f"[{correlation_id}] Request received - method={req.method}")
-    print(f"STDOUT: Request received - correlation_id={correlation_id}")  # Force stdout logging
+    try:
+        logger.info(f"[{correlation_id}] Request received - method={req.method}")
+        print(f"STDOUT: Request received - correlation_id={correlation_id}")  # Force stdout logging
+    except Exception as log_err:
+        # Even logging can fail, so use print as fallback
+        print(f"STDOUT: Request received - correlation_id={correlation_id} (logger failed: {log_err})")
     
     try:
         # Parse request body
@@ -81,12 +85,31 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         logger.info(f"[{correlation_id}] Work item ID: {work_item_id}")
         
         # Validate configuration
-        cfg = config.get_config()
-        config_valid, missing_vars = cfg.validate()
-        if not config_valid:
-            logger.error(f"[{correlation_id}] Missing configuration: {missing_vars}")
+        try:
+            cfg = config.get_config()
+            config_valid, missing_vars = cfg.validate()
+            if not config_valid:
+                logger.error(f"[{correlation_id}] Missing configuration: {missing_vars}")
+                # Check if it's a Key Vault reference issue
+                pat = os.getenv("GH_WORKFLOW_DISPATCH_PAT", "")
+                if pat and pat.startswith("@Microsoft.KeyVault"):
+                    error_msg = "Key Vault secret not accessible - GH_WORKFLOW_DISPATCH_PAT reference unresolved. Check function managed identity has 'Key Vault Secrets User' role."
+                else:
+                    error_msg = f"Missing required configuration: {', '.join(missing_vars)}"
+                return func.HttpResponse(
+                    json.dumps({"error": error_msg, "missing": missing_vars}),
+                    status_code=500,
+                    mimetype="application/json"
+                )
+        except Exception as config_err:
+            logger.exception(f"[{correlation_id}] Configuration validation failed: {config_err}")
             return func.HttpResponse(
-                json.dumps({"error": "Missing required configuration", "missing": missing_vars}),
+                json.dumps({
+                    "error": "Configuration error",
+                    "error_type": type(config_err).__name__,
+                    "error_message": str(config_err),
+                    "correlation_id": correlation_id
+                }),
                 status_code=500,
                 mimetype="application/json"
             )
@@ -100,34 +123,48 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
             # The function is working correctly - it's just filtering out events that don't match criteria
             return func.HttpResponse(status_code=204)
         
-        # Fetch full work item details from ADO
-        try:
-            work_item = ado_client.get_work_item(work_item_id)
-            
-            if work_item is None:
-                raise ValueError("ADO API returned None - check credentials and work item ID")
-            
-            description = work_item.get("fields", {}).get("System.Description", "")
-            title = work_item.get("fields", {}).get("System.Title", f"Work Item #{work_item_id}")
-            
-            # Use Description if available, fallback to Title
-            feature_description = description if description else title
-            
-            # Extract ChangedBy user ID for reassignment
-            changed_by = work_item.get("fields", {}).get("System.ChangedBy", {})
-            changed_by_user_id = None
+        # Extract work item details from payload (primary source) or fetch from ADO (fallback)
+        # Note: Payload already contains all needed data, so ADO fetch is optional
+        description = ""
+        title = f"Work Item #{work_item_id}"
+        changed_by_user_id = None
+        
+        # First, try to extract from payload (most reliable, no network call needed)
+        resource = body.get("resource", {})
+        revision = resource.get("revision", {})
+        fields = revision.get("fields", {})
+        
+        if fields:
+            description = fields.get("System.Description", "")
+            title = fields.get("System.Title", title)
+            # Try to extract ChangedBy from payload
+            changed_by = fields.get("System.ChangedBy", {})
             if isinstance(changed_by, dict):
                 changed_by_user_id = changed_by.get("id")
-            
-            logger.info(f"[{correlation_id}] Fetched work item {work_item_id} - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
-        except Exception as e:
-            logger.error(f"[{correlation_id}] Failed to fetch work item {work_item_id}: {str(e)}")
-            print(f"STDOUT ERROR: Failed to fetch work item - {str(e)}")
-            return func.HttpResponse(
-                json.dumps({"error": "Failed to fetch work item from ADO", "details": str(e)}),
-                status_code=500,
-                mimetype="application/json"
-            )
+            logger.info(f"[{correlation_id}] Using payload data - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
+        else:
+            # Fallback: try to fetch from ADO API (may fail due to expired PAT or network issues)
+            logger.info(f"[{correlation_id}] Payload missing revision.fields, attempting ADO API fetch")
+            try:
+                work_item = ado_client.get_work_item(work_item_id)
+                
+                if work_item is not None:
+                    description = work_item.get("fields", {}).get("System.Description", "")
+                    title = work_item.get("fields", {}).get("System.Title", title)
+                    # Extract ChangedBy user ID for reassignment
+                    changed_by = work_item.get("fields", {}).get("System.ChangedBy", {})
+                    if isinstance(changed_by, dict):
+                        changed_by_user_id = changed_by.get("id")
+                    logger.info(f"[{correlation_id}] Fetched work item {work_item_id} from ADO - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
+                else:
+                    logger.warning(f"[{correlation_id}] ADO API returned None (may be expired PAT or network issue) - using defaults")
+            except Exception as e:
+                # ADO fetch failed (likely expired PAT or network issue) - log but continue with defaults
+                logger.warning(f"[{correlation_id}] ADO API fetch failed (non-fatal): {str(e)} - using defaults")
+                print(f"STDOUT WARNING: ADO fetch failed but continuing - {str(e)}")
+        
+        # Use Description if available, fallback to Title
+        feature_description = description if description else title
         
         # Dispatch workflow (uses environment variables directly)
         success, message = dispatch.dispatch_workflow(
@@ -153,11 +190,35 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
             )
         
     except Exception as e:
-        latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
-        logger.exception(f"[{correlation_id}] Unexpected exception: {type(e).__name__} - {str(e)} - latency={latency_ms}ms")
-        print(f"STDOUT EXCEPTION: {type(e).__name__} - {str(e)}")
-        return func.HttpResponse(
-            json.dumps({"error": "Internal server error", "correlation_id": correlation_id}),
-            status_code=500,
-            mimetype="application/json"
-        )
+        try:
+            latency_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            error_type = type(e).__name__
+            error_message = str(e)
+            logger.exception(f"[{correlation_id}] Unexpected exception: {error_type} - {error_message} - latency={latency_ms}ms")
+            print(f"STDOUT EXCEPTION: {error_type} - {error_message}")
+        except Exception as log_err:
+            # Even error logging can fail
+            error_type = type(e).__name__
+            error_message = str(e)
+            print(f"STDOUT EXCEPTION (logging failed): {error_type} - {error_message}")
+        
+        # Always return a proper error response, even if logging failed
+        try:
+            error_response = {
+                "error": "Internal server error",
+                "error_type": error_type if 'error_type' in locals() else "Unknown",
+                "error_message": error_message if 'error_message' in locals() else str(e),
+                "correlation_id": correlation_id
+            }
+            return func.HttpResponse(
+                json.dumps(error_response),
+                status_code=500,
+                mimetype="application/json"
+            )
+        except Exception as response_err:
+            # Last resort: return minimal error
+            print(f"STDOUT: Failed to create error response: {response_err}")
+            return func.HttpResponse(
+                f"Internal server error: {str(e)}",
+                status_code=500
+            )

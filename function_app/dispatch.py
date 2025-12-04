@@ -33,14 +33,40 @@ def dispatch_workflow(
         - 3 attempts with exponential backoff (2s, 6s, 14s)
         - Only retries on network/transport errors, not validation failures
     """
-    github_owner = os.getenv("GITHUB_OWNER")
-    github_repo = os.getenv("GITHUB_REPO")
-    workflow_filename = os.getenv("GITHUB_WORKFLOW_FILENAME", "spec-kit-specify.yml")
-    workflow_ref = os.getenv("GITHUB_WORKFLOW_REF", "main")  # Branch/tag to dispatch on
-    pat = os.getenv("GH_WORKFLOW_DISPATCH_PAT")
+    try:
+        github_owner = os.getenv("GITHUB_OWNER")
+        github_repo = os.getenv("GITHUB_REPO")
+        workflow_filename = os.getenv("GITHUB_WORKFLOW_FILENAME", "spec-kit-specify.yml")
+        workflow_ref = os.getenv("GITHUB_WORKFLOW_REF", "main")  # Branch/tag to dispatch on
+        pat = os.getenv("GH_WORKFLOW_DISPATCH_PAT")
+    except Exception as env_err:
+        logger.exception(f"Failed to read environment variables: {env_err}")
+        return False, f"Configuration error: Failed to read environment variables - {str(env_err)}"
+    
+    # Check if PAT is a Key Vault reference that wasn't resolved
+    if pat and pat.startswith("@Microsoft.KeyVault"):
+        logger.error(f"Key Vault reference not resolved: GH_WORKFLOW_DISPATCH_PAT appears to be unresolved Key Vault reference")
+        return False, "Key Vault secret not accessible - GH_WORKFLOW_DISPATCH_PAT reference unresolved. Check function managed identity has 'Key Vault Secrets User' role and Key Vault network ACLs allow access."
+    
+    # Log PAT status (without exposing the actual value)
+    if pat:
+        pat_prefix = pat[:10] if len(pat) > 10 else pat[:len(pat)]
+        pat_length = len(pat)
+        logger.info(f"PAT retrieved - length={pat_length}, prefix={pat_prefix}...")
+        print(f"STDOUT: PAT retrieved - length={pat_length}, starts_with_ghp={pat.startswith('ghp_')}, starts_with_github_pat={pat.startswith('github_pat_')}")
+    else:
+        logger.error("PAT is None or empty")
+        print("STDOUT: PAT is None or empty")
     
     if not all([github_owner, github_repo, pat]):
-        return False, "Missing required environment variables (GITHUB_OWNER, GITHUB_REPO, GH_WORKFLOW_DISPATCH_PAT)"
+        missing = []
+        if not github_owner:
+            missing.append("GITHUB_OWNER")
+        if not github_repo:
+            missing.append("GITHUB_REPO")
+        if not pat:
+            missing.append("GH_WORKFLOW_DISPATCH_PAT")
+        return False, f"Missing required environment variables: {', '.join(missing)}"
     
     url = f"https://api.github.com/repos/{github_owner}/{github_repo}/actions/workflows/{workflow_filename}/dispatches"
     headers = {
