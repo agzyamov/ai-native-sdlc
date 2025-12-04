@@ -600,7 +600,7 @@ jobs:
           
           # Check if work item already has a GitHub branch link
           echo "🔍 Checking if work item already has a GitHub branch link..."
-          GET_ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0&\$expand=relations"
+          GET_ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0&%24expand=relations"
           
           GET_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET \
             --http1.1 \
@@ -692,7 +692,7 @@ jobs:
             echo "Endpoint: $ENDPOINT"
             echo "Payload size: ${#PAYLOAD} chars"
             
-            RESPONSE=$(curl -v -s -w "\n%{http_code}" -X PATCH \
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
               --http1.1 \
               --max-time 30 \
               --connect-timeout 10 \
@@ -735,14 +735,40 @@ jobs:
               echo "  - Wrong ADO_ORG or ADO_PROJECT"
               echo "Response: $BODY"
               exit 1
+            elif [ "$HTTP_CODE" = "500" ] && [ "$ATTEMPT" -eq 1 ] && [ -n "$GITHUB_CONNECTION_ID" ]; then
+              echo "❌ Server error (HTTP 500) - ArtifactLink format may be invalid"
+              echo "Full error response:"
+              echo "$BODY"
+              echo ""
+              echo "⚠️ Falling back to Hyperlink method..."
+              # Fallback to Hyperlink if ArtifactLink fails
+              BRANCH_URL="https://github.com/${GITHUB_REPO}/tree/${BRANCH_NAME}"
+              PAYLOAD=$(cat <<EOF
+          [
+            {
+              "op": "add",
+              "path": "/relations/-",
+              "value": {
+                "rel": "Hyperlink",
+                "url": "$BRANCH_URL",
+                "attributes": {
+                  "comment": "GitHub Branch: $BRANCH_NAME"
+                }
+              }
+            }
+          ]
+          EOF
+              )
+              echo "Retrying with Hyperlink..."
+              continue
             elif [[ "$HTTP_CODE" =~ ^4 ]]; then
               echo "❌ Client error (HTTP $HTTP_CODE); not retrying"
               echo "Response body:"
-              echo "$BODY" | head -n 50
+              echo "$BODY" | head -n 100
               exit 1
             else
               echo "⚠️ Server error (HTTP $HTTP_CODE); retrying after backoff..."
-              echo "Response: $BODY" | head -n 20
+              echo "Response: $BODY" | head -n 100
               [ $ATTEMPT -lt 3 ] && sleep $((2 ** ATTEMPT))
             fi
           done
