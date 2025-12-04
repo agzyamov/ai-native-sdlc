@@ -247,6 +247,7 @@ Topic:"""
         # Continue with next question instead of failing entire script
 
 print(f"\n✅ Issue creation complete - processed {len(questions)} questions")
+sys.exit(0)  # Explicitly exit with success code
 EOF
 
 echo "✅ Issue creation complete"
