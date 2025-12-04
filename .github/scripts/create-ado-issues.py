@@ -6,7 +6,15 @@ import sys
 import os
 import json
 import hashlib
+import re
 from pathlib import Path
+
+# Try to import html2text for HTML to markdown conversion
+try:
+    import html2text
+    HTML2TEXT_AVAILABLE = True
+except ImportError:
+    HTML2TEXT_AVAILABLE = False
 
 # Add function_app to path for ado_client import
 GITHUB_WORKSPACE = os.getenv("GITHUB_WORKSPACE", ".")
@@ -19,19 +27,163 @@ except ImportError:
     sys.exit(1)
 
 
-def convert_table_to_list(table_text: str) -> str:
-    """Convert markdown table to a simple list format for Azure DevOps
+def convert_html_to_markdown(html_text: str) -> str:
+    """Convert HTML to markdown format
     
-    Azure DevOps work items don't render markdown tables well, so convert to list format.
+    If html2text is available, use it. Otherwise, do basic conversion.
+    """
+    if HTML2TEXT_AVAILABLE:
+        h = html2text.HTML2Text()
+        h.ignore_links = False
+        h.ignore_images = False
+        h.body_width = 0  # Don't wrap lines
+        markdown = h.handle(html_text)
+        return markdown.strip()
+    else:
+        # Basic HTML to markdown conversion without library
+        # Remove HTML tags but preserve structure
+        text = html_text
+        
+        # Convert <br/> and <br> to newlines
+        text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+        
+        # Convert <p> tags to double newlines
+        text = re.sub(r'<p[^>]*>', '\n\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'</p>', '\n', text, flags=re.IGNORECASE)
+        
+        # Convert <strong> and <b> to **
+        text = re.sub(r'<(strong|b)[^>]*>', '**', text, flags=re.IGNORECASE)
+        text = re.sub(r'</(strong|b)>', '**', text, flags=re.IGNORECASE)
+        
+        # Convert <em> and <i> to *
+        text = re.sub(r'<(em|i)[^>]*>', '*', text, flags=re.IGNORECASE)
+        text = re.sub(r'</(em|i)>', '*', text, flags=re.IGNORECASE)
+        
+        # Convert <h1> to #
+        text = re.sub(r'<h1[^>]*>', '# ', text, flags=re.IGNORECASE)
+        text = re.sub(r'</h1>', '\n', text, flags=re.IGNORECASE)
+        
+        # Convert <h2> to ##
+        text = re.sub(r'<h2[^>]*>', '## ', text, flags=re.IGNORECASE)
+        text = re.sub(r'</h2>', '\n', text, flags=re.IGNORECASE)
+        
+        # Convert <h3> to ###
+        text = re.sub(r'<h3[^>]*>', '### ', text, flags=re.IGNORECASE)
+        text = re.sub(r'</h3>', '\n', text, flags=re.IGNORECASE)
+        
+        # Convert <ul><li> to markdown list
+        text = re.sub(r'<ul[^>]*>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'</ul>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<li[^>]*>', '- ', text, flags=re.IGNORECASE)
+        text = re.sub(r'</li>', '\n', text, flags=re.IGNORECASE)
+        
+        # Remove remaining HTML tags
+        text = re.sub(r'<[^>]+>', '', text)
+        
+        # Clean up multiple newlines
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        return text.strip()
+
+
+def validate_and_fix_markdown(markdown_text: str) -> tuple[str, list[str]]:
+    """Validate and fix markdown for Azure DevOps work items
+    
+    Returns:
+        tuple: (fixed_markdown, list_of_warnings)
+    """
+    warnings = []
+    fixed = markdown_text
+    
+    # Check 1: Ensure newlines are present (Azure DevOps may strip them)
+    if '\n' not in fixed:
+        warnings.append("No newlines found - markdown may not render correctly")
+        # Add newlines after markdown elements
+        fixed = fixed.replace('## ', '\n## ')
+        fixed = fixed.replace('**', '\n**')
+        fixed = fixed.replace('---', '\n---\n')
+    
+    # Check 2: Ensure proper spacing around headers
+    import re
+    # Add blank line before headers if missing
+    fixed = re.sub(r'([^\n])(## )', r'\1\n\n\2', fixed)
+    # Add blank line after headers if missing
+    fixed = re.sub(r'(## [^\n]+)\n([^\n#])', r'\1\n\n\2', fixed)
+    
+    # Check 3: Ensure list items have proper spacing
+    # Add blank line before lists if missing
+    fixed = re.sub(r'([^\n])\n(- |\* |[0-9]+\. )', r'\1\n\n\2', fixed)
+    
+    # Check 4: Ensure horizontal rules have proper spacing
+    fixed = re.sub(r'([^\n])\n---\n([^\n])', r'\1\n\n---\n\n\2', fixed)
+    
+    # Check 5: Fix multiple consecutive newlines (more than 2)
+    fixed = re.sub(r'\n{3,}', '\n\n', fixed)
+    
+    # Check 6: Ensure markdown syntax is not broken
+    # Check for unclosed bold/italic
+    bold_count = fixed.count('**')
+    if bold_count % 2 != 0:
+        warnings.append(f"Unclosed bold markers detected ({bold_count} ** found)")
+    
+    italic_count = fixed.count('_')
+    # Count italic markers, but ignore those in markdown links [text](url)
+    italic_in_links = len(re.findall(r'\[[^\]]+\]\([^\)]+\)', fixed))
+    if (italic_count - italic_in_links * 2) % 2 != 0:
+        warnings.append(f"Possible unclosed italic markers detected")
+    
+    # Check 7: Ensure code blocks are properly closed
+    code_block_count = fixed.count('```')
+    if code_block_count % 2 != 0:
+        warnings.append("Unclosed code blocks detected")
+    
+    # Check 8: Ensure headers have proper format
+    # Check for headers without space after #
+    fixed = re.sub(r'^(#{1,6})([^#\s])', r'\1 \2', fixed, flags=re.MULTILINE)
+    
+    # Check 9: Ensure lists have proper indentation
+    # Fix lists that don't start with proper bullet
+    lines = fixed.split('\n')
+    fixed_lines = []
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # If line looks like a list item but doesn't start with bullet/number
+        if stripped and not stripped.startswith(('#', '*', '-', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '**', '_', '---', '<')):
+            # Check if previous line was a list
+            if i > 0 and lines[i-1].strip().startswith(('-', '*', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')):
+                # This might be continuation text, keep as is
+                pass
+        fixed_lines.append(line)
+    fixed = '\n'.join(fixed_lines)
+    
+    # Final check: Ensure we have newlines (critical for Azure DevOps)
+    if '\n' not in fixed:
+        warnings.append("CRITICAL: No newlines in final markdown - adding minimal formatting")
+        # Add newlines in critical places
+        fixed = fixed.replace('## ', '\n## ')
+        fixed = fixed.replace('**', '\n**')
+        fixed = fixed.replace('---', '\n---\n')
+    
+    return fixed, warnings
+
+
+def convert_table_to_markdown(table_text: str) -> str:
+    """Convert markdown table to clean markdown list format for Azure DevOps
+    
+    Azure DevOps supports markdown and will convert it properly.
     Example:
     | Option | Answer | Implications |
     |--------|--------|--------------|
-    | A | Email/password | Simple implementation |
+    | A | Email/password | Simple implementation; user management |
     
     Becomes:
-    - **Option A**: Email/password
+    ### Option A: Email/password
     
-      _Implications_: Simple implementation
+    **Implications:**
+    - Simple implementation
+    - user management
+    
+    ---
     """
     if not table_text or '|' not in table_text:
         return table_text
@@ -78,13 +230,26 @@ def convert_table_to_list(table_text: str) -> str:
             answer = answer.strip().rstrip('-').strip()
             implications = implications.strip().rstrip('-').strip()
             
-            # Format as list item with proper spacing
-            option_text = f"- **Option {option}**: {answer}"
+            # Format as markdown with clear structure
+            option_md = f"### Option {option}: {answer}\n"
+            
             if implications:
-                # Add blank line and indent implications
-                option_text += f"\n\n  _Implications_: {implications}"
-            options.append(option_text)
+                # Split implications by semicolons and format as markdown list
+                implications_list = [imp.strip() for imp in implications.split(';') if imp.strip()]
+                if len(implications_list) > 1:
+                    # Multiple implications - format as markdown list
+                    option_md += "\n**Implications:**\n"
+                    for imp in implications_list:
+                        option_md += f"- {imp}\n"
+                else:
+                    # Single implication - keep as is
+                    option_md += f"\n**Implications:** {implications}\n"
+            
+            # Add separator between options
+            option_md += "\n---\n"
+            options.append(option_md)
     
+    # Join options
     return '\n'.join(options) if options else table_text
 
 
@@ -133,10 +298,10 @@ def build_description(
         raw_description_parts.append(f"**What we need to know**: {question_text}\n\n")
     
     if answer_options:
-        # Convert table to list format (Azure DevOps doesn't render tables well in work items)
-        # Parse table and convert to formatted list
-        options_list = convert_table_to_list(answer_options)
-        raw_description_parts.append(f"**Suggested Answers**:\n\n{options_list}\n\n")
+        # Convert table to clean markdown format (Azure DevOps supports markdown)
+        # Parse table and convert to formatted markdown
+        options_md = convert_table_to_markdown(answer_options)
+        raw_description_parts.append(f"**Suggested Answers**:\n\n{options_md}\n")
     
     raw_description_parts.append(f"**Your choice**: _[Awaiting response]_\n\n")
     raw_description_parts.append(f"---\n\n")
@@ -308,11 +473,30 @@ def main():
             else:
                 clean_topic = topic
             
+            # Check if description contains HTML (from previous conversions)
+            # If it does, convert to markdown first
+            if '<' in description and '>' in description and not description.strip().startswith('#'):
+                # Looks like HTML, convert to markdown
+                print(f"🔄 Converting HTML to markdown...")
+                description = convert_html_to_markdown(description)
+            
+            # Validate and fix markdown before sending to Azure DevOps
+            validated_description, warnings = validate_and_fix_markdown(description)
+            
+            if warnings:
+                print(f"⚠️  Markdown validation warnings:")
+                for warning in warnings:
+                    print(f"   - {warning}")
+            
+            # Azure DevOps now supports markdown (2025) via /multilineFieldsFormat API
+            # Send pure markdown - ado_client.py will set the format to Markdown
+            final_description = validated_description
+            
             # Create Issue
             result = create_issue_workitem(
                 parent_feature_id=int(args.feature_id),
                 title=f"Q{i}: {clean_topic}",
-                description=description,
+                description=final_description,
                 tags="clarification; auto-generated",
                 idempotency_key=idempotency_key
             )

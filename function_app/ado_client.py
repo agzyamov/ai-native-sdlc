@@ -259,6 +259,9 @@ def create_issue_workitem(
     payload = [
         {"op": "add", "path": "/fields/System.Title", "value": title},
         {"op": "add", "path": "/fields/System.Description", "value": description},
+        # Set description field format to Markdown (as per Microsoft docs)
+        # https://devblogs.microsoft.com/devops/markdown-support-arrives-for-work-items/
+        {"op": "add", "path": "/multilineFieldsFormat/System.Description", "value": "Markdown"},
         {"op": "add", "path": "/fields/System.Tags", "value": tags},
         {
             "op": "add",

@@ -429,8 +429,8 @@ jobs:
           fi
           
           # Install Python dependencies for ado_client.py
-          echo "📦 Installing Python dependencies..."
-          pip install -q requests openai
+            echo "📦 Installing Python dependencies..."
+            pip install -q requests openai html2text
           
           echo "🎫 Creating ADO Issues for clarification questions..."
           .github/scripts/create-ado-issues.sh \
