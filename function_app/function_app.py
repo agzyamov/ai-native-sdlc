@@ -213,6 +213,13 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         # Use Description if available, fallback to Title
         feature_description = description if description else title
         
+        # Log final changed_by_user_id value before dispatch
+        if changed_by_user_id:
+            logger.info(f"[{correlation_id}] Final changed_by_user_id before dispatch: {changed_by_user_id}")
+        else:
+            logger.warning(f"[{correlation_id}] WARNING: changed_by_user_id is None/empty - assignment step will be skipped")
+            print(f"STDOUT WARNING: changed_by_user_id is None/empty - assignment step will be skipped")
+        
         # Dispatch workflow (uses environment variables directly)
         success, message = dispatch.dispatch_workflow(
             work_item_id=work_item_id,

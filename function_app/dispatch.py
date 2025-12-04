@@ -83,6 +83,9 @@ def dispatch_workflow(
     # Add changed_by_user_id if provided
     if changed_by_user_id:
         inputs["ado_changed_by_user_id"] = str(changed_by_user_id)
+        logger.info(f"Added ado_changed_by_user_id to workflow inputs: {changed_by_user_id}")
+    else:
+        logger.warning("changed_by_user_id is None or empty - workflow will skip assignment step")
     
     payload = {
         "ref": workflow_ref,  # Use configured branch
