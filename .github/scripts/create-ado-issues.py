@@ -104,7 +104,6 @@ def validate_and_fix_markdown(markdown_text: str) -> tuple[str, list[str]]:
         fixed = fixed.replace('---', '\n---\n')
     
     # Check 2: Ensure proper spacing around headers
-    import re
     # Add blank line before headers if missing
     fixed = re.sub(r'([^\n])(## )', r'\1\n\n\2', fixed)
     # Add blank line after headers if missing
