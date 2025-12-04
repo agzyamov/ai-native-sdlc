@@ -77,12 +77,23 @@ def build_description(
     # Use LLM to clean and fix markdown if available
     if use_llm and api_key and client:
         try:
-            fix_prompt = f"""Clean and fix this ADO work item description markdown. Requirements:
+            fix_prompt = f"""Clean and fix this ADO work item description markdown for Azure DevOps. Requirements:
 1. Remove duplicate "Question N:" text from the heading (e.g., "Question 2: Question 2: Topic" should become "Question 2: Topic")
 2. Ensure all markdown syntax is correct and will render properly in Azure DevOps
-3. Fix any broken markdown tables - ensure proper pipe alignment and formatting
-4. Ensure proper spacing between sections (blank lines where needed)
-5. Keep all content intact, just fix formatting
+3. Fix markdown tables - Azure DevOps requires:
+   - Proper pipe alignment: | Column1 | Column2 | Column3 |
+   - Header separator with at least 3 dashes: |--------|--------|----------|
+   - Each cell should have spaces around content: | Content | not |Content|
+   - Ensure tables are properly formatted and readable
+4. Add proper spacing:
+   - Two blank lines between major sections
+   - One blank line between subsections
+   - Ensure tables have blank lines before and after
+5. Improve readability:
+   - Break long lines in table cells if needed
+   - Use proper markdown formatting (bold, italic where appropriate)
+   - Ensure implications text is readable and not too dense
+6. Keep all content intact, just improve formatting and readability
 
 Raw description:
 {raw_description}
@@ -92,7 +103,7 @@ Return ONLY the cleaned and fixed markdown description, no code blocks, no expla
             response = client.chat.completions.create(
                 model="gpt-5-nano",
                 messages=[
-                    {"role": "system", "content": "You are a markdown formatter for Azure DevOps. Clean and fix markdown syntax, remove duplicates, and ensure proper formatting. Return only the fixed markdown text."},
+                    {"role": "system", "content": "You are a markdown formatter for Azure DevOps work items. Your job is to:\n1. Fix markdown tables to render properly in ADO (proper pipe alignment, spacing, header separators)\n2. Improve readability with proper spacing and line breaks\n3. Remove duplicate text\n4. Ensure all markdown syntax is valid for Azure DevOps\nReturn only the fixed markdown text, no code blocks, no explanation."},
                     {"role": "user", "content": fix_prompt}
                 ],
                 max_completion_tokens=4000,
