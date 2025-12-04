@@ -471,7 +471,7 @@ resource "azurerm_monitor_diagnostic_setting" "function_app" {
     category = "FunctionAppLogs"
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
   }
 }
@@ -482,7 +482,7 @@ resource "azurerm_monitor_diagnostic_setting" "storage" {
   target_resource_id         = azurerm_storage_account.main.id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
   }
 }
@@ -497,10 +497,8 @@ resource "azurerm_monitor_diagnostic_setting" "keyvault" {
     category = "AuditEvent"
   }
 
-  metric {
+  enabled_metric {
     category = "AllMetrics"
   }
 }
-
-
 
