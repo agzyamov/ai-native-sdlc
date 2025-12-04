@@ -180,23 +180,35 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
                 logger.warning(f"[{correlation_id}] ADO API fetch failed (non-fatal): {str(e)} - using defaults")
                 print(f"STDOUT WARNING: ADO fetch failed but continuing - {str(e)}")
         
-        # If ChangedBy was not found in payload, fetch from ADO API to get it
+        # Always fetch ChangedBy from revision history (most reliable source)
+        # The webhook payload may not always contain the correct ChangedBy user
         if changed_by_user_id is None:
-            logger.info(f"[{correlation_id}] ChangedBy not found in payload, fetching from ADO API to get user email")
-            try:
-                work_item = ado_client.get_work_item(work_item_id)
-                if work_item is not None:
-                    changed_by = work_item.get("fields", {}).get("System.ChangedBy", {})
-                    if isinstance(changed_by, dict):
-                        changed_by_user_id = changed_by.get("uniqueName")  # Use email, not GUID
-                        logger.info(f"[{correlation_id}] Fetched ChangedBy user email from ADO: {changed_by_user_id}")
+            logger.info(f"[{correlation_id}] ChangedBy not found in payload, fetching from ADO revision history")
+        else:
+            logger.info(f"[{correlation_id}] ChangedBy found in payload, but verifying from revision history for accuracy")
+        
+        try:
+            # Get latest revision to extract ChangedBy from revision history
+            latest_revision = ado_client.get_work_item_latest_revision(work_item_id)
+            if latest_revision is not None:
+                # Extract ChangedBy from revision fields
+                revision_fields = latest_revision.get("fields", {})
+                changed_by = revision_fields.get("System.ChangedBy", {})
+                
+                if isinstance(changed_by, dict):
+                    revision_changed_by = changed_by.get("uniqueName")  # Use email, not GUID
+                    if revision_changed_by:
+                        changed_by_user_id = revision_changed_by
+                        logger.info(f"[{correlation_id}] Extracted ChangedBy user email from revision history: {changed_by_user_id}")
                     else:
-                        logger.warning(f"[{correlation_id}] ChangedBy field not found in ADO work item response")
+                        logger.warning(f"[{correlation_id}] ChangedBy.uniqueName not found in revision history")
                 else:
-                    logger.warning(f"[{correlation_id}] ADO API returned None when fetching ChangedBy")
-            except Exception as e:
-                logger.warning(f"[{correlation_id}] Failed to fetch ChangedBy from ADO (non-fatal): {str(e)}")
-                print(f"STDOUT WARNING: Failed to fetch ChangedBy - {str(e)}")
+                    logger.warning(f"[{correlation_id}] ChangedBy field in revision is not a dict: {type(changed_by)}")
+            else:
+                logger.warning(f"[{correlation_id}] ADO API returned None when fetching latest revision")
+        except Exception as e:
+            logger.warning(f"[{correlation_id}] Failed to fetch ChangedBy from revision history (non-fatal): {str(e)}")
+            print(f"STDOUT WARNING: Failed to fetch ChangedBy from revision history - {str(e)}")
         
         # Use Description if available, fallback to Title
         feature_description = description if description else title
