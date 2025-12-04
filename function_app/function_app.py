@@ -113,7 +113,13 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
             # Use Description if available, fallback to Title
             feature_description = description if description else title
             
-            logger.info(f"[{correlation_id}] Fetched work item {work_item_id} - has_description={bool(description)}, title={title[:50]}...")
+            # Extract ChangedBy user ID for reassignment
+            changed_by = work_item.get("fields", {}).get("System.ChangedBy", {})
+            changed_by_user_id = None
+            if isinstance(changed_by, dict):
+                changed_by_user_id = changed_by.get("id")
+            
+            logger.info(f"[{correlation_id}] Fetched work item {work_item_id} - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
         except Exception as e:
             logger.error(f"[{correlation_id}] Failed to fetch work item {work_item_id}: {str(e)}")
             print(f"STDOUT ERROR: Failed to fetch work item - {str(e)}")
@@ -126,7 +132,8 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         # Dispatch workflow (uses environment variables directly)
         success, message = dispatch.dispatch_workflow(
             work_item_id=work_item_id,
-            description_placeholder=feature_description
+            description_placeholder=feature_description,
+            changed_by_user_id=changed_by_user_id
         )
         
         # Calculate latency

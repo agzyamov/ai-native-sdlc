@@ -4,6 +4,7 @@ GitHub workflow_dispatch client for triggering spec generation.
 import logging
 import os
 import time
+from typing import Optional
 
 import requests
 
@@ -12,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 def dispatch_workflow(
     work_item_id: int,
-    description_placeholder: str = ""
+    description_placeholder: str = "",
+    changed_by_user_id: Optional[str] = None
 ) -> tuple[bool, str]:
     """
     Trigger GitHub Actions workflow via workflow_dispatch API with retry logic.
@@ -20,6 +22,7 @@ def dispatch_workflow(
     Args:
         work_item_id: Azure DevOps work item ID
         description_placeholder: Optional description text
+        changed_by_user_id: Optional Azure DevOps user ID who last changed the work item
     
     Returns:
         Tuple of (success, message)
@@ -45,13 +48,19 @@ def dispatch_workflow(
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28"
     }
+    inputs = {
+        "feature_description": description_placeholder or f"ADO Work Item #{work_item_id}",
+        "create_branch": "true",
+        "work_item_id": str(work_item_id)
+    }
+    
+    # Add changed_by_user_id if provided
+    if changed_by_user_id:
+        inputs["ado_changed_by_user_id"] = str(changed_by_user_id)
+    
     payload = {
         "ref": workflow_ref,  # Use configured branch
-        "inputs": {
-            "feature_description": description_placeholder or f"ADO Work Item #{work_item_id}",
-            "create_branch": "true",
-            "work_item_id": str(work_item_id)
-        }
+        "inputs": inputs
     }
     
     max_attempts = 3
