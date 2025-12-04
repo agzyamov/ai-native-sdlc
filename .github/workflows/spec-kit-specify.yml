@@ -509,17 +509,18 @@ jobs:
           echo "Branch URL: $BRANCH_URL"
           
           # Construct JSON Patch payload for GitHub Branch link
-          # Using ArtifactLink relation type for external GitHub links
+          # Using Hyperlink relation type for GitHub URLs
+          # Note: For GitHub Branch to appear in Development tab, repository must be connected to Azure Boards
           PAYLOAD=$(cat <<EOF
           [
             {
               "op": "add",
               "path": "/relations/-",
               "value": {
-                "rel": "ArtifactLink",
+                "rel": "Hyperlink",
                 "url": "$BRANCH_URL",
                 "attributes": {
-                  "name": "GitHub Branch"
+                  "comment": "GitHub Branch: $BRANCH_NAME"
                 }
               }
             }
