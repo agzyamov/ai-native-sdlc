@@ -163,6 +163,24 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
                 logger.warning(f"[{correlation_id}] ADO API fetch failed (non-fatal): {str(e)} - using defaults")
                 print(f"STDOUT WARNING: ADO fetch failed but continuing - {str(e)}")
         
+        # If ChangedBy was not found in payload, fetch from ADO API to get it
+        if changed_by_user_id is None:
+            logger.info(f"[{correlation_id}] ChangedBy not found in payload, fetching from ADO API to get user ID")
+            try:
+                work_item = ado_client.get_work_item(work_item_id)
+                if work_item is not None:
+                    changed_by = work_item.get("fields", {}).get("System.ChangedBy", {})
+                    if isinstance(changed_by, dict):
+                        changed_by_user_id = changed_by.get("id")
+                        logger.info(f"[{correlation_id}] Fetched ChangedBy user ID from ADO: {changed_by_user_id}")
+                    else:
+                        logger.warning(f"[{correlation_id}] ChangedBy field not found in ADO work item response")
+                else:
+                    logger.warning(f"[{correlation_id}] ADO API returned None when fetching ChangedBy")
+            except Exception as e:
+                logger.warning(f"[{correlation_id}] Failed to fetch ChangedBy from ADO (non-fatal): {str(e)}")
+                print(f"STDOUT WARNING: Failed to fetch ChangedBy - {str(e)}")
+        
         # Use Description if available, fallback to Title
         feature_description = description if description else title
         
