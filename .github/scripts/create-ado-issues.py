@@ -19,6 +19,75 @@ except ImportError:
     sys.exit(1)
 
 
+def convert_table_to_list(table_text: str) -> str:
+    """Convert markdown table to a simple list format for Azure DevOps
+    
+    Azure DevOps work items don't render markdown tables well, so convert to list format.
+    Example:
+    | Option | Answer | Implications |
+    |--------|--------|--------------|
+    | A | Email/password | Simple implementation |
+    
+    Becomes:
+    - **Option A**: Email/password
+    
+      _Implications_: Simple implementation
+    """
+    if not table_text or '|' not in table_text:
+        return table_text
+    
+    lines = [line.rstrip() for line in table_text.split('\n')]
+    options = []
+    header_row = None
+    
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or '|' not in stripped:
+            continue
+        
+        # Check if this is a header separator row (skip it)
+        if all(c in '|-: ' for c in stripped) and '-' in stripped:
+            continue
+        
+        # Parse table row
+        parts = [p.strip() for p in stripped.split('|')]
+        # Remove empty parts at start/end (from leading/trailing |)
+        if parts and not parts[0]:
+            parts = parts[1:]
+        if parts and not parts[-1]:
+            parts = parts[:-1]
+        
+        # Skip empty rows
+        if not parts or all(not p for p in parts):
+            continue
+        
+        # First row is usually header - store it
+        if header_row is None:
+            header_row = parts
+            continue
+        
+        # Parse data row
+        # Expected format: Option, Answer, Implications (or similar)
+        if len(parts) >= 2:
+            option = parts[0] if len(parts) > 0 else ""
+            answer = parts[1] if len(parts) > 1 else ""
+            implications = parts[2] if len(parts) > 2 else ""
+            
+            # Clean up option (remove any trailing dashes or extra spaces)
+            option = option.strip().rstrip('-').strip()
+            answer = answer.strip().rstrip('-').strip()
+            implications = implications.strip().rstrip('-').strip()
+            
+            # Format as list item with proper spacing
+            option_text = f"- **Option {option}**: {answer}"
+            if implications:
+                # Add blank line and indent implications
+                option_text += f"\n\n  _Implications_: {implications}"
+            options.append(option_text)
+    
+    return '\n'.join(options) if options else table_text
+
+
 def build_description(
     question_num: int,
     topic: str,
@@ -64,7 +133,10 @@ def build_description(
         raw_description_parts.append(f"**What we need to know**: {question_text}\n\n")
     
     if answer_options:
-        raw_description_parts.append(f"**Suggested Answers**:\n\n{answer_options}\n\n")
+        # Convert table to list format (Azure DevOps doesn't render tables well in work items)
+        # Parse table and convert to formatted list
+        options_list = convert_table_to_list(answer_options)
+        raw_description_parts.append(f"**Suggested Answers**:\n\n{options_list}\n\n")
     
     raw_description_parts.append(f"**Your choice**: _[Awaiting response]_\n\n")
     raw_description_parts.append(f"---\n\n")
@@ -80,19 +152,16 @@ def build_description(
             fix_prompt = f"""Clean and fix this ADO work item description markdown for Azure DevOps. Requirements:
 1. Remove duplicate "Question N:" text from the heading (e.g., "Question 2: Question 2: Topic" should become "Question 2: Topic")
 2. Ensure all markdown syntax is correct and will render properly in Azure DevOps
-3. Fix markdown tables - Azure DevOps requires:
-   - Proper pipe alignment: | Column1 | Column2 | Column3 |
-   - Header separator with at least 3 dashes: |--------|--------|----------|
-   - Each cell should have spaces around content: | Content | not |Content|
-   - Ensure tables are properly formatted and readable
+3. Convert any markdown tables to list format - Azure DevOps work items don't render tables well. Convert tables like this:
+   - Instead of: | Option | Answer | Implications |
+   - Use: - **Option A**: Answer text
+           _Implications_: Implications text
 4. Add proper spacing:
    - Two blank lines between major sections
    - One blank line between subsections
-   - Ensure tables have blank lines before and after
 5. Improve readability:
-   - Break long lines in table cells if needed
    - Use proper markdown formatting (bold, italic where appropriate)
-   - Ensure implications text is readable and not too dense
+   - Break long lines if needed
 6. Keep all content intact, just improve formatting and readability
 
 Raw description:
@@ -103,7 +172,7 @@ Return ONLY the cleaned and fixed markdown description, no code blocks, no expla
             response = client.chat.completions.create(
                 model="gpt-5-nano",
                 messages=[
-                    {"role": "system", "content": "You are a markdown formatter for Azure DevOps work items. Your job is to:\n1. Fix markdown tables to render properly in ADO (proper pipe alignment, spacing, header separators)\n2. Improve readability with proper spacing and line breaks\n3. Remove duplicate text\n4. Ensure all markdown syntax is valid for Azure DevOps\nReturn only the fixed markdown text, no code blocks, no explanation."},
+                    {"role": "system", "content": "You are a markdown formatter for Azure DevOps work items. Your job is to:\n1. Convert markdown tables to list format - Azure DevOps work items don't render tables well, so convert tables to bullet lists with bold option labels\n2. Improve readability with proper spacing and line breaks\n3. Remove duplicate text\n4. Ensure all markdown syntax is valid for Azure DevOps\nReturn only the fixed markdown text, no code blocks, no explanation."},
                     {"role": "user", "content": fix_prompt}
                 ],
                 max_completion_tokens=4000,
