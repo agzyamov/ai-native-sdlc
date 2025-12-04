@@ -162,3 +162,5 @@ review.md
 .terraform.lock.hcl
 terraform.tfplan
 tfplan
+# Azure Functions local settings (contains secrets)
+function_app/local.settings.json

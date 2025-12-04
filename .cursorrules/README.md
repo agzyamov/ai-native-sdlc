@@ -12,6 +12,7 @@ This directory contains modular cursor rules organized by technology stack and d
 - **[terraform.md](terraform.md)** - Terraform conventions, CAF compliance, security requirements
 - **[github-actions.md](github-actions.md)** - GitHub Actions workflow validation, YAML standards
 - **[shell.md](shell.md)** - Bash script conventions and best practices
+- **[git-workflow.md](git-workflow.md)** - Git workflow, branch protection, PR requirements
 
 ### Domain-Specific Rules
 - **[azure-functions.md](azure-functions.md)** - Azure Functions deployment, configuration, patterns
@@ -31,6 +32,7 @@ This directory contains modular cursor rules organized by technology stack and d
 | Terraform infrastructure | [terraform.md](terraform.md) |
 | GitHub Actions workflows | [github-actions.md](github-actions.md) |
 | Bash scripts | [shell.md](shell.md) |
+| Git workflow & PRs | [git-workflow.md](git-workflow.md) |
 | Azure Functions deployment | [azure-functions.md](azure-functions.md) |
 | Azure security/networking | [azure-infrastructure.md](azure-infrastructure.md) |
 | Mermaid diagrams | [validation.md](validation.md) |

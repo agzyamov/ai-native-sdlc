@@ -83,7 +83,6 @@ os.environ['ADO_WORK_ITEM_PAT'] = '${ADO_WORK_ITEM_PAT}'
 print(f"DEBUG: ADO_ORG_URL = {os.environ.get('ADO_ORG_URL', 'NOT SET')}")
 print(f"DEBUG: ADO_PROJECT = {os.environ.get('ADO_PROJECT', 'NOT SET')}")
 print(f"DEBUG: ADO_WORK_ITEM_PAT length = {len(os.environ.get('ADO_WORK_ITEM_PAT', ''))}")
-
 # Extract question and answer options from clarifications.md
 question = """${QUESTION_TEXT}"""
 topic = """${QUESTION_TOPIC}"""

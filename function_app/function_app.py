@@ -127,6 +127,7 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         # Note: Payload already contains all needed data, so ADO fetch is optional
         description = ""
         title = f"Work Item #{work_item_id}"
+        changed_by_user_id = None
         
         # First, try to extract from payload (most reliable, no network call needed)
         resource = body.get("resource", {})
@@ -136,7 +137,11 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         if fields:
             description = fields.get("System.Description", "")
             title = fields.get("System.Title", title)
-            logger.info(f"[{correlation_id}] Using payload data - has_description={bool(description)}, title={title[:50]}...")
+            # Try to extract ChangedBy from payload
+            changed_by = fields.get("System.ChangedBy", {})
+            if isinstance(changed_by, dict):
+                changed_by_user_id = changed_by.get("id")
+            logger.info(f"[{correlation_id}] Using payload data - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
         else:
             # Fallback: try to fetch from ADO API (may fail due to expired PAT or network issues)
             logger.info(f"[{correlation_id}] Payload missing revision.fields, attempting ADO API fetch")
@@ -146,7 +151,11 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
                 if work_item is not None:
                     description = work_item.get("fields", {}).get("System.Description", "")
                     title = work_item.get("fields", {}).get("System.Title", title)
-                    logger.info(f"[{correlation_id}] Fetched work item {work_item_id} from ADO - has_description={bool(description)}, title={title[:50]}...")
+                    # Extract ChangedBy user ID for reassignment
+                    changed_by = work_item.get("fields", {}).get("System.ChangedBy", {})
+                    if isinstance(changed_by, dict):
+                        changed_by_user_id = changed_by.get("id")
+                    logger.info(f"[{correlation_id}] Fetched work item {work_item_id} from ADO - has_description={bool(description)}, title={title[:50]}..., changed_by_user_id={changed_by_user_id}")
                 else:
                     logger.warning(f"[{correlation_id}] ADO API returned None (may be expired PAT or network issue) - using defaults")
             except Exception as e:
@@ -160,7 +169,8 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         # Dispatch workflow (uses environment variables directly)
         success, message = dispatch.dispatch_workflow(
             work_item_id=work_item_id,
-            description_placeholder=feature_description
+            description_placeholder=feature_description,
+            changed_by_user_id=changed_by_user_id
         )
         
         # Calculate latency
