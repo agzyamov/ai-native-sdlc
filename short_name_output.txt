@@ -1,0 +1,9 @@
+test-spec-kit-format
+
+
+Total usage est:       1 Premium request
+Total duration (API):  2s
+Total duration (wall): 4s
+Total code changes:    0 lines added, 0 lines removed
+Usage by model:
+    claude-sonnet-4.5    13.8k input, 10 output, 9.1k cache read (Est. 1 Premium request)

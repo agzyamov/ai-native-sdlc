@@ -1,0 +1,20 @@
+[
+  {
+    "topic": "auth method not specified - email/password, SSO, OAuth?",
+    "question": "auth method not specified - email/password, SSO, OAuth?",
+    "context": "",
+    "answer_options": ""
+  },
+  {
+    "topic": "retention period not specified",
+    "question": "retention period not specified",
+    "context": "",
+    "answer_options": ""
+  },
+  {
+    "topic": "Maximum number of NEEDS CLARIFICATION markers",
+    "question": "limit [NEEDS CLARIFICATION] markers to a maximum of 3",
+    "context": "",
+    "answer_options": ""
+  }
+]
