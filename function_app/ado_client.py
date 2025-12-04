@@ -3,6 +3,7 @@ Azure DevOps REST API client for fetching and updating work items.
 """
 import logging
 import os
+import sys
 from typing import Optional
 
 import requests
@@ -225,7 +226,20 @@ def create_issue_workitem(
             logger.info(f"Created Issue {issue['id']}: {title}")
             return issue
         else:
-            logger.error(f"Failed to create Issue: {response.status_code} {response.text}")
+            error_msg = f"HTTP {response.status_code}"
+            if response.status_code == 401:
+                error_msg += " - Authentication failed (invalid/expired PAT or missing 'Work Items: Read & Write' scope)"
+            elif response.status_code == 403:
+                error_msg += " - Authorization failed (insufficient permissions)"
+            elif response.status_code == 404:
+                error_msg += f" - Parent work item {parent_feature_id} not found"
+            else:
+                error_msg += f" - {response.text[:500]}"
+            
+            logger.error(f"Failed to create Issue: {error_msg}")
+            print(f"❌ Failed to create Issue: {error_msg}", file=sys.stderr)
+            if response.text:
+                print(f"Response: {response.text[:500]}", file=sys.stderr)
             return None
             
     except requests.exceptions.Timeout:

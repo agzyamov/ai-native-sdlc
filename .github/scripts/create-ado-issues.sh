@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-"""Create ADO Issue work items from clarifications.md"""
+# Create ADO Issue work items from clarifications.md
 
 set -euo pipefail
 
@@ -16,8 +16,29 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate environment
+echo "=== ADO Issue Creation Debug Info ==="
+echo "ADO_ORG_URL: ${ADO_ORG_URL:-not set}"
+echo "ADO_PROJECT: ${ADO_PROJECT:-not set}"
+echo "FEATURE_ID: ${FEATURE_ID:-not set}"
+echo "ADO_WORK_ITEM_PAT length: ${#ADO_WORK_ITEM_PAT}"
+echo "CLARIFICATIONS_FILE: ${CLARIFICATIONS_FILE:-not set}"
+echo ""
+
 if [ -z "${ADO_WORK_ITEM_PAT:-}" ]; then
   echo "❌ Error: ADO_WORK_ITEM_PAT not set" >&2
+  exit 1
+fi
+
+if [ -z "${ADO_ORG_URL:-}" ] || [ -z "${ADO_PROJECT:-}" ]; then
+  echo "❌ Error: ADO_ORG_URL or ADO_PROJECT not set" >&2
+  exit 1
+fi
+
+if [ "$ADO_ORG_URL" = "https://dev.azure.com/your-org" ] || [ "$ADO_PROJECT" = "your-project" ]; then
+  echo "❌ Error: ADO_ORG or ADO_PROJECT using default values!" >&2
+  echo "Please set GitHub repository variables:" >&2
+  echo "  - ADO_ORG: Your Azure DevOps organization name" >&2
+  echo "  - ADO_PROJECT: Your Azure DevOps project name" >&2
   exit 1
 fi
 
@@ -57,6 +78,11 @@ from ado_client import create_issue_workitem
 os.environ['ADO_ORG_URL'] = '${ADO_ORG_URL}'
 os.environ['ADO_PROJECT'] = '${ADO_PROJECT}'
 os.environ['ADO_WORK_ITEM_PAT'] = '${ADO_WORK_ITEM_PAT}'
+
+# Debug: Verify environment variables are set
+print(f"DEBUG: ADO_ORG_URL = {os.environ.get('ADO_ORG_URL', 'NOT SET')}")
+print(f"DEBUG: ADO_PROJECT = {os.environ.get('ADO_PROJECT', 'NOT SET')}")
+print(f"DEBUG: ADO_WORK_ITEM_PAT length = {len(os.environ.get('ADO_WORK_ITEM_PAT', ''))}")
 
 # Extract question and answer options from clarifications.md
 question = """${QUESTION_TEXT}"""
