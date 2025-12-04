@@ -79,12 +79,16 @@ print(f"📋 Loaded {len(questions)} questions from JSON")
 
 # Process each question
 for i, q in enumerate(questions, 1):
-    topic = q.get('topic', f'Question {i}').strip()
-    question_text = q.get('question', '').strip()
-    context = q.get('context', '').strip()
-    answer_options = q.get('answer_options', '').strip()
-    
-    print(f"\n📝 Processing Question {i}: {topic}")
+    try:
+        topic = q.get('topic', f'Question {i}').strip()
+        question_text = q.get('question', '').strip()
+        context = q.get('context', '').strip()
+        answer_options = q.get('answer_options', '').strip()
+        
+        print(f"\n📝 Processing Question {i}: {topic}")
+    except Exception as e:
+        print(f"⚠️ Error processing question {i}: {e}", file=sys.stderr)
+        continue
     
     # Generate idempotency key (needed for function call, but not shown in description)
     question_hash = hashlib.sha256(question_text.encode()).hexdigest()[:8]
@@ -222,18 +226,25 @@ Topic:"""
         clean_topic = topic
     
     # Create Issue with clean title (topic only)
-    result = create_issue_workitem(
-        parent_feature_id=int("${FEATURE_ID}"),
-        title=f"Q{i}: {clean_topic}",
-        description=description,
-        tags="clarification; auto-generated",
-        idempotency_key=idempotency_key
-    )
-    
-    if result:
-        print(f"✅ Created Issue {result['id']}")
-    else:
-        print(f"⚠️ Issue creation failed for Question {i}", file=sys.stderr)
+    try:
+        result = create_issue_workitem(
+            parent_feature_id=int("${FEATURE_ID}"),
+            title=f"Q{i}: {clean_topic}",
+            description=description,
+            tags="clarification; auto-generated",
+            idempotency_key=idempotency_key
+        )
+        
+        if result:
+            print(f"✅ Created Issue {result['id']}")
+        else:
+            print(f"⚠️ Issue creation failed for Question {i} (may be duplicate or API error)", file=sys.stderr)
+            # Don't exit on failure - continue with other questions
+    except Exception as e:
+        print(f"❌ Exception creating Issue for Question {i}: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        # Continue with next question instead of failing entire script
 
 print(f"\n✅ Issue creation complete - processed {len(questions)} questions")
 EOF
