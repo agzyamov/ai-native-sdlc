@@ -1,6 +1,40 @@
 # AI Foundry Layer - Future Expansion (CAF Requirement)
 # This file contains placeholders for Azure AI Foundry (AI Hub) workspace
-# Uncomment and configure when ready to add AI capabilities
+# 
+# NOTE: Cognitive Services accounts (AIServices kind) are NOT managed by Terraform
+# because they cannot be imported without recreation (kind change forces replacement).
+# They must be configured manually via Azure Portal for network restrictions.
+# 
+# Existing Cognitive Services accounts:
+# - ruste-mhinjxi0-eastus2 (eastus2, aifoundry RG)
+# - aifoundry275872280917-resource (germanywestcentral, AIFoundry RG)
+# 
+# HIGH SEVERITY: Configure network restrictions manually via Azure Portal:
+# 1. Go to Azure Portal → Cognitive Services account
+# 2. Navigate to "Networking" in left menu
+# 3. Under "Firewalls and virtual networks":
+#    - Select "Selected networks and private endpoints"
+#    - Add your IP address to "Firewall" section
+#    - Set "Allow access from selected networks" (default action Deny)
+# 4. Save changes
+#
+# Or use Azure CLI:
+# 1. Add IP rule:
+#    az cognitiveservices account network-rule add \
+#      --name ruste-mhinjxi0-eastus2 \
+#      --resource-group aifoundry \
+#      --ip-address 176.233.30.114
+#
+# 2. Set default action (via az resource):
+#    az resource update \
+#      --ids /subscriptions/.../Microsoft.CognitiveServices/accounts/ruste-mhinjxi0-eastus2 \
+#      --set properties.networkAcls.defaultAction=Deny
+#
+# NOTE: Network ACLs may cause errors with apiProperties. Configure via Portal if CLI fails.
+
+#=============================================================================
+# AI FOUNDRY WORKSPACE - Future Expansion
+#=============================================================================
 
 # Placeholder: Azure AI Foundry (AI Hub) Workspace
 # resource "azurerm_machine_learning_workspace" "ai_hub" {
