@@ -62,6 +62,70 @@ def get_work_item(work_item_id: int) -> Optional[dict]:
         return None
 
 
+def get_work_item_latest_revision(work_item_id: int) -> Optional[dict]:
+    """
+    Fetch the latest revision of a work item from Azure DevOps REST API.
+    This is useful for getting the most recent ChangedBy user information.
+    
+    Args:
+        work_item_id: Work item ID to fetch revisions for
+    
+    Returns:
+        Latest revision JSON if successful, None on error
+    
+    Uses environment variables:
+        - ADO_ORG_URL: Azure DevOps organization URL (e.g., https://dev.azure.com/org)
+        - ADO_PROJECT: Project name
+        - ADO_WORK_ITEM_PAT: Personal Access Token (Work Items: Read)
+    """
+    org_url = os.getenv("ADO_ORG_URL")
+    project = os.getenv("ADO_PROJECT")
+    pat = os.getenv("ADO_WORK_ITEM_PAT")
+    
+    if not all([org_url, project, pat]):
+        logger.error("Missing required ADO environment variables (ADO_ORG_URL, ADO_PROJECT, ADO_WORK_ITEM_PAT)")
+        return None
+    
+    # First, get the work item to find the latest revision number
+    work_item = get_work_item(work_item_id)
+    if work_item is None:
+        logger.error(f"Failed to fetch work item {work_item_id} to get revision number")
+        return None
+    
+    # Get the latest revision number from the work item
+    latest_rev = work_item.get("rev", None)
+    if latest_rev is None:
+        logger.warning(f"Work item {work_item_id} has no 'rev' field")
+        return None
+    
+    # Construct API URL to get the specific revision
+    url = f"{org_url}/{project}/_apis/wit/workitems/{work_item_id}/revisions/{latest_rev}?api-version=7.0"
+    
+    # Encode PAT for basic auth
+    import base64
+    auth_header = base64.b64encode(f":{pat}".encode()).decode()
+    headers = {
+        "Authorization": f"Basic {auth_header}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error(f"Failed to fetch revision {latest_rev} for work item {work_item_id}: HTTP {response.status_code} - {response.text[:500]}")
+            return None
+            
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout fetching revision {latest_rev} for work item {work_item_id}")
+        return None
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching revision {latest_rev} for work item {work_item_id}: {str(e)}")
+        return None
+
+
 def update_work_item_description(work_item_id: int, description: str) -> bool:
     """
     Update work item description using PATCH operation.
