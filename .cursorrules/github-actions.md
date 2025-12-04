@@ -121,6 +121,43 @@ When creating composite actions:
 - Set `fail-fast: false` for matrix builds if needed
 - Always check exit codes in scripts
 
+## Checking Workflow Runs
+
+**Always use the GitHub Actions API instead of the UI** when checking workflow run status, logs, or details:
+
+1. **Use GitHub CLI (`gh`) for API access**:
+   ```bash
+   # List recent workflow runs
+   gh run list --workflow=<workflow-name>.yml
+   
+   # View specific run details
+   gh run view <run-id>
+   
+   # View logs for a specific run
+   gh run view <run-id> --log
+   
+   # Watch a run in real-time
+   gh run watch <run-id>
+   ```
+
+2. **Use REST API directly** if needed:
+   ```bash
+   # Get workflow run details
+   curl -H "Authorization: token $GITHUB_TOKEN" \
+        https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}
+   
+   # Get workflow run logs
+   curl -H "Authorization: token $GITHUB_TOKEN" \
+        https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}/logs
+   ```
+
+3. **Never use browser UI automation** to check workflow runs:
+   - ❌ Don't use browser tools to navigate to GitHub Actions UI
+   - ❌ Don't scrape workflow run pages
+   - ✅ Use `gh` CLI or REST API instead
+
+**Why**: API access is faster, more reliable, scriptable, and doesn't require browser automation.
+
 ## Related Rules
 
 - See [spec-kit.md](spec-kit.md) for Spec Kit workflow patterns
