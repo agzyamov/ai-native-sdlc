@@ -144,16 +144,14 @@ def main():
     
     spec_content = input_path.read_text()
     
-    # Clean GitHub Actions timestamps if present
-    import re
-    spec_content = re.sub(r'^[^\t]+\t[^\t]+\t\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+', '', spec_content, flags=re.MULTILINE)
-    
+    # Use LLM to clean the content (remove timestamps, fix formatting) instead of regex
     # Check if markers exist before calling LLM
     if '[NEEDS CLARIFICATION:' not in spec_content and '## Question' not in spec_content:
         print("ℹ️  No clarification markers found")
         sys.exit(0)
     
     print("📡 Calling Azure OpenAI API to extract questions...")
+    # LLM will handle cleaning timestamps and extracting questions in one pass
     markers = extract_markers_with_llm(spec_content)
     
     if not markers:

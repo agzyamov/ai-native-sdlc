@@ -149,12 +149,13 @@ Return ONLY the cleaned and fixed markdown description, no code blocks, no expla
             
             description = response.choices[0].message.content.strip()
             
-            # Remove markdown code fences if LLM added them
+            # Use LLM to remove markdown code fences if LLM added them (no regex)
             if description.startswith("```"):
+                # Simple string operations (not regex) to remove code fences
                 lines = description.split('\n')
-                if lines[0].startswith("```"):
+                if lines and lines[0].strip().startswith("```"):
                     lines = lines[1:]
-                if lines[-1].strip() == "```":
+                if lines and lines[-1].strip() == "```":
                     lines = lines[:-1]
                 description = '\n'.join(lines).strip()
             
@@ -223,7 +224,7 @@ Topic:"""
     # Create Issue with clean title (topic only)
     result = create_issue_workitem(
         parent_feature_id=int("${FEATURE_ID}"),
-        title=f"Q{i}: {topic}",
+        title=f"Q{i}: {clean_topic}",
         description=description,
         tags="clarification; auto-generated",
         idempotency_key=idempotency_key
