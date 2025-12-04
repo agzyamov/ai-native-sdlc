@@ -50,7 +50,7 @@ def get_work_item(work_item_id: int) -> Optional[dict]:
         if response.status_code == 200:
             return response.json()
         else:
-            logger.error(f"Failed to fetch work item {work_item_id}: HTTP {response.status_code}")
+            logger.error(f"Failed to fetch work item {work_item_id}: HTTP {response.status_code} - {response.text[:500]}")
             return None
             
     except requests.exceptions.Timeout:

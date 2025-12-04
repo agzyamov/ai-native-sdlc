@@ -1,36 +1,60 @@
-# AI Foundry Layer - Future Expansion (CAF Requirement)
-# This file contains placeholders for Azure AI Foundry (AI Hub) workspace
+# AI Foundry Layer - Azure OpenAI Configuration
 # 
-# NOTE: Cognitive Services accounts (AIServices kind) are NOT managed by Terraform
-# because they cannot be imported without recreation (kind change forces replacement).
-# They must be configured manually via Azure Portal for network restrictions.
+# Manages network ACLs for existing Azure OpenAI Cognitive Services account
+# NOTE: The account uses kind="AIServices" which Terraform azurerm provider doesn't support
+# We use null_resource with Azure REST API to manage network ACLs
 # 
 # Existing Cognitive Services accounts:
-# - ruste-mhinjxi0-eastus2 (eastus2, aifoundry RG)
+# - ruste-mhinjxi0-eastus2 (eastus2, aifoundry RG) - Azure OpenAI
 # - aifoundry275872280917-resource (germanywestcentral, AIFoundry RG)
-# 
-# HIGH SEVERITY: Configure network restrictions manually via Azure Portal:
-# 1. Go to Azure Portal → Cognitive Services account
-# 2. Navigate to "Networking" in left menu
-# 3. Under "Firewalls and virtual networks":
-#    - Select "Selected networks and private endpoints"
-#    - Add your IP address to "Firewall" section
-#    - Set "Allow access from selected networks" (default action Deny)
-# 4. Save changes
-#
-# Or use Azure CLI:
-# 1. Add IP rule:
-#    az cognitiveservices account network-rule add \
-#      --name ruste-mhinjxi0-eastus2 \
-#      --resource-group aifoundry \
-#      --ip-address 176.233.30.114
-#
-# 2. Set default action (via az resource):
-#    az resource update \
-#      --ids /subscriptions/.../Microsoft.CognitiveServices/accounts/ruste-mhinjxi0-eastus2 \
-#      --set properties.networkAcls.defaultAction=Deny
-#
-# NOTE: Network ACLs may cause errors with apiProperties. Configure via Portal if CLI fails.
+
+# Variable for network ACL default action
+variable "azure_openai_network_default_action" {
+  description = "Default action for Azure OpenAI network ACLs. Use 'Allow' to enable GitHub Actions access."
+  type        = string
+  default     = "Allow"
+  validation {
+    condition     = contains(["Allow", "Deny"], var.azure_openai_network_default_action)
+    error_message = "default_action must be either 'Allow' or 'Deny'."
+  }
+}
+
+# Manage network ACLs for Azure OpenAI via Azure REST API
+# This allows GitHub Actions and other services to access Azure OpenAI
+resource "null_resource" "openai_network_acls" {
+  triggers = {
+    default_action = var.azure_openai_network_default_action
+    # Re-run if subscription or resource changes
+    subscription_id = data.azurerm_client_config.current.subscription_id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      set -e
+      
+      RESOURCE_ID="/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/aifoundry/providers/Microsoft.CognitiveServices/accounts/ruste-mhinjxi0-eastus2"
+      
+      # Get access token
+      ACCESS_TOKEN=$(az account get-access-token --query accessToken -o tsv)
+      
+      # Update network ACLs using PATCH (only updates specified properties)
+      PATCH_BODY=$(echo '{}' | jq --arg action "${var.azure_openai_network_default_action}" '.properties.networkAcls = {
+        "defaultAction": $action,
+        "ipRules": [],
+        "virtualNetworkRules": []
+      }')
+      
+      az rest --method PATCH \
+        --uri "https://management.azure.com$${RESOURCE_ID}?api-version=2025-06-01" \
+        --headers "Authorization=Bearer $ACCESS_TOKEN" \
+        --headers "Content-Type=application/json" \
+        --body "$PATCH_BODY" \
+        -o json > /dev/null
+      
+      echo "✅ Updated Azure OpenAI network ACLs: defaultAction=${var.azure_openai_network_default_action}"
+    EOT
+  }
+}
 
 #=============================================================================
 # AI FOUNDRY WORKSPACE - Future Expansion
