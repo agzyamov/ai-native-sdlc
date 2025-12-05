@@ -257,9 +257,12 @@ def create_issue_workitem(
     # Create Issue (JSON Patch format)
     create_url = f"{org_url}/{project}/_apis/wit/workitems/$Issue?api-version=7.0"
     
+    # Add idempotency key to description for duplicate detection
+    description_with_key = f"{description}\n\n<!-- idempotency_key: {idempotency_key} -->"
+    
     payload = [
         {"op": "add", "path": "/fields/System.Title", "value": title},
-        {"op": "add", "path": "/fields/System.Description", "value": description},
+        {"op": "add", "path": "/fields/System.Description", "value": description_with_key},
         # Set description field format to Markdown (as per Microsoft docs)
         # https://devblogs.microsoft.com/devops/markdown-support-arrives-for-work-items/
         {"op": "add", "path": "/multilineFieldsFormat/System.Description", "value": "Markdown"},
