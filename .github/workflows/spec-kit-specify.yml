@@ -154,6 +154,35 @@ jobs:
           echo "Generated short name: $SHORT_NAME"
           echo "short_name=$SHORT_NAME" >> $GITHUB_OUTPUT
 
+      - name: Find existing branch for work item
+        id: find_branch
+        if: github.event.inputs.work_item_id != ''
+        run: |
+          WORK_ITEM_ID="${{ github.event.inputs.work_item_id }}"
+          echo "🔍 Searching for existing branch with commits containing AB#$WORK_ITEM_ID..."
+          
+          # Fetch all remote branches to search
+          git fetch --all --quiet
+          
+          # Find last commit with AB#<work_item_id>
+          LAST_COMMIT=$(git log --all --oneline --grep="AB#$WORK_ITEM_ID" --format="%h" | head -1)
+          
+          if [ -n "$LAST_COMMIT" ]; then
+            echo "Found commit: $LAST_COMMIT"
+            
+            # Find branch containing this commit (exclude main and HEAD)
+            EXISTING_BRANCH=$(git branch -r --contains $LAST_COMMIT 2>/dev/null | grep -v "main\|HEAD" | head -1 | sed 's|origin/||' | xargs)
+            
+            if [ -n "$EXISTING_BRANCH" ]; then
+              echo "existing_branch=$EXISTING_BRANCH" >> $GITHUB_OUTPUT
+              echo "✅ Found existing branch: $EXISTING_BRANCH (from commit $LAST_COMMIT)"
+            else
+              echo "ℹ️ Commit found but no feature branch contains it"
+            fi
+          else
+            echo "ℹ️ No commits found with AB#$WORK_ITEM_ID - will create new branch"
+          fi
+
       - name: Step 2 - Run create-new-feature script
         id: create_feature
         env:
@@ -162,30 +191,60 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
           SHORT_NAME="${{ steps.generate_name.outputs.short_name }}"
+          EXISTING_BRANCH="${{ steps.find_branch.outputs.existing_branch }}"
           
           # Remove backticks from feature_description to prevent bash command substitution
           # Backticks in markdown (e.g., `code`) are interpreted as command substitution in bash
           # Using environment variable prevents direct substitution in script
           FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC_RAW" | tr '`' "'")
 
-          echo "🌱 Step 2: Running create-new-feature.sh script..."
-          echo "Short name: $SHORT_NAME"
-          echo "Description: $FEATURE_DESC_CLEAN"
-          echo ""
-
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Run the script with --json flag
-          cd "$GITHUB_WORKSPACE"
-          .specify/scripts/bash/create-new-feature.sh --json --short-name "$SHORT_NAME" "$FEATURE_DESC_CLEAN" > feature_output.json
+          # Check if we should use existing branch
+          if [ -n "$EXISTING_BRANCH" ]; then
+            echo "🔄 Step 2: Using existing branch: $EXISTING_BRANCH"
+            echo ""
+            
+            # Checkout existing branch
+            git fetch origin "$EXISTING_BRANCH"
+            git checkout "$EXISTING_BRANCH"
+            git pull origin "$EXISTING_BRANCH" --rebase
+            
+            # Find existing spec file
+            BRANCH_NAME="$EXISTING_BRANCH"
+            SPEC_FILE="$GITHUB_WORKSPACE/specs/$BRANCH_NAME/spec.md"
+            FEATURE_DIR="$GITHUB_WORKSPACE/specs/$BRANCH_NAME"
+            
+            # Create directory if it doesn't exist (shouldn't happen, but be safe)
+            mkdir -p "$FEATURE_DIR"
+            
+            echo "✅ Checked out existing branch: $BRANCH_NAME"
+            echo "  Spec file: $SPEC_FILE"
+            echo "  Feature dir: $FEATURE_DIR"
+          else
+            echo "🌱 Step 2: Creating new feature branch..."
+            echo "Short name: $SHORT_NAME"
+            echo "Description: $FEATURE_DESC_CLEAN"
+            echo ""
 
-          # Parse JSON output
-          cat feature_output.json
-          BRANCH_NAME=$(jq -r '.BRANCH_NAME' feature_output.json)
-          SPEC_FILE=$(jq -r '.SPEC_FILE' feature_output.json)
-          FEATURE_DIR=$(jq -r '.FEATURE_DIR' feature_output.json)
+            # Run the script with --json flag
+            cd "$GITHUB_WORKSPACE"
+            .specify/scripts/bash/create-new-feature.sh --json --short-name "$SHORT_NAME" "$FEATURE_DESC_CLEAN" > feature_output.json
+
+            # Parse JSON output
+            cat feature_output.json
+            BRANCH_NAME=$(jq -r '.BRANCH_NAME' feature_output.json)
+            SPEC_FILE=$(jq -r '.SPEC_FILE' feature_output.json)
+            FEATURE_DIR=$(jq -r '.FEATURE_DIR' feature_output.json)
+
+            echo ""
+            echo "✅ Feature scaffolding created:"
+            echo "  Branch: $BRANCH_NAME"
+            echo "  Spec file: $SPEC_FILE"
+            echo "  Feature dir: $FEATURE_DIR"
+          fi
 
           # Use multiline output format for long paths
           {
@@ -195,12 +254,6 @@ jobs:
             echo "EOF"
             echo "feature_dir=$FEATURE_DIR"
           } >> $GITHUB_OUTPUT
-
-          echo ""
-          echo "✅ Feature scaffolding created:"
-          echo "  Branch: $BRANCH_NAME"
-          echo "  Spec file: $SPEC_FILE"
-          echo "  Feature dir: $FEATURE_DIR"
 
       - name: Step 3-6 - Generate Specification with Copilot
         env:
@@ -500,7 +553,7 @@ jobs:
               -m "Spec file: $SPEC_FILE"
 
             echo "📤 Pushing to branch: $BRANCH_NAME"
-            git push -f origin "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME"
 
             echo "✅ Specification committed and pushed to $BRANCH_NAME"
             if [ -n "$WORK_ITEM_ID" ]; then
