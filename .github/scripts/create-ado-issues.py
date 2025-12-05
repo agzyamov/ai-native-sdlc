@@ -364,6 +364,12 @@ Return ONLY the cleaned and fixed markdown description, no code blocks, no expla
                 print(f"⚠️  LLM returned very short description ({len(description)} chars), using raw description", file=sys.stderr)
                 return raw_description
             
+            # Check if LLM stripped all newlines (raw_description has them, but LLM response doesn't)
+            # This indicates LLM broke the formatting
+            if '\n' not in description and '\n' in raw_description:
+                print(f"⚠️  LLM stripped all newlines (raw had {raw_description.count(chr(10))} newlines), using raw description", file=sys.stderr)
+                return raw_description
+            
             print(f"✅ Cleaned and fixed markdown using LLM")
             return description
             
