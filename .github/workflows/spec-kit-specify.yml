@@ -571,7 +571,7 @@ jobs:
               -m "Spec file: $SPEC_FILE"
 
             echo "📤 Pushing to branch: $BRANCH_NAME"
-            git push origin "$BRANCH_NAME"
+            git push --force-with-lease origin "$BRANCH_NAME"
 
             echo "✅ Specification committed and pushed to $BRANCH_NAME"
             if [ -n "$WORK_ITEM_ID" ]; then
