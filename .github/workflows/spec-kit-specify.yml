@@ -165,9 +165,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # Remove backticks from FEATURE_DESC to prevent bash command substitution
+          # Backticks in markdown (e.g., `code`) are interpreted as command substitution in bash
+          FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC" | tr '`' "'")
+
           # Run the script with --json flag
           cd "$GITHUB_WORKSPACE"
-          .specify/scripts/bash/create-new-feature.sh --json --short-name "$SHORT_NAME" "$FEATURE_DESC" > feature_output.json
+          .specify/scripts/bash/create-new-feature.sh --json --short-name "$SHORT_NAME" "$FEATURE_DESC_CLEAN" > feature_output.json
 
           # Parse JSON output
           cat feature_output.json
