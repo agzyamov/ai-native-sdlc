@@ -489,12 +489,41 @@ jobs:
         run: |
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
           FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
+          FEATURE_ID="${{ github.event.inputs.work_item_id }}"
           
           # Fallback: Derive FEATURE_DIR from SPEC_FILE if null
           if [ -z "$FEATURE_DIR" ] || [ "$FEATURE_DIR" = "null" ]; then
             FEATURE_DIR="$(dirname "$SPEC_FILE")"
             echo "ℹ️  FEATURE_DIR was null, derived from SPEC_FILE: $FEATURE_DIR"
           fi
+          
+          # Check if there are already closed Issues under this Feature
+          # If yes, this is a re-run to finalize spec - skip creating new Issues
+          echo "🔍 Checking for existing closed Issues under Feature #$FEATURE_ID..."
+          
+          WIQL_QUERY="SELECT [System.Id] FROM WorkItemLinks WHERE ([Source].[System.Id] = $FEATURE_ID) AND ([System.Links.LinkType] = 'System.LinkTypes.Hierarchy-Forward') AND ([Target].[System.WorkItemType] = 'Issue') AND ([Target].[System.State] = 'Closed') MODE (MustContain)"
+          
+          WIQL_RESPONSE=$(curl -s -X POST \
+            "${ADO_ORG_URL}/${ADO_PROJECT}/_apis/wit/wiql?api-version=7.0" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Basic $(echo -n ":${ADO_WORK_ITEM_PAT}" | base64 | tr -d '\n')" \
+            -d "{\"query\": \"$WIQL_QUERY\"}")
+          
+          CLOSED_ISSUES_COUNT=$(echo "$WIQL_RESPONSE" | jq '.workItemRelations | length // 0')
+          # Subtract 1 for the source item itself
+          if [ "$CLOSED_ISSUES_COUNT" -gt 1 ]; then
+            CLOSED_ISSUES_COUNT=$((CLOSED_ISSUES_COUNT - 1))
+          else
+            CLOSED_ISSUES_COUNT=0
+          fi
+          
+          if [ "$CLOSED_ISSUES_COUNT" -gt 0 ]; then
+            echo "✅ Found $CLOSED_ISSUES_COUNT closed Issues - this is a re-run to finalize spec"
+            echo "⏭️  Skipping Issue creation (questions already answered)"
+            exit 0
+          fi
+          
+          echo "ℹ️  No closed Issues found - proceeding with Issue creation"
           
           # Use spec_output.txt from Copilot step (contains full formatted questions)
           SPEC_OUTPUT_FILE="spec_output.txt"
