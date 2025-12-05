@@ -1,0 +1,8 @@
+[
+  {
+    "topic": "Output Format Requirements",
+    "question": "Which specific diagram output formats should the API support?",
+    "context": "From the specification requirements section:\\n- **FR-004**: System MUST support multiple output formats including [NEEDS CLARIFICATION: Which formats are required - PNG, SVG, PDF, Mermaid, PlantUML, or others?]",
+    "answer_options": "| Option | Answer | Implications |\n|--------|--------|--------------|\n| A | Support image formats only (PNG, SVG, PDF) | API focuses on visual output, easier to implement initially, suitable for embedding in documents and presentations |\n| B | Support diagram markup languages only (Mermaid, PlantUML) | API returns editable diagram syntax, users can render/modify diagrams themselves, requires less server-side rendering |\n| C | Support both image formats and diagram markup (PNG, SVG, Mermaid, PlantUML) | Maximum flexibility for different use cases, higher implementation complexity, covers both rendering and editing scenarios |\n| Custom | Provide your own answer | Specify which exact formats you need (e.g., \"SVG and Mermaid only\") |"
+  }
+]
