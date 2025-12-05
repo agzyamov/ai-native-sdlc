@@ -223,6 +223,10 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
                 closed_issues_context_parts = []
                 for issue in closed_issues:
                     issue_id = issue.get("id")
+                    if not issue_id:
+                        logger.warning(f"[{correlation_id}] Skipping issue with no ID: {issue}")
+                        continue
+                    
                     issue_title = issue.get("title", "")
                     issue_description = issue.get("description", "")
                     
@@ -247,6 +251,9 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
                     closed_issues_context = "\n\n".join(closed_issues_context_parts)
                     feature_description = f"{feature_description}\n\n=== Previously Answered Clarifications ===\n\n{closed_issues_context}"
                     logger.info(f"[{correlation_id}] Enriched feature_description with {len(closed_issues_context_parts)} closed Issues context")
+                    # Log preview of enriched description for debugging
+                    preview_length = min(500, len(feature_description))
+                    logger.debug(f"[{correlation_id}] Enriched description preview (first {preview_length} chars): {feature_description[:preview_length]}...")
             else:
                 logger.info(f"[{correlation_id}] No closed Issues found for Feature {work_item_id}")
                 

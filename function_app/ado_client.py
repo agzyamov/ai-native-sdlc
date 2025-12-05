@@ -452,8 +452,16 @@ def get_work_item_comments(work_item_id: int) -> List[str]:
         result = response.json()
         comments = []
         
-        for comment in result.get("comments", []):
-            text = comment.get("text", "").strip()
+        # Comments API returns either "comments" or "value" array
+        comments_list = result.get("comments", result.get("value", []))
+        
+        for comment in comments_list:
+            # Comment can be a string or an object with "text" property
+            if isinstance(comment, str):
+                text = comment.strip()
+            else:
+                text = comment.get("text", "").strip()
+            
             if text:
                 comments.append(text)
         
