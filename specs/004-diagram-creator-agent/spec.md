@@ -88,7 +88,7 @@ Users need to create sophisticated diagrams with nested elements, multiple relat
 
 - **FR-001**: System MUST accept text descriptions of diagrams via API endpoint
 - **FR-002**: System MUST parse natural language descriptions to identify diagram elements (nodes, edges, containers, labels)
-- **FR-003**: System MUST support multiple diagram types [NEEDS CLARIFICATION: which diagram types are required - flowchart, sequence, class, ER, state, component, deployment, or all?]
+- **FR-003**: System MUST support all major diagram types including Flowchart, Sequence, Class, ER (Entity-Relationship), State, Component, Deployment, and Network diagrams
 - **FR-004**: System MUST generate diagrams in PNG format
 - **FR-005**: System MUST generate diagrams in SVG format
 - **FR-006**: System MUST generate diagrams in PDF format
@@ -100,7 +100,7 @@ Users need to create sophisticated diagrams with nested elements, multiple relat
 - **FR-012**: System MUST handle nested and hierarchical diagram structures
 - **FR-013**: System MUST support multiple relationship types between elements
 - **FR-014**: System MUST accept layout preferences (horizontal, vertical, auto)
-- **FR-015**: API MUST authenticate and authorize requests [NEEDS CLARIFICATION: authentication method - API keys, OAuth tokens, or both?]
+- **FR-015**: API MUST authenticate and authorize requests using OAuth 2.0 tokens
 - **FR-016**: System MUST enforce rate limiting to prevent abuse
 - **FR-017**: System MUST log all diagram generation requests for monitoring and debugging
 - **FR-018**: System MUST handle concurrent diagram generation requests
