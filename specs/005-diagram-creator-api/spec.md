@@ -1,15 +1,15 @@
 # Feature Specification: Diagram Creator Agent API
 
-**Feature Branch**: '005-diagram-creator-api'  
+**Feature Branch**: `005-diagram-creator-api`  
 **Created**: 2025-12-05  
 **Status**: Draft  
-**Input**: User description: &quot;I want to create a Diagram creator agent available via API&quot;
+**Input**: User description: "I want to create a Diagram creator agent available via API"
 
-## User Scenarios &amp; Testing *(mandatory)*
+## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Simple Diagram Generation (Priority: P1)
 
-A developer needs to generate a basic diagram from a text description through an API call. They send a request with a plain language description of the diagram they want (e.g., &quot;Create a flowchart showing user login process&quot;), and receive a diagram file or reference in response.
+A developer needs to generate a basic diagram from a text description through an API call. They send a request with a plain language description of the diagram they want (e.g., "Create a flowchart showing user login process"), and receive a diagram file or reference in response.
 
 **Why this priority**: This is the core MVP functionality. It represents the minimal viable feature that delivers immediate value - the ability to create diagrams programmatically.
 
@@ -17,7 +17,7 @@ A developer needs to generate a basic diagram from a text description through an
 
 **Acceptance Scenarios**:
 
-1. **Given** an API endpoint is available, **When** a user sends a POST request with a text description &quot;Create a simple flowchart with start and end nodes&quot;, **Then** the system returns a diagram representation
+1. **Given** an API endpoint is available, **When** a user sends a POST request with a text description "Create a simple flowchart with start and end nodes", **Then** the system returns a diagram representation
 2. **Given** a valid diagram request, **When** the processing completes, **Then** the response includes the diagram in a usable format
 3. **Given** an invalid or empty description, **When** the request is processed, **Then** the system returns a clear error message explaining what is needed
 
@@ -33,8 +33,8 @@ A developer wants to specify the type of diagram to be created (flowchart, seque
 
 **Acceptance Scenarios**:
 
-1. **Given** a request with diagram type &quot;flowchart&quot; and description, **When** processed, **Then** returns a flowchart-style diagram
-2. **Given** a request with diagram type &quot;sequence&quot;, **When** processed, **Then** returns a sequence diagram
+1. **Given** a request with diagram type "flowchart" and description, **When** processed, **Then** returns a flowchart-style diagram
+2. **Given** a request with diagram type "sequence", **When** processed, **Then** returns a sequence diagram
 3. **Given** a request with an unsupported diagram type, **When** processed, **Then** returns an error listing supported types
 
 ---
@@ -78,22 +78,22 @@ For complex diagrams that take time to generate, a developer initiates diagram c
 - What happens when the AI agent cannot interpret the description?
 - How are concurrent requests from the same user handled?
 - What happens if diagram generation fails partway through?
-- How does the system handle descriptions in different languages [NEEDS CLARIFICATION: Should the API support multiple languages, or English only?]
+- How does the system handle descriptions in different languages?
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: System MUST accept HTTP requests with text descriptions of diagrams to be created
-- **FR-002**: System MUST generate diagrams based on natural language descriptions
+- **FR-002**: System MUST generate diagrams based on natural language descriptions in English
 - **FR-003**: System MUST return generated diagrams in at least one standard format (PNG, SVG, or structured data)
 - **FR-004**: System MUST provide clear error messages when diagram generation fails
 - **FR-005**: System MUST validate input descriptions before processing
-- **FR-006**: System MUST support authentication to prevent unauthorized access [NEEDS CLARIFICATION: What authentication method should be used - API keys, OAuth2, or other?]
+- **FR-006**: System MUST support authentication using API keys to prevent unauthorized access
 - **FR-007**: System MUST support multiple diagram types (minimum: flowchart, sequence diagram, entity-relationship diagram)
 - **FR-008**: System MUST handle requests asynchronously for diagrams that exceed a processing time threshold
 - **FR-009**: System MUST provide status endpoints to check diagram generation progress
-- **FR-010**: System MUST store generated diagrams for retrieval [NEEDS CLARIFICATION: How long should diagrams be retained - permanent storage, time-limited (e.g., 24 hours), or user-controlled?]
+- **FR-010**: System MUST store generated diagrams with user-controlled retention policies
 - **FR-011**: System MUST return unique identifiers for each generated diagram
 - **FR-012**: System MUST rate limit requests to prevent abuse
 - **FR-013**: System MUST log all requests and generation attempts for monitoring and debugging
@@ -123,8 +123,8 @@ For complex diagrams that take time to generate, a developer initiates diagram c
 - Standard diagram formats (PNG, SVG, or Mermaid/PlantUML syntax) are acceptable outputs
 - Diagram generation is compute-intensive and may require asynchronous processing for complex cases
 - API will be used programmatically by developers, not end users directly
-- English is the primary input language (other languages may be added later based on clarification)
-- Authentication is required to track usage and prevent abuse
+- English is the primary and only supported input language
+- API keys are sufficient for authentication and usage tracking
 
 ## Dependencies
 
@@ -132,47 +132,3 @@ For complex diagrams that take time to generate, a developer initiates diagram c
 - Diagram rendering library or service to convert diagram structures into visual formats
 - Storage system for generated diagrams
 - Authentication and rate limiting infrastructure
-
-
-=== Previously Answered Clarifications ===
-
---- Closed Issue #745: Q1: Language support for diagram descriptions ---
-Description: ## Question 1: Language support for diagram descriptions
-
-**What we need to know**: Should the API support multiple languages, or English only?
-
-**Your choice**: _[Awaiting response]_
-
----
-
-**Branch**: 004-diagram-creator-api
-
-
-Comments:
-- <div>English only</div>
-
---- Closed Issue #746: Q2: Authentication method for API ---
-Description: ## Question 2: Authentication method for API
-
-- **What we need to know**: What authentication method should be used — API keys, OAuth2, or other?
-
-- **Your choice**: _[Awaiting response]_
-
-**Branch**: 004-diagram-creator-api
-
-
-Comments:
-- <div>API keys</div>
-
---- Closed Issue #747: Q3: Diagram retention policy ---
-Description: ## Question 3: Diagram retention policy
-
-- **What we need to know**: How long should diagrams be retained — permanent storage, time-limited (e.g., 24 hours), or user-controlled?
-
-- **Your choice**: _[Awaiting response]_
-
-**Branch**: 004-diagram-creator-api
-
-
-Comments:
-- <div>user-controlled</div>

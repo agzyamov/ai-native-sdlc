@@ -1,17 +1,17 @@
 # Clarification Questions: 004-diagram-creator-api
 
 **Feature**: [./spec.md](./spec.md)  
-**Created**: 2025-12-05T05:01:29Z  
+**Created**: 2025-12-05T05:07:52Z  
 **Status**: Open  
 **Total Questions**: 3
 
 ---
 
-## Question 1: Language support
+## Question 1: Should the API support multiple languages, or English only?
 
 **Context**: 
 
-**Question**: How does the system handle descriptions in different languages? Should the API support multiple languages, or English only?
+**Question**: Should the API support multiple languages, or English only?
 
 **Answer**: _Pending_
 
@@ -19,7 +19,7 @@
 
 ---
 
-## Question 2: Authentication method
+## Question 2: What authentication method should be used - API keys, OAuth2, or other?
 
 **Context**: 
 
@@ -31,7 +31,7 @@
 
 ---
 
-## Question 3: Diagram retention policy
+## Question 3: How long should diagrams be retained - permanent storage, time-limited (e.g., 24 hours), or user-controlled?
 
 **Context**: 
 
