@@ -207,6 +207,10 @@ jobs:
             echo "🔄 Step 2: Using existing branch: $EXISTING_BRANCH"
             echo ""
             
+            # Clean untracked files that might conflict with checkout
+            # (e.g., short_name_output.txt from Step 1)
+            git clean -fd
+            
             # Checkout existing branch
             git fetch origin "$EXISTING_BRANCH"
             git checkout "$EXISTING_BRANCH"
