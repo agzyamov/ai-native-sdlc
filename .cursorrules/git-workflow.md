@@ -29,6 +29,16 @@
    - `docs/` - Documentation updates
    - `infra/` - Infrastructure changes
 
+5. **Language requirements**:
+   - **ALL commit messages MUST be in English only**
+   - **ALL PR titles and descriptions MUST be in English only**
+   - Use conventional commit format: `type: description`
+   - Examples:
+     - `fix: resolve issue with ADO work item assignment`
+     - `feat: add markdown support for ADO work items`
+     - `refactor: extract Python logic from bash script`
+   - Chat/conversation can be in any language (Russian/English)
+
 ### Workflow
 
 1. **Start from main**:
