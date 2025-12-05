@@ -765,10 +765,32 @@ jobs:
             exit 1
           fi
 
-          echo "🔄 Assigning ADO Work Item #$WORK_ITEM_ID to user $CHANGED_BY_USER_ID and setting state to Blocked..."
+          echo "🔍 Checking for open Issues under Feature #$WORK_ITEM_ID..."
 
-          # Construct JSON Patch payload to assign work item and set state to Blocked
-          PAYLOAD=$(cat <<EOF
+          # Check for open (non-closed) Issues under this Feature using WIQL
+          WIQL_QUERY="SELECT [System.Id] FROM WorkItemLinks WHERE ([Source].[System.Id] = $WORK_ITEM_ID) AND ([System.Links.LinkType] = 'System.LinkTypes.Hierarchy-Forward') AND ([Target].[System.WorkItemType] = 'Issue') AND ([Target].[System.State] <> 'Closed') MODE (MustContain)"
+          
+          WIQL_RESPONSE=$(curl -s -X POST \
+            "https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/wiql?api-version=7.0" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64 | tr -d '\n')" \
+            -d "{\"query\": \"$WIQL_QUERY\"}")
+          
+          # Count open issues (workItemRelations array, excluding the source item itself)
+          # The first relation is usually the source, so we subtract 1
+          RELATIONS_COUNT=$(echo "$WIQL_RESPONSE" | jq '.workItemRelations | length // 0')
+          if [ "$RELATIONS_COUNT" -gt 1 ]; then
+            OPEN_ISSUES_COUNT=$((RELATIONS_COUNT - 1))
+          else
+            OPEN_ISSUES_COUNT=0
+          fi
+          
+          echo "Open Issues count: $OPEN_ISSUES_COUNT"
+
+          # Construct JSON Patch payload based on open Issues
+          if [ "$OPEN_ISSUES_COUNT" -gt 0 ]; then
+            echo "⚠️ Found $OPEN_ISSUES_COUNT open Issues - setting state to Blocked"
+            PAYLOAD=$(cat <<EOF
           [
             {
               "op": "replace",
@@ -782,7 +804,25 @@ jobs:
             }
           ]
           EOF
-          )
+            )
+          else
+            echo "✅ No open Issues - moving to Done column of current state"
+            PAYLOAD=$(cat <<EOF
+          [
+            {
+              "op": "replace",
+              "path": "/fields/System.AssignedTo",
+              "value": "$CHANGED_BY_USER_ID"
+            },
+            {
+              "op": "replace",
+              "path": "/fields/System.BoardColumnDone",
+              "value": true
+            }
+          ]
+          EOF
+            )
+          fi
 
           # PATCH with retry (exponential backoff)
           ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0"
@@ -808,7 +848,7 @@ jobs:
             echo "HTTP Status: $HTTP_CODE"
             
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
-              echo "✅ ADO Work Item assigned and set to Blocked successfully (HTTP $HTTP_CODE)"
+              echo "✅ ADO Work Item updated successfully (HTTP $HTTP_CODE)"
               exit 0
             elif [ "$HTTP_CODE" = "401" ]; then
               echo "❌ Authentication failed (HTTP 401)"
