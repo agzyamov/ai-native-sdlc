@@ -1,0 +1,20 @@
+[
+  {
+    "topic": "Language support for diagram descriptions",
+    "question": "Should the API support multiple languages, or English only?",
+    "context": "",
+    "answer_options": ""
+  },
+  {
+    "topic": "Authentication method for API",
+    "question": "What authentication method should be used - API keys, OAuth2, or other?",
+    "context": "",
+    "answer_options": ""
+  },
+  {
+    "topic": "Diagram retention policy",
+    "question": "How long should diagrams be retained - permanent storage, time-limited (e.g., 24 hours), or user-controlled?",
+    "context": "",
+    "answer_options": ""
+  }
+]
