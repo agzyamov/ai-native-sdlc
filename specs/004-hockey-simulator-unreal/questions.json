@@ -1,0 +1,14 @@
+[
+  {
+    "topic": "Team Size and Game Formats",
+    "question": "Should the hockey simulator support only standard 5-on-5 gameplay, or should it include multiple game formats?",
+    "context": "FR-002 currently states: \"System MUST support team sizes of [NEEDS CLARIFICATION: 5-on-5 only, or multiple formats like 3-on-3, 4-on-4?]\"",
+    "answer_options": "| Option | Description |\n|--------|-------------|\n| A | 5-on-5 only (standard full-strength hockey). Simplifies MVP scope. Players experience traditional hockey format. Easier to balance and test. Can add other formats in future versions. |\n| B | Multiple formats (5-on-5, 4-on-4, 3-on-3). Adds gameplay variety and replayability. More complex to develop, balance, and test. May appeal to players who enjoy different hockey styles. |\n| C | 5-on-5 plus one additional format (e.g., 3-on-3 for overtime). Balanced approach providing core experience with some variety. Moderate complexity increase. Supports realistic overtime scenarios. |\n| Custom | Provide your own answer. Specify exactly which formats should be supported and why. |"
+  },
+  {
+    "topic": "Multiplayer Support",
+    "question": "What types of multiplayer functionality should be included in this hockey simulator?",
+    "context": "FR-009 currently states: \"System MUST support [NEEDS CLARIFICATION: single-player only, local multiplayer, online multiplayer, or all three?]\"",
+    "answer_options": "| Option | Answer | Implications |\n|--------|--------|--------------|\n| A | Single-player only (player vs AI) | Simplest MVP scope. No networking complexity. Faster to develop and test. Good starting point for validating core gameplay mechanics. |\n| B | Single-player + local multiplayer (couch co-op) | Adds social play without networking complexity. Players can compete on same device. Moderate scope increase. Popular for console-style sports games. |\n| C | All modes (single-player, local multiplayer, online multiplayer) | Maximum feature completeness and market appeal. Significant development complexity with networking, matchmaking, latency handling. Largest scope and timeline. |\n| Custom | Provide your own answer | Specify exactly which modes to support and any specific requirements |"
+  }
+]
