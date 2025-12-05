@@ -1,10 +1,11 @@
 """
 Azure DevOps REST API client for fetching and updating work items.
 """
+import base64
 import logging
 import os
 import sys
-from typing import Optional
+from typing import List, Optional
 
 import requests
 
@@ -315,3 +316,153 @@ def create_issue_workitem(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error creating Issue: {str(e)}")
         return None
+
+
+def get_child_issues(parent_feature_id: int) -> List[dict]:
+    """
+    Fetch closed child Issues for a Feature using WIQL query.
+    
+    Args:
+        parent_feature_id: Parent Feature work item ID
+    
+    Returns:
+        List of work items with id, title, and description
+        Empty list on error or if no closed Issues found
+    
+    Uses environment variables:
+        - ADO_ORG_URL: Azure DevOps organization URL
+        - ADO_PROJECT: Project name
+        - ADO_WORK_ITEM_PAT: Personal Access Token (Work Items: Read)
+    """
+    org_url = os.getenv("ADO_ORG_URL")
+    project = os.getenv("ADO_PROJECT")
+    pat = os.getenv("ADO_WORK_ITEM_PAT")
+    
+    if not all([org_url, project, pat]):
+        logger.error("Missing required ADO environment variables for get_child_issues")
+        return []
+    
+    auth_header = base64.b64encode(f":{pat}".encode()).decode()
+    headers = {
+        "Authorization": f"Basic {auth_header}",
+        "Content-Type": "application/json"
+    }
+    
+    # WIQL query to find closed child Issues
+    wiql_url = f"{org_url}/{project}/_apis/wit/wiql?api-version=7.0"
+    wiql_query = {
+        "query": f"""
+            SELECT [System.Id], [System.Title], [System.Description]
+            FROM WorkItems
+            WHERE [System.WorkItemType] = 'Issue'
+            AND [System.Parent] = {parent_feature_id}
+            AND [System.State] = 'Closed'
+        """
+    }
+    
+    try:
+        response = requests.post(wiql_url, json=wiql_query, headers=headers, timeout=15)
+        
+        if response.status_code != 200:
+            logger.error(f"WIQL query failed for parent {parent_feature_id}: HTTP {response.status_code} - {response.text[:500]}")
+            return []
+        
+        query_result = response.json()
+        work_items_refs = query_result.get("workItems", [])
+        
+        if not work_items_refs:
+            logger.info(f"No closed Issues found for Feature {parent_feature_id}")
+            return []
+        
+        # Extract work item IDs
+        work_item_ids = [wi["id"] for wi in work_items_refs]
+        logger.info(f"Found {len(work_item_ids)} closed Issues for Feature {parent_feature_id}: {work_item_ids}")
+        
+        # Batch fetch work item details
+        ids_param = ",".join(str(wi_id) for wi_id in work_item_ids)
+        batch_url = f"{org_url}/{project}/_apis/wit/workitems?ids={ids_param}&fields=System.Id,System.Title,System.Description&api-version=7.0"
+        
+        batch_response = requests.get(batch_url, headers=headers, timeout=15)
+        
+        if batch_response.status_code != 200:
+            logger.error(f"Batch fetch failed for Issues: HTTP {batch_response.status_code} - {batch_response.text[:500]}")
+            return []
+        
+        batch_result = batch_response.json()
+        work_items = []
+        
+        for wi in batch_result.get("value", []):
+            fields = wi.get("fields", {})
+            work_items.append({
+                "id": wi.get("id"),
+                "title": fields.get("System.Title", ""),
+                "description": fields.get("System.Description", "")
+            })
+        
+        return work_items
+        
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout fetching child Issues for Feature {parent_feature_id}")
+        return []
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching child Issues for Feature {parent_feature_id}: {str(e)}")
+        return []
+
+
+def get_work_item_comments(work_item_id: int) -> List[str]:
+    """
+    Fetch comments for a work item from Azure DevOps Comments API.
+    
+    Args:
+        work_item_id: Work item ID to fetch comments for
+    
+    Returns:
+        List of comment text strings (newest first)
+        Empty list on error or if no comments found
+    
+    Uses environment variables:
+        - ADO_ORG_URL: Azure DevOps organization URL
+        - ADO_PROJECT: Project name
+        - ADO_WORK_ITEM_PAT: Personal Access Token (Work Items: Read)
+    """
+    org_url = os.getenv("ADO_ORG_URL")
+    project = os.getenv("ADO_PROJECT")
+    pat = os.getenv("ADO_WORK_ITEM_PAT")
+    
+    if not all([org_url, project, pat]):
+        logger.error("Missing required ADO environment variables for get_work_item_comments")
+        return []
+    
+    auth_header = base64.b64encode(f":{pat}".encode()).decode()
+    headers = {
+        "Authorization": f"Basic {auth_header}",
+        "Content-Type": "application/json"
+    }
+    
+    # Comments API endpoint
+    comments_url = f"{org_url}/{project}/_apis/wit/workitems/{work_item_id}/comments?api-version=7.0-preview.3"
+    
+    try:
+        response = requests.get(comments_url, headers=headers, timeout=15)
+        
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch comments for work item {work_item_id}: HTTP {response.status_code} - {response.text[:500]}")
+            return []
+        
+        result = response.json()
+        comments = []
+        
+        for comment in result.get("comments", []):
+            text = comment.get("text", "").strip()
+            if text:
+                comments.append(text)
+        
+        logger.info(f"Fetched {len(comments)} comments for work item {work_item_id}")
+        return comments
+        
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout fetching comments for work item {work_item_id}")
+        return []
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching comments for work item {work_item_id}: {str(e)}")
+        return []
