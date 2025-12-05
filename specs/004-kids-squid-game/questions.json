@@ -1,0 +1,14 @@
+[
+  {
+    "topic": "Multiple Child Profiles",
+    "question": "Should the system support multiple children sharing the same device with separate profiles?",
+    "context": "How does the system handle multiple children using the same device? [NEEDS CLARIFICATION: Should the game support multiple child profiles with individual progress tracking?]",
+    "answer_options": "| Option | Description |\n|--------|-------------|\n| A | Yes - Support 3-5 individual child profiles with separate progress tracking | Each child gets personalized experience, increases data storage needs, requires profile selection UI at startup |\n| B | No - Single profile only, all children share the same progress | Simpler implementation, no profile management needed, but siblings may conflict over progress |\n| C | Optional - Single profile by default, with ability to add profiles later | MVP launches faster with single profile, can add multi-profile as enhancement |"
+  },
+  {
+    "topic": "Parental Control Access Method",
+    "question": "How should parents access the parental control settings to prevent children from changing them?",
+    "context": "FR-008: System MUST include parental controls accessible via [NEEDS CLARIFICATION: Should this be password-protected, time-delayed button, or math problem verification?]",
+    "answer_options": "| Option | Answer | Implications |\n|--------|--------|--------------|\n| A | Simple math problem (e.g., \"What is 5 + 3?\") | Child-proof for 4-year-olds, no password to remember, quick access for parents |\n| B | 5-second hold button | Very simple, no typing needed, but determined children might discover it |\n| C | 4-digit PIN code | Most secure, but parents must remember PIN, requires number input interface |"
+  }
+]
