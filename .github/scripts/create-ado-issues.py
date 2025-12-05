@@ -354,6 +354,16 @@ Return ONLY the cleaned and fixed markdown description, no code blocks, no expla
                     lines = lines[:-1]
                 description = '\n'.join(lines).strip()
             
+            # Validate LLM response - if empty or whitespace-only, fallback to raw
+            if not description or not description.strip():
+                print(f"⚠️  LLM returned empty description, using raw description", file=sys.stderr)
+                return raw_description
+            
+            # Check if LLM response has meaningful content (at least a header or some text)
+            if len(description.strip()) < 10:
+                print(f"⚠️  LLM returned very short description ({len(description)} chars), using raw description", file=sys.stderr)
+                return raw_description
+            
             print(f"✅ Cleaned and fixed markdown using LLM")
             return description
             
@@ -490,6 +500,12 @@ def main():
             # Azure DevOps now supports markdown (2025) via /multilineFieldsFormat API
             # Send pure markdown - ado_client.py will set the format to Markdown
             final_description = validated_description
+            
+            # Final validation: ensure description is not empty
+            if not final_description or not final_description.strip():
+                print(f"❌ Error: Final description is empty for Question {i}, skipping issue creation", file=sys.stderr)
+                print(f"   Raw description length: {len(description) if 'description' in locals() else 'N/A'}", file=sys.stderr)
+                continue
             
             # Create Issue
             result = create_issue_workitem(
