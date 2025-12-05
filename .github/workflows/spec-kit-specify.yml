@@ -333,7 +333,8 @@ jobs:
             if grep -q "<< 'EOF'" spec_output.txt; then
               sed -n "/cat > .* << 'EOF'/,/^EOF$/p" spec_output.txt | sed '1d;$d' > "$SPEC_FILE"
             else
-              sed -n '/^# /,${/Total usage/q;p}' spec_output.txt > "$SPEC_FILE"
+              # Match any markdown header (# or ## or ###) to capture spec content
+              sed -n '/^#/,${/Total usage/q;p}' spec_output.txt > "$SPEC_FILE"
             fi
           fi
 
