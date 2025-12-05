@@ -251,8 +251,9 @@ jobs:
           CREATED_SPEC=$(find specs -name "spec.md" -type f -newer "$SPEC_FILE" ! -path "$SPEC_FILE" 2>/dev/null | head -1)
           
           # If no spec.md found, look for any other .md file (fallback)
+          # Exclude checklists/ subdirectories to avoid picking up checklist files
           if [ -z "$CREATED_SPEC" ]; then
-            CREATED_SPEC=$(find specs -name "*.md" -type f -newer "$SPEC_FILE" ! -path "$SPEC_FILE" 2>/dev/null | head -1)
+            CREATED_SPEC=$(find specs -name "*.md" -type f -newer "$SPEC_FILE" ! -path "$SPEC_FILE" ! -path "*/checklists/*" 2>/dev/null | head -1)
           fi
 
           if [ -n "$CREATED_SPEC" ] && [ -f "$CREATED_SPEC" ]; then
