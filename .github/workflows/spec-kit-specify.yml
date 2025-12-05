@@ -134,13 +134,18 @@ jobs:
             exit 1
           fi
 
+          # Remove backticks from feature_description to prevent bash command substitution
+          # Backticks in markdown (e.g., `code`) are interpreted as command substitution in bash
+          FEATURE_DESC_RAW="${{ github.event.inputs.feature_description }}"
+          FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC_RAW" | tr '`' "'")
+
           echo "🤖 Step 1: Generating short branch name..."
           echo ""
-          echo "Feature: ${{ github.event.inputs.feature_description }}"
+          echo "Feature: $FEATURE_DESC_CLEAN"
           echo ""
 
           # Ask Copilot directly with compact prompt
-          npx @github/copilot --allow-all-tools -p "Generate a 2-4 word kebab-case branch name for: ${{ github.event.inputs.feature_description }}. Respond with ONLY the branch name." 2>&1 | tee short_name_output.txt
+          npx @github/copilot --allow-all-tools -p "Generate a 2-4 word kebab-case branch name for: $FEATURE_DESC_CLEAN. Respond with ONLY the branch name." 2>&1 | tee short_name_output.txt
 
           # Extract the short name (first non-empty line before statistics)
           SHORT_NAME=$(head -1 short_name_output.txt | tr -d '`' | xargs)
@@ -154,20 +159,20 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
           SHORT_NAME="${{ steps.generate_name.outputs.short_name }}"
-          FEATURE_DESC="${{ github.event.inputs.feature_description }}"
+          
+          # Remove backticks from feature_description to prevent bash command substitution
+          # Backticks in markdown (e.g., `code`) are interpreted as command substitution in bash
+          FEATURE_DESC_RAW="${{ github.event.inputs.feature_description }}"
+          FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC_RAW" | tr '`' "'")
 
           echo "🌱 Step 2: Running create-new-feature.sh script..."
           echo "Short name: $SHORT_NAME"
-          echo "Description: $FEATURE_DESC"
+          echo "Description: $FEATURE_DESC_CLEAN"
           echo ""
 
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Remove backticks from FEATURE_DESC to prevent bash command substitution
-          # Backticks in markdown (e.g., `code`) are interpreted as command substitution in bash
-          FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC" | tr '`' "'")
 
           # Run the script with --json flag
           cd "$GITHUB_WORKSPACE"
@@ -206,7 +211,6 @@ jobs:
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
           SPEC_FILE="${{ steps.create_feature.outputs.spec_file }}"
-          FEATURE_DESC="${{ github.event.inputs.feature_description }}"
           BRANCH_NAME="${{ steps.create_feature.outputs.branch_name }}"
           FEATURE_DIR="${{ steps.create_feature.outputs.feature_dir }}"
 
@@ -216,12 +220,16 @@ jobs:
             echo "ℹ️  FEATURE_DIR was null, derived from SPEC_FILE: $FEATURE_DIR"
           fi
 
+          # Remove backticks from feature_description to prevent bash command substitution
+          FEATURE_DESC_RAW="${{ github.event.inputs.feature_description }}"
+          FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC_RAW" | tr '`' "'")
+
           echo "📝 Step 3-6: Generating specification with Copilot..."
           echo ""
 
           # Save feature description to temp file to avoid special character issues
           FEATURE_DESC_FILE="$FEATURE_DIR/feature_description.txt"
-          echo "$FEATURE_DESC" > "$FEATURE_DESC_FILE"
+          echo "$FEATURE_DESC_CLEAN" > "$FEATURE_DESC_FILE"
           echo "💾 Saved feature description to: $FEATURE_DESC_FILE"
           echo ""
 
