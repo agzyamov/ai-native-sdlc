@@ -765,15 +765,20 @@ jobs:
             exit 1
           fi
 
-          echo "🔄 Assigning ADO Work Item #$WORK_ITEM_ID to user $CHANGED_BY_USER_ID..."
+          echo "🔄 Assigning ADO Work Item #$WORK_ITEM_ID to user $CHANGED_BY_USER_ID and setting state to Blocked..."
 
-          # Construct JSON Patch payload to assign work item
+          # Construct JSON Patch payload to assign work item and set state to Blocked
           PAYLOAD=$(cat <<EOF
           [
             {
               "op": "replace",
               "path": "/fields/System.AssignedTo",
               "value": "$CHANGED_BY_USER_ID"
+            },
+            {
+              "op": "replace",
+              "path": "/fields/System.State",
+              "value": "Blocked"
             }
           ]
           EOF
@@ -803,7 +808,7 @@ jobs:
             echo "HTTP Status: $HTTP_CODE"
             
             if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
-              echo "✅ ADO Work Item assigned successfully (HTTP $HTTP_CODE)"
+              echo "✅ ADO Work Item assigned and set to Blocked successfully (HTTP $HTTP_CODE)"
               exit 0
             elif [ "$HTTP_CODE" = "401" ]; then
               echo "❌ Authentication failed (HTTP 401)"
