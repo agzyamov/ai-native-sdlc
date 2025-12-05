@@ -807,7 +807,19 @@ jobs:
             )
           else
             echo "✅ No open Issues - moving to Done column of current state"
-            PAYLOAD=$(cat <<EOF
+            
+            # Get the WEF field name for Kanban.Column.Done (it has a dynamic team GUID)
+            # Fetch work item to find the field name
+            WI_RESPONSE=$(curl -s \
+              "https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0" \
+              -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64 | tr -d '\n')")
+            
+            # Extract the WEF_*_Kanban.Column.Done field name
+            KANBAN_DONE_FIELD=$(echo "$WI_RESPONSE" | jq -r '.fields | keys[] | select(endswith("_Kanban.Column.Done"))' | head -1)
+            
+            if [ -n "$KANBAN_DONE_FIELD" ]; then
+              echo "Found Kanban Done field: $KANBAN_DONE_FIELD"
+              PAYLOAD=$(cat <<EOF
           [
             {
               "op": "replace",
@@ -816,12 +828,25 @@ jobs:
             },
             {
               "op": "replace",
-              "path": "/fields/System.BoardColumnDone",
+              "path": "/fields/$KANBAN_DONE_FIELD",
               "value": true
             }
           ]
           EOF
-            )
+              )
+            else
+              echo "⚠️ Could not find Kanban.Column.Done field - only assigning user"
+              PAYLOAD=$(cat <<EOF
+          [
+            {
+              "op": "replace",
+              "path": "/fields/System.AssignedTo",
+              "value": "$CHANGED_BY_USER_ID"
+            }
+          ]
+          EOF
+              )
+            fi
           fi
 
           # PATCH with retry (exponential backoff)
