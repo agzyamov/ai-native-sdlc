@@ -1,0 +1,14 @@
+[
+  {
+    "topic": "Preview Functionality",
+    "question": "How should the preview feature work?",
+    "context": "From User Story 2 - Validate and Preview Generated Diagrams:\n> \"**Given** a validated diagram, **When** the user requests a preview, **Then** [NEEDS CLARIFICATION: Should preview be text-only showing the Mermaid code, or should it render the visual diagram?]\"",
+    "answer_options": "| Option | Answer | Implications |\n| ------ | ------ | ------------ |\n| A | Text-only preview showing the Mermaid code with syntax highlighting | Simpler scope - agent only returns formatted text. User must use external tools to render visual diagram. Faster to implement. |\n| B | Visual diagram rendering within the agent interface | Requires integration with Mermaid rendering capability. Users get immediate visual feedback. More complex scope. |\n| C | Both text and visual preview options | Maximum flexibility for users. Most complex scope requiring both text formatting and rendering capabilities. |\n| Custom | Provide your own answer | Explain your preferred preview approach |"
+  },
+  {
+    "topic": "Session Context for Refinements",
+    "question": "How should diagram refinement work across interactions?",
+    "context": "From Functional Requirements:\n> \"FR-008: System MUST accept refinement requests to modify existing diagrams [NEEDS CLARIFICATION: Should the agent maintain session context to track diagram history, or require users to provide the previous diagram with each refinement?]\"",
+    "answer_options": "| Option | Answer | Implications |\n| ------ | ------ | ------------ |\n| A | Stateless - users must provide previous diagram with each refinement request | Simpler implementation with no session management. User responsible for tracking diagram versions. Works well for single-shot interactions. |\n| B | Session-based - agent maintains context during a conversation session | Agent remembers diagram within session. Better user experience for iterative refinement. Requires session state management. |\n| C | Persistent storage - agent maintains diagram history across sessions with user-specific storage | Most sophisticated approach. Users can reference past diagrams anytime. Requires user identity and persistent storage. |\n| Custom | Provide your own answer | Explain your preferred refinement approach |"
+  }
+]
