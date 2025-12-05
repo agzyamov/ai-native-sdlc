@@ -61,7 +61,7 @@ A parent wants to set appropriate play time limits and ensure their child is pla
 - What happens when a child gets frustrated and repeatedly fails a challenge? (System should provide easier alternatives or skip options)
 - How does the system handle very short play sessions (under 2 minutes)?
 - What happens if a child accidentally exits during a game? (Progress should be saved automatically)
-- How does the system handle multiple children using the same device? [NEEDS CLARIFICATION: Should the game support multiple child profiles with individual progress tracking?]
+- How does the system handle multiple children using the same device? (Single profile by default, with ability to add profiles in future versions - simplifies MVP while keeping enhancement path open)
 - What happens when a child tries to play offline? (Core games should work without internet)
 
 ## Requirements *(mandatory)*
@@ -75,7 +75,7 @@ A parent wants to set appropriate play time limits and ensure their child is pla
 - **FR-005**: System MUST use bright, colorful, child-friendly graphics and cheerful sound effects
 - **FR-006**: System MUST allow unlimited retries for any challenge without penalty
 - **FR-007**: System MUST track which games a child has completed and display progress visually
-- **FR-008**: System MUST include parental controls accessible via [NEEDS CLARIFICATION: Should this be password-protected, time-delayed button, or math problem verification?]
+- **FR-008**: System MUST include parental controls accessible via simple math problem verification (e.g., "What is 5 + 3?") to prevent children from accessing settings
 - **FR-009**: System MUST support play time limits configurable by parents (options: 10, 15, 20, 30 minutes, or unlimited)
 - **FR-010**: System MUST work offline after initial download
 - **FR-011**: System MUST NOT contain any in-app purchases, advertisements, or external links accessible to children
@@ -97,7 +97,7 @@ A parent wants to set appropriate play time limits and ensure their child is pla
 - **SC-002**: 90% of children successfully complete their first mini-game on the first or second attempt
 - **SC-003**: Children engage with the game for an average of 15-20 minutes per session
 - **SC-004**: Parents report feeling comfortable with the content and controls in 95% of feedback surveys
-- **SC-005**: System supports at least 3 concurrent child profiles without performance degradation
+- **SC-005**: System maintains consistent performance with saved progress data for typical usage patterns
 - **SC-006**: All mini-games load and become playable within 3 seconds
 - **SC-007**: Zero incidents of children accessing external content or making unintended purchases
 - **SC-008**: Parental time limits are enforced accurately within 30-second tolerance
