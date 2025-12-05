@@ -306,9 +306,10 @@ jobs:
           SPEC_DIR=$(dirname "$SPEC_FILE")
           
           # First check: Did Copilot write directly to $SPEC_FILE?
-          # If file is >500 bytes and contains markdown headers, Copilot wrote to it
+          # If file is >500 bytes, contains markdown headers, AND is not just the template
+          # (template contains placeholders like [FEATURE NAME], [DATE])
           SPEC_SIZE=$(wc -c < "$SPEC_FILE" 2>/dev/null || echo "0")
-          if [ "$SPEC_SIZE" -gt 500 ] && grep -q "^# " "$SPEC_FILE"; then
+          if [ "$SPEC_SIZE" -gt 500 ] && grep -q "^# " "$SPEC_FILE" && ! grep -q "\[FEATURE NAME\]" "$SPEC_FILE"; then
             echo "✅ Copilot wrote spec directly to: $SPEC_FILE ($SPEC_SIZE bytes)"
           else
             # Search entire specs directory for newly created spec.md files first, then any .md
