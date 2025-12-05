@@ -1,0 +1,18 @@
+[
+  {
+    "topic": "Diagram Type Support",
+    "question": "Which diagram types should the system support?",
+    "context": "From spec FR-003: \"System MUST support multiple diagram types\"",
+    "answer_options": "| Option | Answer | Implications |\n|--------|--------|--------------|\n| A | Core types only: Flowchart, Sequence, and Class diagrams | Smaller initial scope, faster time to market. Covers most common use cases (process flows, interactions, and object models). Can expand later. |\n| B | Extended set: Flowchart, Sequence, Class, ER, State, and Component diagrams | Broader initial capability covering both software and data modeling needs. More complex but serves enterprise users better. |\n| C | Full suite: All diagram types (Flowchart, Sequence, Class, ER, State, Component, Deployment, Network, etc.) | Maximum flexibility but significantly larger scope and development effort. Risk of delays and quality issues from feature creep. |\n| Custom | Specify your own list of diagram types | Define exactly which diagram types matter most for your use case. |",
+    "recommended_option": "",
+    "suggested_answer": ""
+  },
+  {
+    "topic": "API Authentication Method",
+    "question": "What authentication mechanism should the API support?",
+    "context": "From spec FR-015: \"API MUST authenticate and authorize requests\"",
+    "answer_options": "| Option | Answer | Implications |\n|--------|--------|--------------|\n| A | API Keys only | Simplest to implement and use. Best for server-to-server integrations. Users generate and manage keys via portal. Requires secure key storage by clients. |\n| B | OAuth 2.0 tokens only | Industry-standard for user-facing applications. Supports delegated access and token expiration. More complex setup but better security model for multi-tenant scenarios. |\n| C | Both API Keys and OAuth 2.0 | Maximum flexibility - API keys for simple integrations, OAuth for applications. More implementation complexity and maintenance burden. |\n| Custom | Different authentication approach | Specify your preferred method (JWT, mTLS, etc.) and rationale. |",
+    "recommended_option": "",
+    "suggested_answer": ""
+  }
+]
