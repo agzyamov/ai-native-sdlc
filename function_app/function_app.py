@@ -213,6 +213,48 @@ def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
         # Use Description if available, fallback to Title
         feature_description = description if description else title
         
+        # Fetch closed child Issues and their comments to enrich context
+        try:
+            closed_issues = ado_client.get_child_issues(work_item_id)
+            
+            if closed_issues:
+                logger.info(f"[{correlation_id}] Found {len(closed_issues)} closed Issues for Feature {work_item_id}")
+                
+                closed_issues_context_parts = []
+                for issue in closed_issues:
+                    issue_id = issue.get("id")
+                    issue_title = issue.get("title", "")
+                    issue_description = issue.get("description", "")
+                    
+                    # Format issue header
+                    issue_context = f"--- Closed Issue #{issue_id}: {issue_title} ---"
+                    
+                    # Add description if present
+                    if issue_description:
+                        issue_context += f"\nDescription: {issue_description}"
+                    
+                    # Fetch and add comments
+                    comments = ado_client.get_work_item_comments(issue_id)
+                    if comments:
+                        issue_context += "\nComments:"
+                        for comment in comments:
+                            issue_context += f"\n- {comment}"
+                    
+                    closed_issues_context_parts.append(issue_context)
+                
+                # Append closed issues context to feature_description
+                if closed_issues_context_parts:
+                    closed_issues_context = "\n\n".join(closed_issues_context_parts)
+                    feature_description = f"{feature_description}\n\n=== Previously Answered Clarifications ===\n\n{closed_issues_context}"
+                    logger.info(f"[{correlation_id}] Enriched feature_description with {len(closed_issues_context_parts)} closed Issues context")
+            else:
+                logger.info(f"[{correlation_id}] No closed Issues found for Feature {work_item_id}")
+                
+        except Exception as e:
+            # Graceful fallback: if fetching Issues/comments fails, continue with base context
+            logger.warning(f"[{correlation_id}] Failed to fetch closed Issues context (non-fatal): {str(e)} - proceeding with base feature description")
+            print(f"STDOUT WARNING: Failed to fetch closed Issues context - {str(e)}")
+        
         # Log final changed_by_user_id value before dispatch
         if changed_by_user_id:
             logger.info(f"[{correlation_id}] Final changed_by_user_id before dispatch: {changed_by_user_id}")
