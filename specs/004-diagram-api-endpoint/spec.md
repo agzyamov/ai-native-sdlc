@@ -9,7 +9,7 @@
 
 ### User Story 1 - Generate Diagram via API Call (Priority: P1)
 
-A developer or application sends a request to the API with a description of the diagram they want to create, and receives a diagram in return (e.g., as an image, SVG, or structured format).
+A developer or application sends a request to the API with a description of the diagram they want to create, and receives diagram markup syntax in return (Mermaid or PlantUML format).
 
 **Why this priority**: This is the core functionality - exposing the diagram creator agent through an API endpoint. Without this, there is no API capability.
 
@@ -25,17 +25,17 @@ A developer or application sends a request to the API with a description of the 
 
 ### User Story 2 - Specify Diagram Format and Style (Priority: P2)
 
-A developer can specify the output format (PNG, SVG, Mermaid syntax, PlantUML, etc.) and styling preferences when requesting a diagram.
+A developer can specify the output format (Mermaid or PlantUML syntax) and styling preferences when requesting a diagram.
 
-**Why this priority**: Different use cases require different formats. This enhances usability but the API can function with a default format.
+**Why this priority**: Different use cases require different markup languages. This enhances usability but the API can function with a default format.
 
-**Independent Test**: Can be tested by sending requests with different format parameters and verifying each returns the correct format. Delivers value by making the API flexible for various integration scenarios.
+**Independent Test**: Can be tested by sending requests with different format parameters (Mermaid or PlantUML) and verifying each returns the correct markup syntax. Delivers value by making the API flexible for various integration scenarios.
 
 **Acceptance Scenarios**:
 
-1. **Given** the API endpoint is available, **When** a user specifies a preferred output format (e.g., SVG, PNG), **Then** the diagram is returned in that format
-2. **Given** the API endpoint is available, **When** a user specifies styling preferences (e.g., color scheme, layout), **Then** the diagram reflects those preferences
-3. **Given** no format is specified, **When** a user sends a diagram request, **Then** the system returns a diagram in the default format
+1. **Given** the API endpoint is available, **When** a user specifies a preferred output format (Mermaid or PlantUML), **Then** the diagram is returned in that markup format
+2. **Given** the API endpoint is available, **When** a user specifies styling preferences (e.g., color scheme, layout), **Then** the diagram markup reflects those preferences
+3. **Given** no format is specified, **When** a user sends a diagram request, **Then** the system returns a diagram in the default markup format (Mermaid)
 
 ---
 
@@ -88,8 +88,8 @@ For complex diagrams that take longer to generate, users can submit a request an
 
 - **FR-001**: System MUST expose an HTTP API endpoint that accepts diagram descriptions as input
 - **FR-002**: System MUST process diagram descriptions and invoke the diagram creator agent
-- **FR-003**: System MUST return generated diagrams in at least one standard format (e.g., PNG, SVG, or diagram markup language)
-- **FR-004**: System MUST support multiple output formats including [NEEDS CLARIFICATION: Which formats are required - PNG, SVG, PDF, Mermaid, PlantUML, or others?]
+- **FR-003**: System MUST return generated diagrams as diagram markup language syntax (Mermaid or PlantUML)
+- **FR-004**: System MUST support diagram markup language formats including Mermaid and PlantUML syntax
 - **FR-005**: System MUST validate input requests and return appropriate error messages for invalid inputs
 - **FR-006**: System MUST implement authentication and authorization for API access
 - **FR-007**: System MUST enforce rate limiting to prevent abuse
@@ -103,7 +103,7 @@ For complex diagrams that take longer to generate, users can submit a request an
 ### Key Entities
 
 - **Diagram Request**: Represents a request to generate a diagram, containing the description text, format preferences, styling options, and requester identification
-- **Diagram Response**: Represents the output of a diagram generation, containing the diagram data (image bytes, SVG markup, or diagram syntax), format type, and metadata
+- **Diagram Response**: Represents the output of a diagram generation, containing the diagram markup syntax (Mermaid or PlantUML), format type, and metadata
 - **API Key/Credential**: Represents authentication credentials for API access, with associated permissions and usage limits
 - **Generation Job**: For asynchronous operations, represents a diagram generation task in progress, with status, progress information, and result location
 - **Usage Metric**: Represents tracking data for API usage including request count, timestamp, user identification, and resource consumption
@@ -120,3 +120,14 @@ For complex diagrams that take longer to generate, users can submit a request an
 - **SC-006**: The system accurately tracks API usage with 100% accuracy across all requests
 - **SC-007**: For complex diagrams (over 20 elements), users receive immediate job acknowledgment and can retrieve results within 30 seconds
 - **SC-008**: API documentation enables 90% of developers to successfully integrate and generate their first diagram within 15 minutes
+
+## Assumptions
+
+- **Default format**: Mermaid syntax is the default diagram format when no format is specified
+- **Authentication method**: Standard API key-based authentication or OAuth2 for API access
+- **Rate limiting**: Default rate limits follow industry standards (e.g., 100 requests per minute per user)
+- **Diagram complexity**: Simple diagrams are defined as having fewer than 10 elements; complex diagrams have 20+ elements
+- **Existing diagram creator**: The diagram creator agent already exists and has a programmatic interface that can be invoked
+- **Text-based input**: Diagram descriptions are provided as text input (natural language or structured format)
+- **Synchronous preference**: Most diagram generation requests can complete within 5-10 seconds synchronously
+- **Error handling**: Standard HTTP status codes (200, 400, 401, 403, 429, 500) are used for responses
