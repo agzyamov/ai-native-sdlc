@@ -494,9 +494,9 @@ jobs:
       # ADO Description Overwrite (T007, T008, T009)
       # Contract reference: specs/001-ado-github-spec/contracts/README.md
       # Implements JSON Patch REPLACE operation with exponential backoff retry
-      # Skip if clarification markers found - no spec generated yet, only questions
+      # Always update description if spec file exists and is valid, even if clarification markers are present
       - name: Overwrite ADO Work Item Description
-        if: github.event.inputs.work_item_id != '' && steps.detect_markers.outputs.markers_found != 'true'
+        if: github.event.inputs.work_item_id != ''
         shell: bash
         env:
           ADO_WORKITEM_RW_PAT: ${{ secrets.ADO_WORKITEM_RW_PAT }}
