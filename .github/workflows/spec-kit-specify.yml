@@ -125,6 +125,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
+          FEATURE_DESC_RAW: ${{ github.event.inputs.feature_description }}
         run: |
           export GITHUB_TOKEN="${GITHUB_TOKEN}"
           export GH_TOKEN="${GH_TOKEN}"
@@ -136,7 +137,7 @@ jobs:
 
           # Remove backticks from feature_description to prevent bash command substitution
           # Backticks in markdown (e.g., `code`) are interpreted as command substitution in bash
-          FEATURE_DESC_RAW="${{ github.event.inputs.feature_description }}"
+          # Using environment variable prevents direct substitution in script
           FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC_RAW" | tr '`' "'")
 
           echo "🤖 Step 1: Generating short branch name..."
@@ -155,6 +156,8 @@ jobs:
 
       - name: Step 2 - Run create-new-feature script
         id: create_feature
+        env:
+          FEATURE_DESC_RAW: ${{ github.event.inputs.feature_description }}
         run: |
           export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
@@ -162,7 +165,7 @@ jobs:
           
           # Remove backticks from feature_description to prevent bash command substitution
           # Backticks in markdown (e.g., `code`) are interpreted as command substitution in bash
-          FEATURE_DESC_RAW="${{ github.event.inputs.feature_description }}"
+          # Using environment variable prevents direct substitution in script
           FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC_RAW" | tr '`' "'")
 
           echo "🌱 Step 2: Running create-new-feature.sh script..."
@@ -205,6 +208,7 @@ jobs:
           GH_TOKEN: ${{ secrets.COPILOT_TOKEN || secrets.GITHUB_TOKEN }}
           GH_WORKFLOW_DISPATCH_PAT: ${{ secrets.GH_WORKFLOW_DISPATCH_PAT }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          FEATURE_DESC_RAW: ${{ github.event.inputs.feature_description }}
         run: |
           export GITHUB_TOKEN="${GITHUB_TOKEN}"
           export GH_TOKEN="${GH_TOKEN}"
@@ -221,7 +225,7 @@ jobs:
           fi
 
           # Remove backticks from feature_description to prevent bash command substitution
-          FEATURE_DESC_RAW="${{ github.event.inputs.feature_description }}"
+          # Using environment variable prevents direct substitution in script
           FEATURE_DESC_CLEAN=$(echo "$FEATURE_DESC_RAW" | tr '`' "'")
 
           echo "📝 Step 3-6: Generating specification with Copilot..."
