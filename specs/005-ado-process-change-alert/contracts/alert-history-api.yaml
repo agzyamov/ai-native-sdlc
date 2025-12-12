@@ -1,0 +1,317 @@
+openapi: 3.0.3
+info:
+  title: ADO Process Change Alert History API
+  description: REST API for querying and exporting alert history from Azure DevOps process change monitoring
+  version: 1.0.0
+  contact:
+    name: Operations Team
+    email: ops-team@organization.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production API Gateway endpoint
+  - url: https://dev-api.example.com/v1
+    description: Development API Gateway endpoint
+
+tags:
+  - name: alerts
+    description: Alert history operations
+
+paths:
+  /alerts:
+    get:
+      tags:
+        - alerts
+      summary: Query alert history
+      description: Retrieve alert history with optional filtering by date range, actor, or action type
+      operationId: queryAlerts
+      parameters:
+        - name: startDate
+          in: query
+          description: Start date for filtering (ISO 8601 format YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2025-12-01"
+        - name: endDate
+          in: query
+          description: End date for filtering (ISO 8601 format YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2025-12-31"
+        - name: actorId
+          in: query
+          description: Filter by actor identity descriptor
+          required: false
+          schema:
+            type: string
+            example: "aad|12345-67890"
+        - name: action
+          in: query
+          description: Filter by action type (e.g., Process.Field.Add)
+          required: false
+          schema:
+            type: string
+            example: "Process.Field.Add"
+        - name: limit
+          in: query
+          description: Maximum number of results to return (1-1000, default 100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: nextToken
+          in: query
+          description: Pagination token for retrieving next page of results
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response with alert history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertHistoryResponse'
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - ApiKeyAuth: []
+        - IAMAuth: []
+
+  /alerts/export:
+    get:
+      tags:
+        - alerts
+      summary: Export alert history
+      description: Export alert history as CSV or JSON file
+      operationId: exportAlerts
+      parameters:
+        - name: startDate
+          in: query
+          description: Start date for filtering (ISO 8601 format YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2025-12-01"
+        - name: endDate
+          in: query
+          description: End date for filtering (ISO 8601 format YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+            example: "2025-12-31"
+        - name: format
+          in: query
+          description: Export format (csv or json)
+          required: false
+          schema:
+            type: string
+            enum: [csv, json]
+            default: json
+        - name: actorId
+          in: query
+          description: Filter by actor identity descriptor
+          required: false
+          schema:
+            type: string
+            example: "aad|12345-67890"
+        - name: action
+          in: query
+          description: Filter by action type
+          required: false
+          schema:
+            type: string
+            example: "Process.Field.Add"
+      responses:
+        '200':
+          description: Successful export
+          content:
+            text/csv:
+              schema:
+                type: string
+                example: "EventTimestamp,ActorDisplayName,Action,Details\n1702387200,John Doe,Process.Field.Add,Field CustomField created"
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - ApiKeyAuth: []
+        - IAMAuth: []
+
+components:
+  schemas:
+    Alert:
+      type: object
+      required:
+        - eventTimestamp
+        - actorId
+        - actorDisplayName
+        - action
+        - details
+        - alertSent
+      properties:
+        eventTimestamp:
+          type: integer
+          description: Unix epoch timestamp when change occurred
+          example: 1702387200
+        actorId:
+          type: string
+          description: Identity descriptor of who made the change
+          example: "aad|12345-67890"
+        actorDisplayName:
+          type: string
+          description: Human-readable actor name
+          example: "John Doe"
+        actorIP:
+          type: string
+          description: IP address of actor
+          example: "192.168.1.1"
+        action:
+          type: string
+          description: The specific audit action
+          example: "Process.Field.Add"
+        area:
+          type: string
+          description: Product area (always "Process")
+          example: "Process"
+        category:
+          type: string
+          description: Action category
+          enum: [Create, Modify, Delete]
+          example: "Create"
+        details:
+          type: string
+          description: Human-readable change description
+          example: "Field \"CustomField\" created on work item type \"User Story\""
+        processName:
+          type: string
+          description: Affected process template name
+          example: "Agile"
+        workItemType:
+          type: string
+          description: Affected work item type (if applicable)
+          example: "User Story"
+        fieldReferenceName:
+          type: string
+          description: Affected field reference name (if applicable)
+          example: "Custom.CustomField"
+        stateName:
+          type: string
+          description: Affected state name (if applicable)
+          example: "In Progress"
+        correlationId:
+          type: string
+          description: Links related events together
+          example: "corr-abc123"
+        alertSent:
+          type: boolean
+          description: Whether email alert was sent
+          example: true
+        alertSentTimestamp:
+          type: integer
+          description: Unix epoch timestamp when alert was sent
+          example: 1702387250
+        alertFailed:
+          type: boolean
+          description: Whether alert sending failed
+          example: false
+        retryCount:
+          type: integer
+          description: Number of retry attempts for failed alerts
+          example: 0
+
+    AlertHistoryResponse:
+      type: object
+      required:
+        - alerts
+        - count
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        count:
+          type: integer
+          description: Number of alerts returned
+          example: 25
+        nextToken:
+          type: string
+          description: Pagination token for next page (if more results available)
+          example: "eyJQYXJ0aXRpb25LZXkiOiIyMDI1LTEyIiwiU29ydEtleSI6ImFiYzEyMy0xNzAyMzg3MjAwIn0="
+        totalCount:
+          type: integer
+          description: Total number of alerts matching query (may be approximate)
+          example: 150
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "INVALID_DATE_RANGE"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "startDate must be less than or equal to endDate"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+    IAMAuth:
+      type: awsSigv4
+      description: AWS IAM authentication (for programmatic access)
+
