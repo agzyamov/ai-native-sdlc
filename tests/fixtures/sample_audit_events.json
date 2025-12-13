@@ -1,0 +1,146 @@
+{
+  "process_field_add": {
+    "id": "abc123-def456-ghi789",
+    "correlationId": "corr-abc123",
+    "eventTime": "2025-12-12T10:30:00.000Z",
+    "eventType": "audit",
+    "actor": {
+      "id": "aad|12345-67890-abcdef",
+      "displayName": "John Doe",
+      "uniqueName": "john.doe@organization.com"
+    },
+    "actorIPAddress": "192.168.1.100",
+    "actionId": "Process.Field.Add",
+    "activityType": "Field",
+    "activityCategory": "Create",
+    "area": "Process",
+    "details": {
+      "ProcessName": "Agile",
+      "WorkItemType": "User Story",
+      "FieldReferenceName": "Custom.CustomField",
+      "FieldName": "CustomField",
+      "FieldType": "String"
+    },
+    "data": {
+      "before": null,
+      "after": {
+        "name": "CustomField",
+        "referenceName": "Custom.CustomField",
+        "type": "String"
+      }
+    }
+  },
+  "process_state_modify": {
+    "id": "xyz789-uvw456-rst123",
+    "correlationId": "corr-xyz789",
+    "eventTime": "2025-12-12T11:15:00.000Z",
+    "eventType": "audit",
+    "actor": {
+      "id": "aad|98765-43210-fedcba",
+      "displayName": "Jane Smith",
+      "uniqueName": "jane.smith@organization.com"
+    },
+    "actorIPAddress": "192.168.1.101",
+    "actionId": "Process.State.Modify",
+    "activityType": "State",
+    "activityCategory": "Modify",
+    "area": "Process",
+    "details": {
+      "ProcessName": "Scrum",
+      "WorkItemType": "Bug",
+      "StateName": "In Progress",
+      "StateCategory": "InProgress"
+    },
+    "data": {
+      "before": {
+        "name": "Active",
+        "category": "InProgress"
+      },
+      "after": {
+        "name": "In Progress",
+        "category": "InProgress"
+      }
+    }
+  },
+  "process_field_delete": {
+    "id": "mno456-pqr789-stu012",
+    "correlationId": "corr-mno456",
+    "eventTime": "2025-12-12T12:00:00.000Z",
+    "eventType": "audit",
+    "actor": {
+      "id": "aad|11111-22222-33333",
+      "displayName": "Admin User",
+      "uniqueName": "admin@organization.com"
+    },
+    "actorIPAddress": "192.168.1.102",
+    "actionId": "Process.Field.Delete",
+    "activityType": "Field",
+    "activityCategory": "Delete",
+    "area": "Process",
+    "details": {
+      "ProcessName": "Agile",
+      "WorkItemType": "Task",
+      "FieldReferenceName": "Custom.OldField",
+      "FieldName": "OldField"
+    },
+    "data": {
+      "before": {
+        "name": "OldField",
+        "referenceName": "Custom.OldField",
+        "type": "Integer"
+      },
+      "after": null
+    }
+  },
+  "non_process_event": {
+    "id": "non-process-001",
+    "correlationId": "corr-nonprocess",
+    "eventTime": "2025-12-12T13:00:00.000Z",
+    "eventType": "audit",
+    "actor": {
+      "id": "aad|99999-88888-77777",
+      "displayName": "Test User",
+      "uniqueName": "test@organization.com"
+    },
+    "actorIPAddress": "192.168.1.103",
+    "actionId": "WorkItem.Update",
+    "activityType": "WorkItem",
+    "activityCategory": "Modify",
+    "area": "WorkItemTracking",
+    "details": {
+      "WorkItemId": 12345,
+      "WorkItemType": "User Story"
+    }
+  },
+  "cicd_service_account_event": {
+    "id": "cicd-001",
+    "correlationId": "corr-cicd",
+    "eventTime": "2025-12-12T14:00:00.000Z",
+    "eventType": "audit",
+    "actor": {
+      "id": "svc-cicd@organization.com",
+      "displayName": "CI/CD Service Account",
+      "uniqueName": "svc-cicd@organization.com"
+    },
+    "actorIPAddress": "10.0.0.50",
+    "actionId": "Process.Field.Add",
+    "activityType": "Field",
+    "activityCategory": "Create",
+    "area": "Process",
+    "details": {
+      "ProcessName": "Agile",
+      "WorkItemType": "Feature",
+      "FieldReferenceName": "Custom.AutoField",
+      "FieldName": "AutoField"
+    },
+    "data": {
+      "before": null,
+      "after": {
+        "name": "AutoField",
+        "referenceName": "Custom.AutoField",
+        "type": "String"
+      }
+    }
+  }
+}
+

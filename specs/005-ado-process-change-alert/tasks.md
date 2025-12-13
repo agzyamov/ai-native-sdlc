@@ -28,14 +28,14 @@ Based on plan.md project structure:
 
 **Purpose**: Create project structure and initialize dependencies
 
-- [ ] T001 Create project structure per implementation plan (aws_functions/, tests/, infra/)
-- [ ] T002 Initialize Python 3.11 project with pyproject.toml (boto3, python-dateutil dependencies)
-- [ ] T003 [P] Create aws_functions/shared/__init__.py with package setup
-- [ ] T004 [P] Create aws_functions/process_change_monitor/__init__.py with package setup
-- [ ] T005 [P] Create aws_functions/alert_history_api/__init__.py with package setup
-- [ ] T006 [P] Create tests/__init__.py and tests/unit/__init__.py, tests/integration/__init__.py
-- [ ] T007 [P] Configure pytest.ini with pytest-cov settings
-- [ ] T008 Create tests/fixtures/sample_audit_events.json with sample ADO process change events
+- [X] T001 Create project structure per implementation plan (aws_functions/, tests/, infra/)
+- [X] T002 Initialize Python 3.11 project with pyproject.toml (boto3, python-dateutil dependencies)
+- [X] T003 [P] Create aws_functions/shared/__init__.py with package setup
+- [X] T004 [P] Create aws_functions/process_change_monitor/__init__.py with package setup
+- [X] T005 [P] Create aws_functions/alert_history_api/__init__.py with package setup
+- [X] T006 [P] Create tests/__init__.py and tests/unit/__init__.py, tests/integration/__init__.py
+- [X] T007 [P] Configure pytest.ini with pytest-cov settings
+- [X] T008 Create tests/fixtures/sample_audit_events.json with sample ADO process change events
 
 **Checkpoint**: Project structure ready for development
 
@@ -49,27 +49,27 @@ Based on plan.md project structure:
 
 ### Terraform Infrastructure
 
-- [ ] T009 Create infra/terraform/main.tf with AWS provider configuration
-- [ ] T010 [P] Create infra/terraform/variables.tf with all configurable variables
-- [ ] T011 [P] Create infra/terraform/outputs.tf with resource outputs
-- [ ] T012 Create infra/terraform/iam.tf with Lambda execution roles and policies
-- [ ] T013 Create infra/terraform/eventbridge.tf with custom event bus and rules
-- [ ] T014 [P] Create infra/terraform/dynamodb.tf with ProcessChangeAlerts table and GSI
-- [ ] T015 [P] Create infra/terraform/ses.tf with SES configuration
-- [ ] T016 [P] Create infra/terraform/sqs.tf with Dead Letter Queue
-- [ ] T017 Create infra/terraform/lambda.tf with Lambda function resources
-- [ ] T018 Create infra/terraform/api_gateway.tf with HTTP API for alert history
+- [X] T009 Create infra/terraform/main.tf with AWS provider configuration
+- [X] T010 [P] Create infra/terraform/variables.tf with all configurable variables
+- [X] T011 [P] Create infra/terraform/outputs.tf with resource outputs
+- [X] T012 Create infra/terraform/iam.tf with Lambda execution roles and policies
+- [X] T013 Create infra/terraform/eventbridge.tf with custom event bus and rules
+- [X] T014 [P] Create infra/terraform/dynamodb.tf with ProcessChangeAlerts table and GSI
+- [X] T015 [P] Create infra/terraform/ses.tf with SES configuration
+- [X] T016 [P] Create infra/terraform/sqs.tf with Dead Letter Queue
+- [X] T017 Create infra/terraform/lambda.tf with Lambda function resources
+- [X] T018 Create infra/terraform/api_gateway.tf with HTTP API for alert history
 
 ### Shared Infrastructure Code
 
-- [ ] T019 Create aws_functions/shared/config.py with Parameter Store configuration loading
-- [ ] T020 [P] Create aws_functions/shared/utils.py with common utilities (logging, date formatting)
-- [ ] T021 Create aws_functions/process_change_monitor/models.py with ProcessChangeEvent dataclass
+- [X] T019 Create aws_functions/shared/config.py with Parameter Store configuration loading
+- [X] T020 [P] Create aws_functions/shared/utils.py with common utilities (logging, date formatting)
+- [X] T021 Create aws_functions/process_change_monitor/models.py with ProcessChangeEvent dataclass
 
 ### Azure Bridge
 
-- [ ] T022 Create infra/azure_bridge/event_grid_webhook.py (Azure Function to forward events to AWS)
-- [ ] T023 Create infra/azure_bridge/requirements.txt with Azure Function dependencies
+- [X] T022 Create infra/azure_bridge/event_grid_webhook.py (Azure Function to forward events to AWS)
+- [X] T023 Create infra/azure_bridge/requirements.txt with Azure Function dependencies
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 

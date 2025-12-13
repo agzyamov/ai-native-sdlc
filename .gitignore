@@ -133,6 +133,17 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
 # AI/ML specific
 *.pkl

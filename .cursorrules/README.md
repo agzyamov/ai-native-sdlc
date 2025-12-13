@@ -11,7 +11,7 @@ This directory contains modular cursor rules organized by technology stack and d
 - **[python.md](python.md)** - Python coding standards (PEP 8, type hints, docstrings, linting)
 - **[terraform.md](terraform.md)** - Terraform conventions, CAF compliance, security requirements
 - **[github-actions.md](github-actions.md)** - GitHub Actions workflow validation, YAML standards
-- **[shell.md](shell.md)** - Bash script conventions and best practices
+- **[shell.md](shell.md)** - Bash script conventions, PATH management, and best practices
 - **[git-workflow.md](git-workflow.md)** - Git workflow, branch protection, PR requirements
 
 ### Domain-Specific Rules
