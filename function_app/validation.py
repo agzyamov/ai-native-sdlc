@@ -23,7 +23,7 @@ def validate_event(event: dict) -> tuple[bool, str]:
 
     Validation Rules:
         - eventType must be "workitem.updated"
-        - workItemType must be "Feature"
+        - workItemType must be in ALLOWED_WORK_ITEM_TYPES (default: "Feature,User Story")
         - assignee display name must match AI_USER_MATCH (case-insensitive)
         - board column must match SPEC_COLUMN_NAME
         - board column done state must be false (Doing, not Done)
@@ -38,6 +38,29 @@ def validate_event(event: dict) -> tuple[bool, str]:
 
     # Extract resource fields - check revision.fields for full work item state
     resource = event.get("resource", {})
+
+    # Reject comment-only updates to prevent feedback loops.
+    # resource.fields contains only the *changed* fields; if all changed fields
+    # are noise (timestamps, watermark, comment count, history), there is nothing
+    # meaningful to act on — this is typically a bot comment triggering a re-fire.
+    changed_fields = resource.get("fields", {})
+    _NOISE_FIELDS = {
+        "System.Rev",
+        "System.AuthorizedDate",
+        "System.RevisedDate",
+        "System.ChangedDate",
+        "System.Watermark",
+        "System.CommentCount",
+        "System.History",
+    }
+    meaningful_changes = set(changed_fields.keys()) - _NOISE_FIELDS
+    if changed_fields and not meaningful_changes:
+        logger.info(
+            "Rejected: Only comment/timestamp fields changed (%s) - skipping to avoid feedback loop",
+            set(changed_fields.keys()),
+        )
+        return False, "Only comment/timestamp fields changed - skipping to avoid feedback loop"
+
     revision = resource.get("revision", {})
     fields = revision.get("fields", {})
 
@@ -45,9 +68,14 @@ def validate_event(event: dict) -> tuple[bool, str]:
     work_item_type = fields.get("System.WorkItemType", "")
     logger.info(f"Work item type: {work_item_type}")
 
-    if work_item_type != "Feature":
-        logger.info(f"Rejected: Invalid work item type '{work_item_type}'")
-        return False, f"Invalid work item type: {work_item_type} (expected Feature)"
+    allowed_types_raw = os.getenv("ALLOWED_WORK_ITEM_TYPES", "Feature,User Story")
+    allowed_types = [t.strip() for t in allowed_types_raw.split(",") if t.strip()]
+
+    if work_item_type not in allowed_types:
+        logger.info(
+            f"Rejected: Invalid work item type '{work_item_type}' (allowed: {allowed_types})"
+        )
+        return False, f"Invalid work item type: {work_item_type} (allowed: {allowed_types})"
 
     # Validate assignee
     ai_user_match = os.getenv("AI_USER_MATCH", "AI Teammate")

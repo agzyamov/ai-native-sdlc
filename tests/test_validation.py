@@ -105,3 +105,50 @@ def test_validate_event_wrong_column():
     is_valid, reason = validate_event(event)
     assert is_valid is False
     assert "Column mismatch" in reason
+
+
+def test_validate_event_comment_only_update():
+    """Test validation rejects comment-only updates to prevent GHA feedback loops.
+
+    When a GHA workflow posts a comment to ADO, it triggers another workitem.updated
+    service hook. The changed fields will only contain noise fields (timestamps,
+    watermark, comment count, history). These must be rejected to avoid infinite loops.
+    """
+    event = {
+        "eventType": "workitem.updated",
+        "resource": {
+            "workItemId": 819,
+            "fields": {
+                "System.Rev": {"oldValue": 5, "newValue": 6},
+                "System.AuthorizedDate": {
+                    "oldValue": "2026-03-09T08:01:42.323Z",
+                    "newValue": "2026-03-09T08:02:11.777Z",
+                },
+                "System.RevisedDate": {
+                    "oldValue": "2026-03-09T08:02:11.777Z",
+                    "newValue": "9999-01-01T00:00:00Z",
+                },
+                "System.ChangedDate": {
+                    "oldValue": "2026-03-09T08:01:42.323Z",
+                    "newValue": "2026-03-09T08:02:11.777Z",
+                },
+                "System.Watermark": {"oldValue": 2280, "newValue": 2281},
+                "System.CommentCount": {"oldValue": 0, "newValue": 1},
+                "System.History": {
+                    "newValue": "Processing started. CI Run: https://github.com/org/repo/actions/runs/123"
+                },
+            },
+            "revision": {
+                "fields": {
+                    "System.WorkItemType": "User Story",
+                    "System.AssignedTo": "AI Teammate <bot@example.com>",
+                    "System.BoardColumn": "Specification",
+                    "System.BoardColumnDone": False,
+                }
+            },
+        },
+    }
+
+    is_valid, reason = validate_event(event)
+    assert is_valid is False
+    assert "feedback loop" in reason

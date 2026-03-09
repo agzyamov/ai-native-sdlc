@@ -95,6 +95,12 @@ variable "ai_user_match" {
   default     = "AI Teammate"
 }
 
+variable "allowed_work_item_types" {
+  description = "Comma-separated work item types that trigger spec generation. Example: 'Feature,User Story'"
+  type        = string
+  default     = "Feature,User Story"
+}
+
 variable "log_level" {
   description = "Logging level (DEBUG, INFO, WARNING, ERROR). Use DEBUG for troubleshooting, INFO for normal operation."
   type        = string
