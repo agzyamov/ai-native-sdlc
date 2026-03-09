@@ -327,6 +327,30 @@ When creating or modifying Azure infrastructure:
 
 **Never deploy publicly accessible Azure Storage without explicit security exception!**
 
+## IP Rotation — Mandatory Runbook
+
+**When you see `ForbiddenByFirewall` or HTTP 403 from Azure Function / Key Vault that previously worked:**
+
+Your public IP has rotated. Run this before any `terraform apply`:
+
+```bash
+bash scripts/update-deployment-ip.sh   # detects current IP, updates infra/terraform.tfvars
+cd infra
+ARM_SUBSCRIPTION_ID=<sub-id> terraform apply -auto-approve \
+  -target=azurerm_linux_function_app.main \
+  -target=azurerm_key_vault.main
+```
+
+**Root cause**: `deployment_allowed_ip` in `terraform.tfvars` is pinned to your IP at time of last apply. Corporate/VPN IP pools rotate, causing:
+- Key Vault `ForbiddenByFirewall` (cannot read/write secrets)
+- Azure Function 403 HTML response (IP restriction blocks access)
+- SCM endpoint 403 (cannot stream logs or download them)
+
+**Checklist before debugging function errors:**
+- ✅ Run `curl -s https://api.ipify.org` and compare to `deployment_allowed_ip` in `terraform.tfvars`
+- ✅ If different → run `bash scripts/update-deployment-ip.sh && terraform apply -target=...`
+- ✅ Then retest — do not debug KV references or PAT scopes until IP is confirmed correct
+
 ## Active Technologies
 - GitHub Actions composite environment (YAML) + Bash; Spec Kit CLI (Python runtime 3.11 in workflow). (001-ado-github-spec)
 - None (stateless; spec stored in Git + ADO work item Description). (001-ado-github-spec)
