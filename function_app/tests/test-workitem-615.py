@@ -2,9 +2,9 @@
 """
 Test function with the exact payload from work item 615 that failed
 """
-import json
-import sys
+
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -18,13 +18,13 @@ payload = {
     "publisherId": "tfs",
     "message": {
         "text": "Feature #615 (hockey simulator game) transitioned to Specification by Rustem Agziamov",
-        "html": "<a href=\"https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615\">Feature #615</a> (hockey simulator game) transitioned to Specification by Rustem Agziamov",
-        "markdown": "[Feature #615](https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615) (hockey simulator game) transitioned to Specification by Rustem Agziamov"
+        "html": '<a href="https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615">Feature #615</a> (hockey simulator game) transitioned to Specification by Rustem Agziamov',
+        "markdown": "[Feature #615](https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615) (hockey simulator game) transitioned to Specification by Rustem Agziamov",
     },
     "detailedMessage": {
         "text": "Feature #615 (hockey simulator game) transitioned to Specification by Rustem Agziamov\n\n- New State: Specification\n",
-        "html": "<a href=\"https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615\">Feature #615</a> (hockey simulator game) transitioned to Specification by Rustem Agziamov<ul>\n<li>New State: Specification</li></ul>",
-        "markdown": "[Feature #615](https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615) (hockey simulator game) transitioned to Specification by Rustem Agziamov\n\n* New State: Specification\n"
+        "html": '<a href="https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615">Feature #615</a> (hockey simulator game) transitioned to Specification by Rustem Agziamov<ul>\n<li>New State: Specification</li></ul>',
+        "markdown": "[Feature #615](https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615) (hockey simulator game) transitioned to Specification by Rustem Agziamov\n\n* New State: Specification\n",
     },
     "resource": {
         "id": 6,
@@ -42,50 +42,35 @@ payload = {
             },
             "uniqueName": "Rustem_Agziamov@epam.com",
             "imageUrl": "https://dev.azure.com/RustemAgziamov/_apis/GraphProfile/MemberAvatars/aad.OGVjNmY4MGQtMGVmMS03MzU3LTlmZTQtZTA5ZWNhNzJkODQz",
-            "descriptor": "aad.OGVjNmY4MGQtMGVmMS03MzU3LTlmZTQtZTA5ZWNhNzJkODQz"
+            "descriptor": "aad.OGVjNmY4MGQtMGVmMS03MzU3LTlmZTQtZTA5ZWNhNzJkODQz",
         },
         "revisedDate": "2025-12-04T12:10:41.08Z",
         "fields": {
-            "System.Rev": {
-                "oldValue": 4,
-                "newValue": 5
-            },
+            "System.Rev": {"oldValue": 4, "newValue": 5},
             "System.AuthorizedDate": {
                 "oldValue": "2025-12-04T12:10:35.343Z",
-                "newValue": "2025-12-04T12:10:40.75Z"
+                "newValue": "2025-12-04T12:10:40.75Z",
             },
             "System.RevisedDate": {
                 "oldValue": "2025-12-04T12:10:40.75Z",
-                "newValue": "2025-12-04T12:10:41.08Z"
+                "newValue": "2025-12-04T12:10:41.08Z",
             },
-            "System.State": {
-                "oldValue": "New",
-                "newValue": "Specification"
-            },
-            "System.Reason": {
-                "oldValue": "New",
-                "newValue": "Moved to state Specification"
-            },
+            "System.State": {"oldValue": "New", "newValue": "Specification"},
+            "System.Reason": {"oldValue": "New", "newValue": "Moved to state Specification"},
             "System.ChangedDate": {
                 "oldValue": "2025-12-04T12:10:35.343Z",
-                "newValue": "2025-12-04T12:10:40.75Z"
+                "newValue": "2025-12-04T12:10:40.75Z",
             },
-            "System.Watermark": {
-                "oldValue": 1581,
-                "newValue": 1582
-            },
-            "System.BoardColumn": {
-                "oldValue": "New",
-                "newValue": "Specification"
-            },
+            "System.Watermark": {"oldValue": 1581, "newValue": 1582},
+            "System.BoardColumn": {"oldValue": "New", "newValue": "Specification"},
             "Microsoft.VSTS.Common.StateChangeDate": {
                 "oldValue": "2025-12-04T12:10:05.707Z",
-                "newValue": "2025-12-04T12:10:40.75Z"
+                "newValue": "2025-12-04T12:10:40.75Z",
             },
             "WEF_D88D961D5BD24EFEB690C902459A9FFA_Kanban.Column": {
                 "oldValue": "New",
-                "newValue": "Specification"
-            }
+                "newValue": "Specification",
+            },
         },
         "_links": {
             "self": {
@@ -99,7 +84,7 @@ payload = {
             },
             "html": {
                 "href": "https://dev.azure.com/RustemAgziamov/web/wi.aspx?pcguid=888cd319-7a3f-479e-8ee4-c9d07c81641d&id=615"
-            }
+            },
         },
         "url": "https://dev.azure.com/RustemAgziamov/753432ed-c013-4dd9-8760-7f0cdf436bf9/_apis/wit/workItems/615/updates/6",
         "revision": {
@@ -127,11 +112,9 @@ payload = {
                 "WEF_D88D961D5BD24EFEB690C902459A9FFA_Kanban.Column": "Specification",
                 "WEF_D88D961D5BD24EFEB690C902459A9FFA_Kanban.Column.Done": False,
                 "System.Description": "create a hockey simulator game using unreal engine",
-                "Microsoft.VSTS.Common.StackRank": 1999884457.0
+                "Microsoft.VSTS.Common.StackRank": 1999884457.0,
             },
-            "multilineFieldsFormat": {
-                "System.Description": "markdown"
-            },
+            "multilineFieldsFormat": {"System.Description": "markdown"},
             "_links": {
                 "self": {
                     "href": "https://dev.azure.com/RustemAgziamov/753432ed-c013-4dd9-8760-7f0cdf436bf9/_apis/wit/workItems/615/revisions/5"
@@ -141,27 +124,27 @@ payload = {
                 },
                 "parent": {
                     "href": "https://dev.azure.com/RustemAgziamov/753432ed-c013-4dd9-8760-7f0cdf436bf9/_apis/wit/workItems/615"
-                }
+                },
             },
-            "url": "https://dev.azure.com/RustemAgziamov/753432ed-c013-4dd9-8760-7f0cdf436bf9/_apis/wit/workItems/615/revisions/5"
-        }
+            "url": "https://dev.azure.com/RustemAgziamov/753432ed-c013-4dd9-8760-7f0cdf436bf9/_apis/wit/workItems/615/revisions/5",
+        },
     },
     "resourceVersion": "1.0",
     "resourceContainers": {
         "collection": {
             "id": "888cd319-7a3f-479e-8ee4-c9d07c81641d",
-            "baseUrl": "https://dev.azure.com/RustemAgziamov/"
+            "baseUrl": "https://dev.azure.com/RustemAgziamov/",
         },
         "account": {
             "id": "3653ea85-9acf-42cc-bbe5-7ce3be07e3f4",
-            "baseUrl": "https://dev.azure.com/RustemAgziamov/"
+            "baseUrl": "https://dev.azure.com/RustemAgziamov/",
         },
         "project": {
             "id": "753432ed-c013-4dd9-8760-7f0cdf436bf9",
-            "baseUrl": "https://dev.azure.com/RustemAgziamov/"
-        }
+            "baseUrl": "https://dev.azure.com/RustemAgziamov/",
+        },
     },
-    "createdDate": "2025-12-04T12:10:47.6816418Z"
+    "createdDate": "2025-12-04T12:10:47.6816418Z",
 }
 
 print("=" * 60)
@@ -188,6 +171,7 @@ os.environ["AI_USER_MATCH"] = "AI Teammate"
 os.environ["SPEC_COLUMN_NAME"] = "Specification"
 
 import validation
+
 is_valid, reason = validation.validate_event(payload)
 print(f"  Validation result: {is_valid}")
 print(f"  Reason: {reason}")
@@ -234,4 +218,3 @@ print("The payload already contains all needed data in resource.revision.fields"
 print("The ADO API call is unnecessary and is being blocked by security settings.")
 print("This is why it worked before (ADO API was accessible) and broke now.")
 print("=" * 60)
-

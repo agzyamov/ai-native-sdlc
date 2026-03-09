@@ -1,0 +1,35 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".venv", ".venv311", "venv", ".venv*"]
+
+[tool.ruff.lint]
+# E/W = pycodestyle (flake8 baseline)
+# F   = pyflakes (undefined names, unused imports)
+# I   = isort (import ordering)
+# B   = flake8-bugbear (bug-prone patterns)
+# UP  = pyupgrade (safe Python modernisations)
+# PLE = pylint errors (subset — avoids noisy convention rules)
+# RUF = ruff-native rules
+select = ["E", "W", "F", "I", "B", "UP", "PLE", "RUF"]
+
+ignore = [
+    "E501",   # line-length handled by the formatter (ruff format)
+    "B008",   # do not perform function calls in default arguments (common in Azure Functions)
+    "RUF001", # EN DASH (–) characters are intentional in ADO board column names (e.g. "Doing – Done")
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Script-style test files use deferred imports as a deliberate pattern
+"function_app/tests/*.py" = ["E402"]
+"function_app/test_*.py" = ["E402"]
+# GitHub Actions scripts use implicit Optional in function signatures
+".github/scripts/*.py" = ["RUF013"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["function_app"]
+
+[tool.ruff.format]
+# Use double quotes for auto-formatted code; single quotes kept where ruff doesn't touch.
+quote-style = "double"
+indent-style = "space"

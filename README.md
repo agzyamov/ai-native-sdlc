@@ -174,10 +174,37 @@ Primary (active) workflow: invokes Spec Kit to generate or refine specification 
 <!-- stray command reference removed -->
 ## 🔍 Validation & Quality
 
+- **Python linting**: [ruff](https://docs.astral.sh/ruff/) — replaces flake8 + pylint + isort in one fast tool
 - YAML / GitHub Actions lint: use `actionlint` or `@action-validator/cli`
 - Mermaid diagrams: run `scripts/validate_diagrams.sh` (internally uses `check_mermaid.js` + mermaid-cli)
-- Pre-commit (optional): add a hook calling both diagram + action lint steps
+- Pre-commit: hooks configured in `.pre-commit-config.yaml` (ruff check + format, diagrams, actionlint)
 - See `docs/workflow.md` for governance and optional edit control patterns
+
+### Python Code Quality (ruff)
+
+Install dev dependencies and set up pre-commit hooks:
+
+```bash
+pip3 install -r requirements-dev.txt
+pre-commit install
+```
+
+Run ruff manually:
+
+```bash
+# Lint (and auto-fix safe issues)
+ruff check . --fix
+
+# Format check
+ruff format --check .
+
+# Format (apply changes)
+ruff format .
+```
+
+Configuration lives in `pyproject.toml` under `[tool.ruff]`. Rules enabled:
+`E`/`W` (pycodestyle), `F` (pyflakes), `I` (isort), `B` (bugbear), `UP` (pyupgrade), `PLE` (pylint errors), `RUF` (ruff-native).
+Max line length: **100** characters (per project style guidelines).
 
 ### Mermaid Diagram Validation
 

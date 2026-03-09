@@ -1,0 +1,38 @@
+name: Python Lint
+
+on:
+  pull_request:
+    paths:
+      - '**.py'
+      - '**.tf'
+      - 'pyproject.toml'
+      - 'requirements-dev.txt'
+      - '.pre-commit-config.yaml'
+      - '.github/workflows/python-lint.yml'
+  push:
+    branches: [main]
+    paths:
+      - '**.py'
+      - '**.tf'
+      - 'pyproject.toml'
+      - '.pre-commit-config.yaml'
+
+jobs:
+  pre-commit:
+    name: pre-commit (ruff lint + format, terraform fmt)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1

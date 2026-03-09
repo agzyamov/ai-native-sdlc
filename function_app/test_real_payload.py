@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Test validation with the real ADO webhook payload that returned 403"""
-import sys
+
 import os
+import sys
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -23,7 +24,7 @@ payload = {
         "fields": {
             "System.Rev": {"oldValue": 22, "newValue": 23},
             "System.State": {"oldValue": "New", "newValue": "Specification"},
-            "System.BoardColumn": {"oldValue": "New", "newValue": "Specification"}
+            "System.BoardColumn": {"oldValue": "New", "newValue": "Specification"},
         },
         "revision": {
             "id": 451,
@@ -36,10 +37,10 @@ payload = {
                 "System.Title": "test - motivation quotes",
                 "System.BoardColumn": "Specification",
                 "System.BoardColumnDone": False,
-                "System.Description": "create motivation quote generator\n"
-            }
-        }
-    }
+                "System.Description": "create motivation quote generator\n",
+            },
+        },
+    },
 }
 
 # Set environment variables
@@ -47,7 +48,9 @@ os.environ["AI_USER_MATCH"] = "AI Teammate"
 os.environ["SPEC_COLUMN_NAME"] = "Specification"
 
 print("Testing validation with REAL ADO payload that returned 403...")
-print(f"Environment: AI_USER_MATCH={os.getenv('AI_USER_MATCH')}, SPEC_COLUMN_NAME={os.getenv('SPEC_COLUMN_NAME')}")
+print(
+    f"Environment: AI_USER_MATCH={os.getenv('AI_USER_MATCH')}, SPEC_COLUMN_NAME={os.getenv('SPEC_COLUMN_NAME')}"
+)
 
 is_valid, reason = validate_event(payload)
 
