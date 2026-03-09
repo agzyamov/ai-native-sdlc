@@ -2,9 +2,9 @@
 """
 Test the function logic directly (simulating what happens)
 """
-import json
-import sys
+
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -33,10 +33,10 @@ payload = {
                 "System.Title": "hockey simulator game",
                 "System.BoardColumn": "Specification",
                 "System.BoardColumnDone": False,
-                "System.Description": "create a hockey simulator game using unreal engine"
+                "System.Description": "create a hockey simulator game using unreal engine",
             }
-        }
-    }
+        },
+    },
 }
 
 print("=" * 70)
@@ -54,6 +54,7 @@ print()
 # Step 2: Validate config
 print("Step 2: Validate configuration ✅")
 import config
+
 cfg = config.get_config()
 config_valid, missing = cfg.validate()
 print(f"  Config valid: {config_valid}")
@@ -65,10 +66,11 @@ print()
 # Step 3: Validate event
 print("Step 3: Validate event ✅")
 import validation
+
 is_valid, reason = validation.validate_event(body)
 print(f"  Validation: {is_valid} - {reason}")
 if not is_valid:
-    print(f"  Would return 204 (filtered)")
+    print("  Would return 204 (filtered)")
     sys.exit(0)
 print()
 
@@ -113,4 +115,3 @@ print()
 print("BUT the payload already has all the data needed!")
 print("Fix: Use payload data first, only call ADO if payload is missing data.")
 print("=" * 70)
-

@@ -2,15 +2,15 @@
 """
 Test validation.py with the actual ADO webhook payload
 """
-import json
+
 import os
 import sys
 
-# Set environment variables for testing
+# Set environment variables before importing module under test (required for config init)
 os.environ["AI_USER_MATCH"] = "AI Teammate"
 os.environ["SPEC_COLUMN_NAME"] = "Specification"
 
-import validation
+import validation  # noqa: E402
 
 # The actual payload from ADO webhook
 payload = {
@@ -25,7 +25,7 @@ payload = {
         "rev": 4,
         "fields": {
             "System.Rev": {"oldValue": 3, "newValue": 4},
-            "System.BoardColumn": {"oldValue": "New", "newValue": "Specification"}
+            "System.BoardColumn": {"oldValue": "New", "newValue": "Specification"},
         },
         "revision": {
             "id": 451,
@@ -37,14 +37,16 @@ payload = {
                 "System.Title": "test - motivation quotes",
                 "System.BoardColumn": "Specification",
                 "System.BoardColumnDone": False,
-                "System.Description": "create motivation quote generator\n"
-            }
-        }
-    }
+                "System.Description": "create motivation quote generator\n",
+            },
+        },
+    },
 }
 
 print("Testing validation with actual ADO payload...")
-print(f"Environment: AI_USER_MATCH={os.getenv('AI_USER_MATCH')}, SPEC_COLUMN_NAME={os.getenv('SPEC_COLUMN_NAME')}")
+print(
+    f"Environment: AI_USER_MATCH={os.getenv('AI_USER_MATCH')}, SPEC_COLUMN_NAME={os.getenv('SPEC_COLUMN_NAME')}"
+)
 print()
 
 is_valid, reason = validation.validate_event(payload)

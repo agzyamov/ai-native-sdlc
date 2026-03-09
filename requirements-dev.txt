@@ -1,0 +1,5 @@
+# Development / local quality tools
+# Install with: pip install -r requirements-dev.txt
+
+ruff>=0.4.0
+pre-commit>=3.7.0

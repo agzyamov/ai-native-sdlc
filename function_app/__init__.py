@@ -4,18 +4,18 @@ This package contains validation, dispatch, and configuration logic.
 """
 
 # Export public API for easier imports
-from .validation import validate_event
-from .dispatch import dispatch_workflow
-from .config import get_config
-from .models import WorkItemEvent
 from .ado_client import get_work_item
+from .config import get_config
+from .dispatch import dispatch_workflow
+from .models import WorkItemEvent
 from .util import generate_correlation_id
+from .validation import validate_event
 
 __all__ = [
-    "validate_event",
-    "dispatch_workflow", 
-    "get_config",
     "WorkItemEvent",
+    "dispatch_workflow",
+    "generate_correlation_id",
+    "get_config",
     "get_work_item",
-    "generate_correlation_id"
+    "validate_event",
 ]

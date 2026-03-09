@@ -279,9 +279,10 @@ resource "azurerm_linux_function_app" "main" {
     APPLICATIONINSIGHTS_CONNECTION_STRING = azurerm_application_insights.main.connection_string
 
     # GitHub configuration
-    GITHUB_OWNER             = var.github_owner
-    GITHUB_REPO              = var.github_repo
-    GITHUB_WORKFLOW_FILENAME = "spec-kit-specify.yml"
+    GITHUB_OWNER                = var.github_owner
+    GITHUB_REPO                 = var.github_repo
+    GITHUB_WORKFLOW_FILENAME    = "ai-teammate-ado.yml"
+    GITHUB_WORKFLOW_CONFIG_FILE = "agents/ado_story_description.json"
 
     # Azure DevOps configuration
     ADO_ORG_URL      = var.ado_org_url
