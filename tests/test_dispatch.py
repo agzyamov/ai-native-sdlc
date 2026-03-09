@@ -22,11 +22,15 @@ def test_dispatch_workflow_success(mock_post):
     mock_response.status_code = 204
     mock_post.return_value = mock_response
 
-    success, message = dispatch_workflow(work_item_id=123, branch_hint="feature/wi-123")
+    success, message = dispatch_workflow(work_item_id=123)
 
     assert success is True
     assert message == "dispatched"
     mock_post.assert_called_once()
+    # Verify payload contains config_file and encoded_config inputs
+    payload = mock_post.call_args.kwargs["json"]
+    assert "config_file" in payload["inputs"]
+    assert "encoded_config" in payload["inputs"]
 
 
 @mock.patch("function_app.dispatch.requests.post")
@@ -36,7 +40,7 @@ def test_dispatch_workflow_missing_env_vars(mock_post):
     for var in ["GITHUB_OWNER", "GITHUB_REPO", "GH_WORKFLOW_DISPATCH_PAT"]:
         os.environ.pop(var, None)
 
-    success, message = dispatch_workflow(work_item_id=123, branch_hint="feature/wi-123")
+    success, message = dispatch_workflow(work_item_id=123)
 
     assert success is False
     assert "Missing required environment variables" in message
@@ -56,7 +60,7 @@ def test_dispatch_workflow_client_error_no_retry(mock_post):
     mock_response.text = "Not Found"
     mock_post.return_value = mock_response
 
-    success, message = dispatch_workflow(work_item_id=123, branch_hint="feature/wi-123")
+    success, message = dispatch_workflow(work_item_id=123)
 
     assert success is False
     assert "HTTP 404" in message
@@ -82,7 +86,7 @@ def test_dispatch_workflow_retry_on_500(mock_sleep, mock_post):
 
     mock_post.side_effect = [mock_response_500, mock_response_500, mock_response_204]
 
-    success, message = dispatch_workflow(work_item_id=123, branch_hint="feature/wi-123")
+    success, message = dispatch_workflow(work_item_id=123)
 
     assert success is True
     assert message == "dispatched"
@@ -102,7 +106,7 @@ def test_dispatch_workflow_timeout(mock_post):
     # Mock timeout exception
     mock_post.side_effect = requests.exceptions.Timeout()
 
-    success, message = dispatch_workflow(work_item_id=123, branch_hint="feature/wi-123")
+    success, message = dispatch_workflow(work_item_id=123)
 
     assert success is False
     assert "timeout" in message.lower()

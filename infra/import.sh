@@ -1,10 +1,21 @@
 #!/bin/bash
 set -e
-cd /Users/Rustem_Agziamov/ai-native-sdlc/infra
-export ARM_SUBSCRIPTION_ID=1313a7a3-30d8-4f42-adef-a730f6dc82fb
-S=1313a7a3-30d8-4f42-adef-a730f6dc82fb
-P="/subscriptions/$S"
-RG="$P/resourceGroups/rg-func-dev"
+
+# Change to the directory containing this script so Terraform runs from infra/
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Require subscription ID and resource group to be provided via environment
+SUBSCRIPTION_ID="${ARM_SUBSCRIPTION_ID:-${SUBSCRIPTION_ID:-}}"
+RESOURCE_GROUP_NAME="${ARM_RESOURCE_GROUP:-${RESOURCE_GROUP_NAME:-rg-func-dev}}"
+
+if [ -z "$SUBSCRIPTION_ID" ]; then
+  echo "ERROR: Subscription ID is not set. Please set ARM_SUBSCRIPTION_ID or SUBSCRIPTION_ID." >&2
+  exit 1
+fi
+
+P="/subscriptions/$SUBSCRIPTION_ID"
+RG="$P/resourceGroups/$RESOURCE_GROUP_NAME"
 
 echo "=== Importing existing Azure resources into Terraform state ==="
 

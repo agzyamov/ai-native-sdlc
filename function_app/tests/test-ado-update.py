@@ -9,12 +9,8 @@ import sys
 
 import requests
 
-# Set environment variables
-os.environ["ADO_ORG_URL"] = "https://dev.azure.com/RustemAgziamov"
-os.environ["ADO_PROJECT"] = "ai-native-sdlc-blueprint"
-os.environ["ADO_WORK_ITEM_PAT"] = (
-    "CT3dNvWwrwR6r1V8OaDNBLzHoGJMfVsWK5HoUP9Fykf8uBAbeEKNJQQJ99BJACAAAAAc0or1AAASAZDOaUC8"
-)
+# Read credentials from environment variables (never hard-code tokens in source)
+# Set ADO_ORG_URL, ADO_PROJECT, and ADO_WORK_ITEM_PAT in your shell or local.settings.json
 
 WORK_ITEM_ID = 444
 TEST_DESCRIPTION = """
@@ -80,6 +76,12 @@ def update_work_item_description(work_item_id: int, description: str) -> bool:
 
 def main():
     print("=== ADO Work Item Description Update Test ===\n")
+
+    # Validate required environment variables before proceeding
+    missing = [v for v in ("ADO_ORG_URL", "ADO_PROJECT", "ADO_WORK_ITEM_PAT") if not os.environ.get(v)]
+    if missing:
+        print(f"ERROR: required environment variable(s) not set: {', '.join(missing)}")
+        sys.exit(1)
 
     # Step 1: Fetch current work item
     print(f"1️⃣ Fetching work item {WORK_ITEM_ID}...")

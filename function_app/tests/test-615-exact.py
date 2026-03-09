@@ -225,7 +225,7 @@ def test_dispatch():
         feature_description = description if description else title
 
         success, message = dispatch.dispatch_workflow(
-            work_item_id=work_item_id, description_placeholder=feature_description
+            work_item_id=work_item_id,
         )
         print(f"Dispatch result: success={success}, message={message}")
         return success
