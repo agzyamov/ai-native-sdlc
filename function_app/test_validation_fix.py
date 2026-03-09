@@ -10,7 +10,7 @@ import sys
 os.environ["AI_USER_MATCH"] = "AI Teammate"
 os.environ["SPEC_COLUMN_NAME"] = "Specification"
 
-import validation  # noqa: E402
+import validation
 
 # The actual payload from ADO webhook
 payload = {

@@ -21,6 +21,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Script-style test files use deferred imports as a deliberate pattern
 "function_app/tests/*.py" = ["E402"]
+"function_app/test_*.py" = ["E402"]
 # GitHub Actions scripts use implicit Optional in function signatures
 ".github/scripts/*.py" = ["RUF013"]
 
