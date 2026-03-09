@@ -4,18 +4,22 @@ on:
   pull_request:
     paths:
       - '**.py'
+      - '**.tf'
       - 'pyproject.toml'
       - 'requirements-dev.txt'
+      - '.pre-commit-config.yaml'
       - '.github/workflows/python-lint.yml'
   push:
     branches: [main]
     paths:
       - '**.py'
+      - '**.tf'
       - 'pyproject.toml'
+      - '.pre-commit-config.yaml'
 
 jobs:
-  ruff:
-    name: Ruff (lint + format check)
+  pre-commit:
+    name: pre-commit (ruff lint + format, terraform fmt)
     runs-on: ubuntu-latest
 
     steps:
@@ -27,11 +31,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install ruff
-        run: pip install 'ruff>=0.4.0'
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
 
-      - name: Run ruff check
-        run: ruff check .
-
-      - name: Run ruff format check
-        run: ruff format --check .
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
