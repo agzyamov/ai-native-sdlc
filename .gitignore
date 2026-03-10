@@ -167,3 +167,6 @@ terraform.tfplan
 tfplan
 # Azure Functions local settings (contains secrets)
 function_app/local.settings.json
+infra/main.tf
+infra/variables.tf
+infra/main.tf

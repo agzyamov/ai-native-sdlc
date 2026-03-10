@@ -47,6 +47,36 @@ network_acls {
 }
 ```
 
+### Key Vault Secret Expiration (CIS Azure 9.3.3 / Control 50439)
+
+**REQUIRED: All Key Vault secrets MUST have an expiration date set.**
+
+- ✅ Every `azurerm_key_vault_secret` resource MUST include `expiration_date`
+- ✅ For secrets managed outside Terraform, use a `null_resource` with `local-exec` to enforce expiry via `az keyvault secret set-attributes`
+- ❌ NEVER create or leave a secret without an `expiration_date`
+- ✅ Use a variable (e.g., `<name>_expiry_date`) so expiry is easy to update on rotation
+- ✅ Re-run `terraform apply` or the `az` CLI when rotating a secret to update the expiry
+
+```hcl
+# Option A: secret value managed by Terraform
+resource "azurerm_key_vault_secret" "example" {
+  name            = "my-secret"
+  value           = var.my_secret_value
+  key_vault_id    = azurerm_key_vault.main.id
+  expiration_date = var.my_secret_expiry_date   # REQUIRED
+}
+
+# Option B: secret value managed outside Terraform (CLI/portal)
+resource "null_resource" "example_expiry" {
+  triggers = { expiry_date = var.my_secret_expiry_date }
+  provisioner "local-exec" {
+    command = "az keyvault secret set-attributes --name my-secret --vault-name ${azurerm_key_vault.main.name} --expires ${var.my_secret_expiry_date}"
+  }
+}
+```
+
+---
+
 ### Storage Connection Best Practices
 
 - ✅ Use `AzureWebJobsStorage__accountName` with Managed Identity

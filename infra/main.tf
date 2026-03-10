@@ -169,6 +169,30 @@ resource "azurerm_key_vault" "main" {
 # Current client config for Key Vault
 data "azurerm_client_config" "current" {}
 
+# Terraform deployer → Key Vault Secrets Officer (required to create/update KV secrets via Terraform)
+resource "azurerm_role_assignment" "deployer_keyvault_secrets_officer" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
+# gh-pat expiration date enforcement (CIS Azure Foundations 9.3.3 / control 50439):
+# "Ensure that the Expiration Date is set for all Secrets in RBAC Key Vaults"
+# Only sets the expiry attribute — secret value is managed outside Terraform (Azure CLI / portal).
+# Re-runs automatically whenever gh_pat_expiry_date changes.
+resource "null_resource" "gh_pat_expiry" {
+  triggers = {
+    expiry_date = var.gh_pat_expiry_date
+    vault_name  = azurerm_key_vault.main.name
+  }
+
+  provisioner "local-exec" {
+    command = "az keyvault secret set-attributes --name gh-pat --vault-name ${azurerm_key_vault.main.name} --expires ${var.gh_pat_expiry_date}"
+  }
+
+  depends_on = [azurerm_role_assignment.deployer_keyvault_secrets_officer]
+}
+
 #=============================================================================
 # FUNCTIONS LAYER - Workload Resources
 #=============================================================================

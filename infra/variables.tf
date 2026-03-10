@@ -174,3 +174,12 @@ variable "enable_public_access" {
   #  2. network_rules.virtualNetworkRules (allow only specific subnets)
   # 3. Private endpoints for blob/file (for additional security)
 }
+
+# Key Vault Secret: gh-pat (CIS Azure 9.3.3 / control 50439 compliance)
+# Secret value is managed outside Terraform; only the expiry date is enforced here.
+
+variable "gh_pat_expiry_date" {
+  description = "Expiration date for the gh-pat Key Vault secret in RFC3339 format (CIS Azure 9.3.3 compliance). Rotate this when the PAT is renewed. Example: 2027-03-10T00:00:00Z"
+  type        = string
+  default     = "2027-03-10T00:00:00Z"
+}
