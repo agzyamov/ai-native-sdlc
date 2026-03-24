@@ -33,7 +33,7 @@ logger.info("Azure Function starting up - spec-dispatch endpoint initialized")
 app = func.FunctionApp()
 
 
-@app.route(route="spec-dispatch", auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="spec-dispatch", auth_level=func.AuthLevel.ANONYMOUS)
 def spec_dispatch(req: func.HttpRequest) -> func.HttpResponse:
     """
     HTTP trigger for Azure DevOps Service Hook events.
