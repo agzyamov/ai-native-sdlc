@@ -135,9 +135,14 @@ def update_work_item_description(work_item_id: int, description: str) -> bool:
     """
     Update work item description using PATCH operation.
 
+    Sends the description as Markdown by also setting the multilineFieldsFormat
+    for System.Description. Without this, ADO treats stored content as HTML
+    and visible formatting (headings, lists, line breaks) is lost.
+    See: https://devblogs.microsoft.com/devops/markdown-support-arrives-for-work-items/
+
     Args:
         work_item_id: Work item ID to update
-        description: New description HTML content
+        description: New description Markdown content
 
     Returns:
         True if successful, False on error
@@ -165,20 +170,34 @@ def update_work_item_description(work_item_id: int, description: str) -> bool:
         "Content-Type": "application/json-patch+json",
     }
 
-    # JSON Patch format for ADO API
-    payload = [{"op": "add", "path": "/fields/System.Description", "value": description}]
+    # Mirror ado-sync-agent-kit setDescriptionViaRestWithMarkdown exactly:
+    # primary = replace description + add multilineFieldsFormat;
+    # fallback (when format already set) = replace both.
+    primary_payload = [
+        {"op": "replace", "path": "/fields/System.Description", "value": description},
+        {"op": "add", "path": "/multilineFieldsFormat/System.Description", "value": "Markdown"},
+    ]
+    fallback_payload = [
+        {"op": "replace", "path": "/fields/System.Description", "value": description},
+        {"op": "replace", "path": "/multilineFieldsFormat/System.Description", "value": "Markdown"},
+    ]
 
     try:
-        response = requests.patch(url, json=payload, headers=headers, timeout=15)
+        response = requests.patch(url, json=primary_payload, headers=headers, timeout=15)
 
-        if response.status_code in [200, 201]:
+        if response.status_code not in (200, 201):
+            text = response.text or ""
+            if "already exists" in text or "type changed" in text.lower():
+                response = requests.patch(url, json=fallback_payload, headers=headers, timeout=15)
+
+        if response.status_code in (200, 201):
             logger.info(f"Successfully updated description for work item {work_item_id}")
             return True
-        else:
-            logger.error(
-                f"Failed to update work item {work_item_id}: HTTP {response.status_code} - {response.text}"
-            )
-            return False
+
+        logger.error(
+            f"Failed to update work item {work_item_id}: HTTP {response.status_code} - {response.text}"
+        )
+        return False
 
     except requests.exceptions.Timeout:
         logger.error(f"Timeout updating work item {work_item_id}")
@@ -254,7 +273,7 @@ def create_issue_workitem(
         logger.warning(f"Idempotency check failed: {e!s} - proceeding with creation")
 
     # Create Issue (JSON Patch format)
-    create_url = f"{org_url}/{project}/_apis/wit/workitems/$Issue?api-version=7.0"
+    create_url = f"{org_url}/{project}/_apis/wit/workitems/$Issue?api-version=7.1"
 
     # Add idempotency key to description for duplicate detection
     description_with_key = f"{description}\n\n<!-- idempotency_key: {idempotency_key} -->"

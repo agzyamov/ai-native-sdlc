@@ -676,20 +676,43 @@ jobs:
             exit 1
           fi
 
-          # Construct JSON Patch payload
+          # Construct JSON Patch payload — include multilineFieldsFormat so
+          # ADO renders markdown instead of raw source (requires api-version 7.1+).
           PAYLOAD=$(cat <<EOF
           [
             {
               "op": "replace",
               "path": "/fields/System.Description",
               "value": $SPEC_JSON
+            },
+            {
+              "op": "add",
+              "path": "/multilineFieldsFormat/System.Description",
+              "value": "Markdown"
+            }
+          ]
+          EOF
+          )
+
+          # Fallback payload for when the mlff path already exists (use replace for both).
+          FALLBACK_PAYLOAD=$(cat <<EOF
+          [
+            {
+              "op": "replace",
+              "path": "/fields/System.Description",
+              "value": $SPEC_JSON
+            },
+            {
+              "op": "replace",
+              "path": "/multilineFieldsFormat/System.Description",
+              "value": "Markdown"
             }
           ]
           EOF
           )
 
           # PATCH with retry (x2 exponential backoff)
-          ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.0"
+          ENDPOINT="https://dev.azure.com/${ADO_ORG}/${ADO_PROJECT}/_apis/wit/workitems/${WORK_ITEM_ID}?api-version=7.1"
           
           for ATTEMPT in 1 2 3; do
             echo ""
@@ -736,6 +759,25 @@ jobs:
               echo "Response: $BODY"
               exit 1
             elif [[ "$HTTP_CODE" =~ ^4 ]]; then
+              # If `add` fails because the mlff path already exists or type changed, retry once with replace+replace.
+              if [ "$ATTEMPT" = "1" ] && ( echo "$BODY" | grep -qi "already exists" || echo "$BODY" | grep -qi "type changed" ); then
+                echo "⚠️ multilineFieldsFormat conflict; retrying with replace+replace fallback..."
+                RESPONSE=$(curl -v -s -w "\n%{http_code}" -X PATCH \
+                  --http1.1 \
+                  --max-time 30 \
+                  --connect-timeout 10 \
+                  -H "Content-Type: application/json-patch+json" \
+                  -H "Authorization: Basic $(echo -n ":${ADO_WORKITEM_RW_PAT}" | base64 | tr -d '\n')" \
+                  -d "$FALLBACK_PAYLOAD" \
+                  "$ENDPOINT" 2>&1)
+                HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+                BODY=$(echo "$RESPONSE" | sed '$d')
+                echo "Fallback HTTP Status: $HTTP_CODE"
+                if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "204" ]; then
+                  echo "✅ ADO Description overwritten successfully (HTTP $HTTP_CODE, fallback)"
+                  exit 0
+                fi
+              fi
               echo "❌ Client error (HTTP $HTTP_CODE); not retrying"
               echo "Response body:"
               echo "$BODY" | head -n 50
